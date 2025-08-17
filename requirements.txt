@@ -1,0 +1,15 @@
+transformers
+accelerate
+bitsandbytes
+openai
+cohere
+anthropic
+ipywidgets
+tqdm
+huggingface_hub
+pandas
+datasets
+python-dotenv
+jupyter
+ipykernel
+torch
