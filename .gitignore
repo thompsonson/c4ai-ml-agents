@@ -35,6 +35,23 @@ venv.bak/
 .DS_Store
 Thumbs.db
 
+# Node.js
+node_modules/
+
+# Python build artifacts
+*.egg-info/
+build/
+dist/
+
+# Testing and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Logs
+logs/
+*.log
+
 # Project specific
 *.csv
 results/
