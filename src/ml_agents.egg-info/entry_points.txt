@@ -1,0 +1,2 @@
+[console_scripts]
+ml-agents = src.main:main

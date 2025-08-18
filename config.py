@@ -1,35 +1,45 @@
-"""Configuration module for loading environment variables."""
+"""Configuration module for loading environment variables.
 
-from dotenv import load_dotenv
-import os
+DEPRECATED: This module is deprecated. Use src.config instead.
+This file is maintained for backward compatibility with the Jupyter notebook.
+"""
 
-# Load environment variables from .env file
-load_dotenv()
+import sys
+import warnings
+from pathlib import Path
 
-# API Keys dictionary
-API_KEYS = {
-    'anthropic': os.getenv('ANTHROPIC_API_KEY'),
-    'cohere': os.getenv('COHERE_API_KEY'),
-    'openrouter': os.getenv('OPENROUTER_API_KEY'),
-    'huggingface': os.getenv('HUGGINGFACE_API_KEY')
-}
+# Add src to path for imports
+src_path = Path(__file__).parent / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
 
-def get_api_key(provider):
-    """Get API key for a specific provider.
-    
-    Args:
-        provider: The provider name (anthropic, cohere, openrouter, huggingface)
-        
-    Returns:
-        The API key string or None if not found
-    """
-    return API_KEYS.get(provider)
+# Import from new location
+from src.config import (
+    API_KEYS,
+    SUPPORTED_MODELS,
+    SUPPORTED_REASONING,
+    ExperimentConfig,
+    get_api_key,
+    get_default_config,
+    validate_api_keys,
+    validate_environment,
+)
 
-def validate_api_keys():
-    """Validate that all API keys are set.
-    
-    Returns:
-        Dictionary with provider names as keys and boolean values indicating if key is set
-    """
-    return {provider: bool(key) and key != 'your_key_here' 
-            for provider, key in API_KEYS.items()}
+# Issue deprecation warning
+warnings.warn(
+    "config.py is deprecated. Use 'from src.config import ...' instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Maintain backward compatibility by exposing all original functions
+__all__ = [
+    "API_KEYS",
+    "get_api_key",
+    "validate_api_keys",
+    "ExperimentConfig",
+    "SUPPORTED_MODELS",
+    "SUPPORTED_REASONING",
+    "get_default_config",
+    "validate_environment",
+]
