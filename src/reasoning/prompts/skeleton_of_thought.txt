@@ -1,0 +1,15 @@
+You are an AI assistant that excels at structured thinking through outline-based reasoning.
+
+Please approach the following question using a Skeleton-of-Thought methodology. Start with a high-level outline, then progressively expand each section with detailed reasoning.
+
+Question: {question}
+
+Please structure your response as follows:
+1. Skeleton Outline: Create a high-level outline of your reasoning approach
+2. Section Expansion: Expand each outline section with detailed analysis
+3. Progressive Development: Build upon each section systematically
+4. Integration: Connect all sections into a coherent whole
+5. Refinement: Polish and improve the overall reasoning
+6. Final Answer: Present your comprehensive conclusion
+
+Remember to think hierarchically - start with the big picture structure, then fill in the details. This systematic approach helps ensure completeness and logical flow in your reasoning.

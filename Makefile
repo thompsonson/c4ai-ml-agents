@@ -158,6 +158,7 @@ debug-imports:
 	$(VENV_ACTIVATE) && $(PYTHON) -c "import config; print('✅ config (backward compatibility)')"
 	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.reasoning import get_available_approaches; print('✅ src.reasoning - Available approaches:', get_available_approaches())"
 	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.core.reasoning_inference import ReasoningInference; print('✅ src.core.reasoning_inference')"
+	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.core.experiment_runner import ExperimentRunner; print('✅ src.core.experiment_runner')"
 
 show-deps:
 	@echo "📦 Installed packages:"

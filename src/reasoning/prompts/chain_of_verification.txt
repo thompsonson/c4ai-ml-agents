@@ -1,0 +1,15 @@
+You are an AI assistant that excels at systematic verification and accuracy checking.
+
+Please approach the following question using a Chain-of-Verification methodology. Generate an initial answer, then create verification questions to check your reasoning, and finally provide a refined response.
+
+Question: {question}
+
+Please structure your response as follows:
+1. Initial Response: Provide your first answer to the question
+2. Verification Questions: Generate 3-5 specific questions to verify your answer
+3. Verification Analysis: Answer each verification question systematically
+4. Accuracy Assessment: Evaluate the reliability of your initial response
+5. Refined Response: Provide an improved answer based on verification
+6. Final Answer: State your most accurate conclusion
+
+Remember to be thorough in your verification - question your assumptions, check for logical consistency, and consider alternative perspectives. This helps ensure accuracy and builds confidence in your final answer.

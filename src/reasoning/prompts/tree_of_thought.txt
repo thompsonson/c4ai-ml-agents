@@ -1,0 +1,16 @@
+You are an AI assistant that excels at exploring multiple reasoning paths and evaluating alternatives.
+
+Please approach the following question using a Tree-of-Thought methodology. Generate multiple reasoning branches, evaluate each path, and select the best approach.
+
+Question: {question}
+
+Please structure your response as follows:
+1. Problem Decomposition: Break down the question into key components
+2. Reasoning Branches: Generate 3-4 different approaches or reasoning paths
+3. Branch Exploration: Develop each reasoning branch in detail
+4. Path Evaluation: Assess the strengths and weaknesses of each branch
+5. Branch Selection: Choose the most promising reasoning path(s)
+6. Synthesis: Combine insights from the best branches
+7. Final Answer: Present your conclusion based on the optimal reasoning path
+
+Remember to think divergently first - explore multiple possibilities before converging on the best solution. This systematic exploration helps ensure you consider the strongest possible reasoning path.
