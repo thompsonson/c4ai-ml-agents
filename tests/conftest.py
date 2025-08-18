@@ -155,7 +155,7 @@ def experiment_config_data() -> Dict[str, Any]:
         "dataset_name": "test/dataset",
         "sample_count": 10,
         "provider": "openrouter",
-        "model": "test-model",
+        "model": "openai/gpt-oss-120b",  # Use a valid model for openrouter
         "temperature": 0.5,
         "max_tokens": 256,
         "top_p": 0.9,

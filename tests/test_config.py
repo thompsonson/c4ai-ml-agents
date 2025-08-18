@@ -35,17 +35,22 @@ class TestAPIKeyFunctions:
         result = validate_api_keys()
         assert all(result.values())
 
-    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""})
     def test_validate_api_keys_some_missing(self):
         """Test validation when some API keys are missing."""
-        result = validate_api_keys()
-        assert not result["anthropic"]
+        # Clear just the anthropic key, keep others
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""}, clear=False):
+            result = validate_api_keys()
+            assert not result["anthropic"]
+            # Other keys may or may not be set depending on environment
 
-    @patch.dict(os.environ, {"ANTHROPIC_API_KEY": "your_key_here"})
     def test_validate_api_keys_default_value(self):
         """Test validation rejects default placeholder values."""
-        result = validate_api_keys()
-        assert not result["anthropic"]
+        # Set anthropic key to default placeholder
+        with patch.dict(
+            os.environ, {"ANTHROPIC_API_KEY": "your_key_here"}, clear=False
+        ):
+            result = validate_api_keys()
+            assert not result["anthropic"]  # Should be False for placeholder value
 
 
 class TestExperimentConfig:
@@ -149,13 +154,22 @@ class TestExperimentConfig:
         """Test updating config from command line arguments."""
         config = ExperimentConfig()
 
-        # Mock arguments object
-        args = MagicMock()
-        args.dataset_name = "new/dataset"
-        args.temperature = 0.8
-        args.provider = "anthropic"
-        args.model = "claude-sonnet-4-20250514"
+        # Create a simple object with attributes instead of MagicMock
+        class Args:
+            dataset_name = "new/dataset"
+            temperature = 0.8
+            provider = "anthropic"
+            model = "claude-sonnet-4-20250514"
+            sample_count = None  # Not set
+            max_tokens = None
+            top_p = None
+            reasoning_approaches = None
+            output_dir = None
+            parallel_requests = None
+            retry_attempts = None
+            request_timeout = None
 
+        args = Args()
         config.update_from_args(args)
 
         assert config.dataset_name == "new/dataset"
@@ -167,9 +181,22 @@ class TestExperimentConfig:
         """Test updating config with invalid args triggers validation."""
         config = ExperimentConfig()
 
-        args = MagicMock()
-        args.temperature = 5.0  # Invalid
+        # Create a simple object with invalid temperature
+        class Args:
+            temperature = 5.0  # Invalid - exceeds 2.0 max
+            dataset_name = None
+            sample_count = None
+            provider = None
+            model = None
+            max_tokens = None
+            top_p = None
+            reasoning_approaches = None
+            output_dir = None
+            parallel_requests = None
+            retry_attempts = None
+            request_timeout = None
 
+        args = Args()
         with pytest.raises(ValueError):
             config.update_from_args(args)
 

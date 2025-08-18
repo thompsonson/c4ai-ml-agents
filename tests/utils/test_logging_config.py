@@ -189,11 +189,13 @@ class TestLoggingSetup:
 
     def test_setup_logging_defaults(self) -> None:
         """Test setting up logging with default values."""
-        logger = setup_logging()
+        # Clear LOG_LEVEL to test actual defaults
+        with patch.dict(os.environ, {}, clear=True):
+            logger = setup_logging()
 
-        assert logger.level == logging.INFO
-        assert len(logger.handlers) == 1  # Console handler only
-        assert isinstance(logger.handlers[0], logging.StreamHandler)
+            assert logger.level == logging.INFO
+            assert len(logger.handlers) == 1  # Console handler only
+            assert isinstance(logger.handlers[0], logging.StreamHandler)
 
     @patch.dict(os.environ, {"LOG_LEVEL": "DEBUG", "LOG_FORMAT": "json"})
     def test_setup_logging_from_environment(self) -> None:
@@ -357,15 +359,18 @@ class TestLoggingIntegration:
 
     def test_multiple_loggers(self) -> None:
         """Test that multiple loggers work correctly."""
-        setup_logging(level="DEBUG")
+        # Clear environment to ensure clean test
+        with patch.dict(os.environ, {}, clear=True):
+            setup_logging(level="DEBUG")
 
-        logger1 = get_logger("module1")
-        logger2 = get_logger("module2")
+            logger1 = get_logger("module1")
+            logger2 = get_logger("module2")
 
-        assert logger1.name == "module1"
-        assert logger2.name == "module2"
-        assert logger1.level == logging.DEBUG
-        assert logger2.level == logging.DEBUG
+            assert logger1.name == "module1"
+            assert logger2.name == "module2"
+            # Child loggers inherit effective level from root logger
+            assert logger1.getEffectiveLevel() == logging.DEBUG
+            assert logger2.getEffectiveLevel() == logging.DEBUG
 
     def test_third_party_logger_levels(self) -> None:
         """Test that third-party loggers are configured correctly."""
