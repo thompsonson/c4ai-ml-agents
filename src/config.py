@@ -105,6 +105,13 @@ class ExperimentConfig:
     retry_attempts: int = 3
     request_timeout: int = 30
 
+    # Cost control and reasoning configuration
+    multi_step_reflection: bool = False
+    multi_step_verification: bool = False
+    max_reasoning_calls: int = 3
+    max_reflection_iterations: int = 2
+    reflection_threshold: float = 0.7
+
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
         self.validate()
@@ -163,6 +170,16 @@ class ExperimentConfig:
 
         if self.request_timeout < 1:
             errors.append("request_timeout must be >= 1")
+
+        # Validate cost control and reasoning parameters
+        if self.max_reasoning_calls < 1:
+            errors.append("max_reasoning_calls must be >= 1")
+
+        if self.max_reflection_iterations < 1:
+            errors.append("max_reflection_iterations must be >= 1")
+
+        if not (0.0 <= self.reflection_threshold <= 1.0):
+            errors.append("reflection_threshold must be between 0.0 and 1.0")
 
         if errors:
             raise ValueError(f"Configuration validation failed: {'; '.join(errors)}")

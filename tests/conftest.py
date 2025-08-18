@@ -184,3 +184,59 @@ def invalid_config_data() -> Dict[str, Any]:
 pytest.mark.unit = pytest.mark.unit
 pytest.mark.integration = pytest.mark.integration
 pytest.mark.slow = pytest.mark.slow
+
+
+# Integration test utilities
+@pytest.fixture
+def real_api_config() -> Dict[str, Any]:
+    """Configuration for real API integration tests."""
+    return {
+        "provider": "openrouter",
+        "model": "openai/gpt-3.5-turbo",
+        "temperature": 0.3,
+        "max_tokens": 100,  # Keep low for cost control
+        "top_p": 0.9,
+    }
+
+
+@pytest.fixture
+def integration_test_prompts() -> list[str]:
+    """Simple prompts for integration testing with minimal token usage."""
+    return ["What is 1+1?", "Name one color.", "Say hello."]
+
+
+def pytest_configure(config):
+    """Configure pytest with custom markers."""
+    config.addinivalue_line(
+        "markers", "integration: marks tests as integration tests (may call real APIs)"
+    )
+    config.addinivalue_line(
+        "markers", "unit: marks tests as unit tests (no external dependencies)"
+    )
+    config.addinivalue_line("markers", "slow: marks tests as slow running")
+
+
+def skip_if_no_api_key(provider: str) -> bool:
+    """Skip test if API key for provider is not available."""
+    key_env_vars = {
+        "anthropic": "ANTHROPIC_API_KEY",
+        "cohere": "COHERE_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
+        "huggingface": "HUGGINGFACE_API_KEY",
+    }
+
+    env_var = key_env_vars.get(provider.lower())
+    if not env_var or not os.getenv(env_var):
+        return True
+    return False
+
+
+@pytest.fixture
+def skip_integration_if_no_keys():
+    """Fixture to skip integration tests if no API keys available."""
+
+    def _skip_for_provider(provider: str):
+        if skip_if_no_api_key(provider):
+            pytest.skip(f"No API key available for {provider} integration tests")
+
+    return _skip_for_provider

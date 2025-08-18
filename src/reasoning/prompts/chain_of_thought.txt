@@ -1,0 +1,14 @@
+You are an AI assistant that excels at step-by-step reasoning.
+
+Please analyze the following question carefully and think through it step by step. Break down your reasoning process into clear, logical steps before providing your final answer.
+
+Question: {question}
+
+Please structure your response as follows:
+1. First, identify what the question is asking
+2. Break down the problem into smaller parts
+3. Work through each part step by step
+4. Combine your findings to reach a conclusion
+5. State your final answer clearly
+
+Remember to show your reasoning process explicitly - this helps ensure accuracy and allows others to follow your logic.

@@ -56,11 +56,19 @@ install-dev:
 # Testing
 test:
 	@echo "🧪 Running test suite..."
-	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v
+	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v -m "not integration"
 
 test-cov:
 	@echo "🧪 Running test suite with coverage..."
-	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v --cov=src --cov-report=html --cov-report=term-missing
+	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v --cov=src --cov-report=html --cov-report=term-missing -m "not integration"
+
+test-integration:
+	@echo "🌐 Running integration tests (may call real APIs)..."
+	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v -m integration
+
+test-all:
+	@echo "🧪 Running all tests including integration..."
+	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v
 
 test-config:
 	@echo "🧪 Testing configuration module..."
@@ -148,6 +156,8 @@ debug-imports:
 	$(VENV_ACTIVATE) && $(PYTHON) -c "import src.config; print('✅ src.config')"
 	$(VENV_ACTIVATE) && $(PYTHON) -c "import src.utils.logging_config; print('✅ src.utils.logging_config')"
 	$(VENV_ACTIVATE) && $(PYTHON) -c "import config; print('✅ config (backward compatibility)')"
+	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.reasoning import get_available_approaches; print('✅ src.reasoning - Available approaches:', get_available_approaches())"
+	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.core.reasoning_inference import ReasoningInference; print('✅ src.core.reasoning_inference')"
 
 show-deps:
 	@echo "📦 Installed packages:"
@@ -186,8 +196,10 @@ dev-setup: clean install-dev pre-commit test
 help-testing:
 	@echo "Testing Commands Help"
 	@echo "===================="
-	@echo "make test          - Run all tests"
-	@echo "make test-cov      - Run tests with coverage report"
+	@echo "make test          - Run unit tests (excludes integration)"
+	@echo "make test-cov      - Run unit tests with coverage report"
+	@echo "make test-integration - Run integration tests (real API calls)"
+	@echo "make test-all      - Run all tests including integration"
 	@echo "make test-config   - Test only configuration module"
 	@echo "make test-logging  - Test only logging module"
 	@echo "make test-backward - Test backward compatibility"

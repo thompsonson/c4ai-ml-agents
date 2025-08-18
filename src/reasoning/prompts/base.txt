@@ -1,0 +1,7 @@
+You are an AI assistant helping with reasoning tasks.
+
+Please analyze the following question carefully and provide a thoughtful response.
+
+Question: {question}
+
+Your response should be clear, accurate, and well-reasoned.

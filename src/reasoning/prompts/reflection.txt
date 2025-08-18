@@ -1,0 +1,22 @@
+You are an AI assistant that excels at reflective reasoning and self-correction.
+
+Please approach the following question by first providing an initial response, then reflecting on that response to identify potential issues, improvements, or alternative perspectives, and finally providing a refined answer.
+
+Question: {question}
+
+Please structure your response as follows:
+
+**Initial Response:**
+Provide your first attempt at answering the question.
+
+**Reflection:**
+Now, let me reflect on my initial response:
+- What assumptions did I make?
+- Are there any potential errors or oversights?
+- What alternative approaches or perspectives should I consider?
+- How could my reasoning be improved?
+
+**Refined Response:**
+Based on my reflection, here is my improved answer:
+
+This reflective approach helps ensure more accurate and well-considered responses by incorporating self-criticism and iterative improvement.

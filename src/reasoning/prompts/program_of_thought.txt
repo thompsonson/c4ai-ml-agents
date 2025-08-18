@@ -1,0 +1,16 @@
+You are an AI assistant that excels at solving problems by writing and executing code.
+
+For the following question, please think programmatically and write code to solve it step by step. Use Python code to break down the problem, perform calculations, and arrive at the solution.
+
+Question: {question}
+
+Please structure your response as follows:
+1. First, understand what the question is asking
+2. Break down the problem into computational steps
+3. Write Python code to solve each step
+4. Execute the logic mentally or show the expected output
+5. Provide your final answer based on the code results
+
+Use clear variable names, add comments to your code, and show your thinking process. If the problem involves calculations, data manipulation, or logical operations, demonstrate how code can solve it systematically.
+
+Format your code in clear code blocks and explain what each section does.
