@@ -1,0 +1,115 @@
+"""Main CLI entry point for ML Agents reasoning research platform."""
+
+from typing import Optional
+
+import typer
+from rich.console import Console
+
+from src.cli.commands import (
+    list_checkpoints,
+    resume_experiment,
+    run_comparison_experiment,
+    run_single_experiment,
+)
+from src.cli.display import display_banner, display_error
+from src.config import validate_environment
+
+app = typer.Typer(
+    name="ml-agents",
+    help="🧠 ML Agents Reasoning Research Platform - Cohere Labs Open Science Initiative",
+    add_completion=False,
+    rich_markup_mode="rich",
+)
+console = Console()
+
+# Add experiment commands directly
+app.command("run")(run_single_experiment)
+app.command("compare")(run_comparison_experiment)
+app.command("resume")(resume_experiment)
+app.command("list-checkpoints")(list_checkpoints)
+
+
+@app.command()
+def validate_env() -> None:
+    """Validate environment configuration and API keys."""
+    console.print("\n🔍 [bold blue]Validating Environment...[/bold blue]")
+
+    validation_results = validate_environment()
+
+    if all(validation_results.values()):
+        console.print("✅ [bold green]Environment validation passed![/bold green]")
+        console.print("🚀 [green]Ready to run experiments![/green]")
+    else:
+        console.print("❌ [bold red]Environment validation failed![/bold red]")
+
+        if not validation_results["api_keys"]:
+            console.print("   • Missing API keys. Check your .env file.")
+        if not validation_results["output_dir_writable"]:
+            console.print("   • Cannot write to output directory.")
+        if not validation_results["dependencies_available"]:
+            console.print("   • Missing required dependencies.")
+
+        console.print("\n📖 See documentation for setup instructions.")
+        raise typer.Exit(1)
+
+
+@app.command()
+def list_approaches() -> None:
+    """List all available reasoning approaches."""
+    from src.reasoning import get_available_approaches
+
+    approaches = get_available_approaches()
+
+    console.print("\n🧠 [bold blue]Available Reasoning Approaches:[/bold blue]\n")
+
+    for i, approach in enumerate(approaches, 1):
+        console.print(f"  {i:2d}. [cyan]{approach}[/cyan]")
+
+    console.print(f"\n📊 Total: [bold]{len(approaches)}[/bold] approaches available")
+
+
+@app.command()
+def version() -> None:
+    """Show version information."""
+    from src.cli import __version__
+
+    console.print(f"\n🧠 [bold blue]ML Agents CLI[/bold blue] v{__version__}")
+    console.print("🔬 [dim]Cohere Labs Open Science Initiative[/dim]")
+
+
+@app.callback()
+def main(
+    ctx: typer.Context,
+    version_flag: Optional[bool] = typer.Option(
+        None, "--version", "-V", help="Show version and exit"
+    ),
+    verbose: Optional[bool] = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
+) -> None:
+    """🧠 ML Agents Reasoning Research Platform - Cohere Labs Open Science Initiative
+
+    A comprehensive platform for conducting reasoning research across different AI models and approaches.
+    Supports 8 reasoning methods including Chain-of-Thought, Tree-of-Thought, and more.
+    """
+    if version_flag:
+        version()
+        raise typer.Exit()
+
+    if ctx.invoked_subcommand is None:
+        display_banner()
+        console.print("💡 [dim]Use --help to see available commands[/dim]\n")
+
+
+if __name__ == "__main__":
+    try:
+        app()
+    except KeyboardInterrupt:
+        console.print("\n\n⚠️  [yellow]Experiment interrupted by user[/yellow]")
+        console.print(
+            "💾 [dim]Partial results may be saved in the output directory[/dim]"
+        )
+        raise typer.Exit(130)
+    except Exception as e:
+        display_error(f"Unexpected error: {e}")
+        raise typer.Exit(1)

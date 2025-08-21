@@ -201,8 +201,8 @@ class TestExperimentRunner:
 
 #### **3.1 Minimal CLI Implementation (3 hours)**
 ```bash
-python run_experiment.py --approach TreeOfThought --samples 10
-python run_experiment.py --comparison "ChainOfThought,TreeOfThought" --samples 20
+ml-agents run --approach TreeOfThought --samples 10
+ml-agents compare --approaches "ChainOfThought,TreeOfThought" --samples 20
 ```
 
 #### **3.2 Additional P3 Reasoning Approaches (6.5 hours)**

@@ -149,13 +149,30 @@ class ExperimentConfig:
         if not self.reasoning_approaches:
             errors.append("reasoning_approaches cannot be empty")
 
-        invalid_approaches = [
-            approach
-            for approach in self.reasoning_approaches
-            if approach not in SUPPORTED_REASONING
-        ]
-        if invalid_approaches:
-            errors.append(f"Invalid reasoning approaches: {invalid_approaches}")
+        # Get available approaches dynamically
+        try:
+            from src.reasoning import get_available_approaches
+
+            available_approaches = get_available_approaches()
+
+            invalid_approaches = [
+                approach
+                for approach in self.reasoning_approaches
+                if approach not in available_approaches
+            ]
+            if invalid_approaches:
+                errors.append(
+                    f"Invalid reasoning approaches: {invalid_approaches}. Available: {available_approaches}"
+                )
+        except ImportError:
+            # Fallback to static list if import fails
+            invalid_approaches = [
+                approach
+                for approach in self.reasoning_approaches
+                if approach not in SUPPORTED_REASONING
+            ]
+            if invalid_approaches:
+                errors.append(f"Invalid reasoning approaches: {invalid_approaches}")
 
         # Validate output directory
         if not self.output_dir or not self.output_dir.strip():

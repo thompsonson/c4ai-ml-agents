@@ -16,6 +16,21 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 from tqdm import tqdm
 
+try:
+    from rich.console import Console
+    from rich.progress import (
+        BarColumn,
+        Progress,
+        SpinnerColumn,
+        TaskProgressColumn,
+        TextColumn,
+        TimeElapsedColumn,
+    )
+
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
 from src.config import ExperimentConfig
 from src.core.dataset_loader import BBEHDatasetLoader
 from src.core.reasoning_inference import ReasoningInference, ReasoningResult
@@ -96,7 +111,26 @@ class ExperimentRunner:
         self.output_dir = Path(config.output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
+        # Rich progress setup
+        self.use_rich = RICH_AVAILABLE
+        self.console = Console() if RICH_AVAILABLE else None
+
         logger.info(f"Initialized ExperimentRunner with ID: {self.experiment_id}")
+
+    def _create_rich_progress(self) -> Optional[Progress]:
+        """Create Rich progress display if available."""
+        if not self.use_rich:
+            return None
+
+        return Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TimeElapsedColumn(),
+            console=self.console,
+            expand=True,
+        )
 
     def run_single_experiment(
         self,
@@ -158,51 +192,100 @@ class ExperimentRunner:
                 self.errors = []
 
             # Run experiment with progress tracking
-            with tqdm(
-                total=self.total_samples,
-                initial=self.current_sample,
-                desc=f"Processing {approach}",
-                unit="samples",
-            ) as pbar:
-                for i in range(self.current_sample, self.total_samples):
-                    sample = samples[i]
+            progress = self._create_rich_progress()
+            if progress:
+                with progress:
+                    task_id = progress.add_task(
+                        f"Processing {approach}", total=self.total_samples
+                    )
+                    progress.update(task_id, completed=self.current_sample)
 
-                    try:
-                        # Execute reasoning
-                        result = self.reasoning_engine.run_inference(
-                            sample["input"], approach
-                        )
+                    for i in range(self.current_sample, self.total_samples):
+                        sample = samples[i]
 
-                        # Store result with enhanced Phase 4 metadata
-                        enhanced_result = self._enhance_result_metadata(
-                            result, approach, i
-                        )
-                        result_data = {
-                            "sample_id": i,
-                            "input": sample["input"],
-                            "expected_output": sample.get("output", ""),
-                            "approach": approach,
-                            "result": asdict(enhanced_result),
-                            "timestamp": datetime.now().isoformat(),
-                        }
-                        self.results.append(result_data)
+                        try:
+                            # Execute reasoning
+                            result = self.reasoning_engine.run_inference(
+                                sample["input"], approach
+                            )
 
-                    except Exception as e:
-                        logger.warning(f"Error processing sample {i}: {e}")
-                        error_data = {
-                            "sample_id": i,
-                            "approach": approach,
-                            "error": str(e),
-                            "timestamp": datetime.now().isoformat(),
-                        }
-                        self.errors.append(error_data)
+                            # Store result with enhanced Phase 4 metadata
+                            enhanced_result = self._enhance_result_metadata(
+                                result, approach, i
+                            )
+                            result_data = {
+                                "sample_id": i,
+                                "input": sample["input"],
+                                "expected_output": sample.get("output", ""),
+                                "approach": approach,
+                                "result": asdict(enhanced_result),
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                            self.results.append(result_data)
 
-                    self.current_sample = i + 1
-                    pbar.update(1)
+                        except Exception as e:
+                            logger.warning(f"Error processing sample {i}: {e}")
+                            error_data = {
+                                "sample_id": i,
+                                "approach": approach,
+                                "error": str(e),
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                            self.errors.append(error_data)
 
-                    # Save checkpoint periodically
-                    if save_checkpoints and (i + 1) % self.checkpoint_interval == 0:
-                        self._save_checkpoint(approach)
+                        self.current_sample = i + 1
+                        progress.update(task_id, completed=self.current_sample)
+
+                        # Save checkpoint periodically
+                        if save_checkpoints and (i + 1) % self.checkpoint_interval == 0:
+                            self._save_checkpoint(approach)
+            else:
+                # Fallback to tqdm if Rich not available
+                with tqdm(
+                    total=self.total_samples,
+                    initial=self.current_sample,
+                    desc=f"Processing {approach}",
+                    unit="samples",
+                ) as pbar:
+                    for i in range(self.current_sample, self.total_samples):
+                        sample = samples[i]
+
+                        try:
+                            # Execute reasoning
+                            result = self.reasoning_engine.run_inference(
+                                sample["input"], approach
+                            )
+
+                            # Store result with enhanced Phase 4 metadata
+                            enhanced_result = self._enhance_result_metadata(
+                                result, approach, i
+                            )
+                            result_data = {
+                                "sample_id": i,
+                                "input": sample["input"],
+                                "expected_output": sample.get("output", ""),
+                                "approach": approach,
+                                "result": asdict(enhanced_result),
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                            self.results.append(result_data)
+
+                        except Exception as e:
+                            logger.warning(f"Error processing sample {i}: {e}")
+                            error_data = {
+                                "sample_id": i,
+                                "approach": approach,
+                                "error": str(e),
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                            self.errors.append(error_data)
+
+                        self.current_sample = i + 1
+                        pbar.update(1)
+
+                        # Save checkpoint periodically
+                        if save_checkpoints and (i + 1) % self.checkpoint_interval == 0:
+                            self._save_checkpoint(approach)
 
             self.end_time = datetime.now()
 
@@ -817,6 +900,175 @@ class ExperimentRunner:
         self.errors = checkpoint_data["errors"]
 
         logger.info(f"Loaded checkpoint from sample {self.current_sample}")
+
+    def resume_from_checkpoint(
+        self, checkpoint_path: Union[str, Path]
+    ) -> ExperimentSummary:
+        """Resume experiment from an external checkpoint file.
+
+        Args:
+            checkpoint_path: Path to the checkpoint file to resume from
+
+        Returns:
+            ExperimentSummary with the completed experiment results
+
+        Raises:
+            FileNotFoundError: If checkpoint file doesn't exist
+            ValueError: If checkpoint data is invalid
+        """
+        checkpoint_path = Path(checkpoint_path)
+
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
+
+        logger.info(f"Resuming experiment from checkpoint: {checkpoint_path}")
+
+        # Load checkpoint data
+        with open(checkpoint_path, "r") as f:
+            checkpoint_data = json.load(f)
+
+        # Validate checkpoint structure
+        required_fields = [
+            "experiment_id",
+            "approach",
+            "config",
+            "current_sample",
+            "total_samples",
+            "results",
+            "errors",
+        ]
+        for field in required_fields:
+            if field not in checkpoint_data:
+                raise ValueError(f"Invalid checkpoint file: missing field '{field}'")
+
+        # Restore experiment state
+        self.experiment_id = checkpoint_data["experiment_id"]
+        approach = checkpoint_data["approach"]
+        self.current_sample = checkpoint_data["current_sample"]
+        self.total_samples = checkpoint_data["total_samples"]
+        self.results = checkpoint_data["results"]
+        self.errors = checkpoint_data["errors"]
+
+        # Update config if needed
+        saved_config = checkpoint_data["config"]
+        if saved_config != self.config.to_dict():
+            logger.warning(
+                "Checkpoint config differs from current config - using checkpoint config"
+            )
+            from src.config import ExperimentConfig
+
+            self.config = ExperimentConfig.from_dict(saved_config)
+
+        logger.info(
+            f"Resuming {approach} experiment from sample {self.current_sample}/{self.total_samples}"
+        )
+
+        # Continue the experiment if not completed
+        if self.current_sample < self.total_samples:
+            # Load the dataset
+            loader = BBEHDatasetLoader(self.config.dataset_name)
+            try:
+                dataset = loader.load_dataset()
+                dataset = loader.sample_data(dataset, self.total_samples)
+            except Exception as e:
+                logger.error(f"Failed to load dataset: {e}")
+                raise ValueError(
+                    f"Cannot resume experiment: dataset loading failed: {e}"
+                )
+
+            # Resume processing from where we left off
+            logger.info(f"Continuing experiment from sample {self.current_sample + 1}")
+
+            # Set up reasoning inference
+            reasoning_inference = ReasoningInference(self.config)
+
+            # Process remaining samples
+            for i in range(self.current_sample, self.total_samples):
+                if i % 10 == 0:
+                    logger.info(f"Processing sample {i + 1}/{self.total_samples}")
+
+                sample = dataset[i]
+
+                try:
+                    # Run inference
+                    result = reasoning_inference.run_inference(
+                        approach=approach,
+                        prompt=sample.get("input", ""),
+                        context={"sample_id": i, "approach": approach},
+                    )
+
+                    self.results.append(
+                        {
+                            "sample_id": i,
+                            "input": sample.get("input", ""),
+                            "output": result.response,
+                            "reasoning_trace": result.reasoning_trace,
+                            "metadata": result.metadata,
+                            "approach": approach,
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
+
+                except Exception as e:
+                    logger.error(f"Error processing sample {i}: {e}")
+                    self.errors.append(
+                        {
+                            "sample_id": i,
+                            "error": str(e),
+                            "approach": approach,
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
+
+                self.current_sample = i
+
+                # Save checkpoint periodically
+                if (i + 1) % self.checkpoint_interval == 0:
+                    self._save_checkpoint(approach)
+
+        # Generate final summary
+        end_time = datetime.now()
+        duration = (
+            end_time
+            - datetime.fromisoformat(
+                checkpoint_data.get("start_time", end_time.isoformat())
+            )
+        ).total_seconds()
+
+        summary = ExperimentSummary(
+            experiment_id=self.experiment_id,
+            config=self.config.to_dict(),
+            start_time=checkpoint_data.get("start_time", end_time.isoformat()),
+            end_time=end_time.isoformat(),
+            duration=duration,
+            total_samples=self.total_samples,
+            approaches_tested=[approach],
+            results_summary={
+                approach: {
+                    "total_samples": len(self.results),
+                    "error_count": len(self.errors),
+                    "success_rate": len(self.results) / self.total_samples
+                    if self.total_samples > 0
+                    else 0.0,
+                    "completed": self.current_sample >= self.total_samples - 1,
+                }
+            },
+            cost_summary={},
+            error_summary={approach: len(self.errors)},
+        )
+
+        # Save final results
+        self._save_results_to_csv(approach, self.results)
+
+        # Clean up checkpoint file
+        if checkpoint_path.exists():
+            checkpoint_path.unlink()
+            logger.info(f"Removed checkpoint file: {checkpoint_path}")
+
+        logger.info(
+            f"Experiment {self.experiment_id} resumed and completed successfully"
+        )
+        return summary
 
     def get_progress_status(self) -> Dict[str, Any]:
         """Get current experiment progress status.

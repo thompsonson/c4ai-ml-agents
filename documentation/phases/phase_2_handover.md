@@ -119,13 +119,12 @@ Phase 3 can immediately begin implementing the 10+ reasoning approaches with con
 The components are designed for the planned CLI interface:
 
 ```bash
-# Future Phase 3+ usage
-python run_experiment.py \
+# Future CLI usage (implemented in Phase 5)
+ml-agents run \
   --provider anthropic \
   --model claude-sonnet-4-20250514 \
-  --reasoning "Chain-of-Thought (CoT)" \
-  --samples 50 \
-  --dataset "MrLight/bbeh-eval"
+  --approach ChainOfThought \
+  --samples 50
 ```
 
 ## 📝 Important Implementation Notes

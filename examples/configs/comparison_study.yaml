@@ -1,0 +1,37 @@
+# Comparison Study Configuration
+# Compare multiple reasoning approaches
+
+experiment:
+  name: "reasoning_comparison_study"
+  sample_count: 100
+  output_dir: "./results/comparison_studies"
+
+dataset:
+  name: "MrLight/bbeh-eval"
+
+model:
+  provider: "openrouter"
+  name: "openai/gpt-oss-120b"
+  temperature: 0.3
+  max_tokens: 512
+  top_p: 0.9
+
+reasoning:
+  approaches:
+    - None
+    - ChainOfThought
+    - AsPlanning
+    - TreeOfThought
+  multi_step_reflection: false
+  multi_step_verification: true
+  max_reasoning_calls: 3
+
+execution:
+  parallel: true
+  max_workers: 4
+  save_checkpoints: true
+
+output:
+  formats:
+    - csv
+    - json

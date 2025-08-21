@@ -145,10 +145,21 @@ docs:
 	@echo "📚 Documentation generation not yet implemented"
 	@echo "    This will be added in future phases"
 
+# CLI Testing
+test-cli:
+	@echo "🧪 Testing CLI functionality..."
+	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main --help
+
+test-cli-commands:
+	@echo "🧪 Testing CLI commands..."
+	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main version
+	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main list-approaches
+	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main validate-env
+
 # Experiment shortcuts
 run-sample:
 	@echo "🧪 Running sample experiment..."
-	@echo "    (This will be implemented when CLI is ready)"
+	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main run --approach ChainOfThought --samples 5
 
 # Debug and troubleshooting
 debug-imports:

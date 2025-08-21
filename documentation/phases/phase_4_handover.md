@@ -54,16 +54,16 @@ results = runner.run_comparison(
 #### **Recommended Implementation**
 ```bash
 # Single experiment
-python run_experiment.py --approach ChainOfThought --samples 50
+ml-agents run --approach ChainOfThought --samples 50
 
 # Comparison experiment
-python run_experiment.py --compare "ChainOfThought,AsPlanning,TreeOfThought" --samples 100
+ml-agents compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --samples 100
 
 # With configuration file
-python run_experiment.py --config experiments/reasoning_comparison.yaml
+ml-agents run --config experiments/reasoning_comparison.yaml
 
 # Resume from checkpoint
-python run_experiment.py --resume checkpoint_exp_20250818_123456.json
+ml-agents resume checkpoint_exp_20250818_123456.json
 ```
 
 #### **Key Features to Include**
@@ -75,7 +75,7 @@ python run_experiment.py --resume checkpoint_exp_20250818_123456.json
 
 #### **Implementation Approach**
 ```python
-# run_experiment.py structure
+# ml-agents CLI structure (implemented in Phase 5)
 def main():
     parser = create_argument_parser()
     args = parser.parse_args()
@@ -187,7 +187,7 @@ The ResultsProcessor class exists but isn't fully integrated with ExperimentRunn
 ## 🚀 Quick Start for Phase 5 Agent
 
 ### **Day 1: CLI Foundation**
-1. Create `run_experiment.py` with basic argument parsing
+1. Create `ml-agents` CLI with Typer + Rich (✅ Completed)
 2. Implement single experiment command
 3. Add comparison experiment command
 4. Test with existing approaches

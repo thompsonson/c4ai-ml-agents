@@ -86,7 +86,7 @@ uv pip install -r requirements.txt
 jupyter notebook Reasoning_LLM.ipynb
 
 # Future CLI usage
-python run_experiment.py --provider openrouter --model gpt-3.5-turbo --reasoning "Chain-of-Thought (CoT)" --samples 50
+ml-agents run --provider openrouter --model gpt-3.5-turbo --approach ChainOfThought --samples 50
 ```
 
 ### Testing
@@ -144,7 +144,6 @@ ml-agents/
 │       └── test_*.py
 ├── outputs/
 │   └── [timestamped result files]
-├── run_experiment.py        # Main CLI entry point
 ├── requirements.txt
 ├── requirements-dev.txt     # Development dependencies
 ├── pytest.ini              # Pytest configuration

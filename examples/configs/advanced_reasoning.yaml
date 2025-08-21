@@ -1,0 +1,41 @@
+# Advanced Reasoning Configuration
+# Test multi-step reasoning approaches with complex settings
+
+experiment:
+  name: "advanced_reasoning_evaluation"
+  sample_count: 75
+  output_dir: "./results/advanced_reasoning"
+
+dataset:
+  name: "MrLight/bbeh-eval"
+
+model:
+  provider: "openrouter"
+  name: "openai/gpt-oss-120b"
+  temperature: 0.2
+  max_tokens: 1024
+  top_p: 0.95
+
+reasoning:
+  approaches:
+    - ChainOfVerification
+    - Reflection
+    - SkeletonOfThought
+  multi_step_reflection: true
+  multi_step_verification: true
+  max_reasoning_calls: 5
+  max_reflection_iterations: 3
+  reflection_threshold: 0.8
+
+execution:
+  parallel: true
+  max_workers: 2
+  parallel_requests: 1
+  retry_attempts: 3
+  request_timeout: 60
+  save_checkpoints: true
+
+output:
+  formats:
+    - csv
+    - json
