@@ -346,9 +346,61 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
 
 **Phase 5 Total Time:** ~30 hours (significantly exceeded original estimates due to enhanced scope and comprehensive testing)
 
-## Phase 6: Results Processing
+## Phase 6: Output Parser Implementation
 
-### 6.1 ResultsProcessor Class
+### 6.1 Structured Output Parsing (Based on ADR-001)
+- [ ] ⚪ Implement Instructor library integration - **P0**
+  - Add instructor dependency to requirements.txt
+  - Create enhanced parsing infrastructure
+  - Time: 2 hours
+
+- [ ] ⚪ Create Pydantic answer extraction models - **P0**
+  - Implement BaseAnswerExtraction, MultipleChoiceExtraction, NumericalExtraction
+  - Add confidence scoring and validation
+  - Time: 1.5 hours
+
+- [ ] ⚪ Integrate structured parsing with reasoning approaches - **P0**
+  - Enhance all 8 reasoning approaches with instructor-based parsing
+  - Maintain fallback to regex patterns
+  - Time: 4 hours
+
+- [ ] ⚪ Add multi-provider compatibility - **P1**
+  - Test function calling support across OpenAI, Anthropic, Cohere, OpenRouter
+  - Implement provider-specific optimizations
+  - Time: 2 hours
+
+### 6.2 Parsing Infrastructure
+- [ ] ⚪ Implement parsing configuration - **P1**
+  - Add ParsingConfig with confidence thresholds and retry logic
+  - Integrate with ExperimentConfig
+  - Time: 1 hour
+
+- [ ] ⚪ Add parsing metrics and monitoring - **P1**
+  - Track parsing success rates and confidence scores
+  - Add parsing method metadata to StandardResponse
+  - Time: 1.5 hours
+
+- [ ] ⚪ Create comprehensive test suite - **P0**
+  - Test structured parsing across all reasoning approaches
+  - Validate accuracy improvements vs regex baseline
+  - Time: 3 hours
+
+### 6.3 Fallback and Error Handling
+- [ ] ⚪ Implement graceful degradation - **P1**
+  - Automatic fallback to regex patterns on parsing failures
+  - Comprehensive error logging and monitoring
+  - Time: 2 hours
+
+- [ ] ⚪ Add parsing performance validation - **P2**
+  - Benchmark accuracy improvements (>15% target)
+  - Monitor latency and cost impacts
+  - Time: 2 hours
+
+**Phase 6 Total Time**: ~19 hours
+
+## Phase 7: Results Processing
+
+### 7.1 ResultsProcessor Class
 - [ ] ⚪ Implement basic processor - **P0**
   - Create core/results_processor.py
   - Add CSV saving functionality
@@ -369,7 +421,7 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Generate markdown reports
   - Time: 2 hours
 
-### 6.2 Output Formats
+### 7.2 Output Formats
 - [ ] ⚪ Add JSON export - **P2**
   - Export results as JSON
   - Include metadata
@@ -380,9 +432,9 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Add formatting
   - Time: 1.5 hours
 
-## Phase 7: Testing Suite
+## Phase 8: Testing Suite
 
-### 7.1 Unit Tests
+### 8.1 Unit Tests
 - [x] 🟢 Test ExperimentConfig - **P1** (Completed in Phase 1)
   - Test initialization and validation
   - Test serialization and deserialization
@@ -418,7 +470,13 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Test statistics calculation and summaries
   - Time: 2 hours
 
-### 7.2 Integration Tests
+- [ ] ⚪ Test Output Parser - **P0** (New for Phase 6)
+  - Test Instructor integration across all reasoning approaches
+  - Test fallback mechanisms and error handling
+  - Validate parsing accuracy improvements
+  - Time: 2.5 hours
+
+### 8.2 Integration Tests
 - [x] 🟢 Test CLI interface - **P1** (Completed in Phase 5)
   - Test all CLI commands with mocked ExperimentRunner
   - Test configuration precedence and file loading
@@ -430,9 +488,9 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Mock API responses for full workflows
   - Time: 3 hours
 
-## Phase 8: Documentation
+## Phase 9: Documentation
 
-### 8.1 Code Documentation
+### 9.1 Code Documentation
 - [ ] ⚪ Add comprehensive docstrings - **P1**
   - All classes and methods
   - Include examples
@@ -443,7 +501,7 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Auto-generate from docstrings
   - Time: 2 hours
 
-### 8.2 User Documentation
+### 9.2 User Documentation
 - [ ] ⚪ Update README.md - **P1**
   - Installation instructions
   - Usage examples
@@ -459,9 +517,9 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Best practices
   - Time: 2 hours
 
-## Phase 9: Performance & Optimization
+## Phase 10: Performance & Optimization
 
-### 9.1 Performance Improvements
+### 10.1 Performance Improvements
 - [ ] ⚪ Add response caching - **P2**
   - Cache API responses
   - Configurable cache size
@@ -477,7 +535,7 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Optimize large datasets
   - Time: 2 hours
 
-### 9.2 Monitoring
+### 10.2 Monitoring
 - [ ] ⚪ Add metrics collection - **P3**
   - Prometheus integration
   - Custom metrics
@@ -488,9 +546,9 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Error reporting
   - Time: 2 hours
 
-## Phase 10: Future Enhancements
+## Phase 11: Future Enhancements
 
-### 10.1 Advanced Features
+### 11.1 Advanced Features
 - [ ] ⚪ Web UI dashboard - **P3**
   - Flask/FastAPI backend
   - Real-time monitoring
@@ -506,7 +564,7 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Dynamic loading
   - Time: 6 hours
 
-### 10.2 Community Features
+### 11.2 Community Features
 - [ ] ⚪ Result sharing platform - **P3**
   - Upload to community hub
   - Browse others' results
@@ -519,9 +577,9 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
 
 ## Completion Metrics
 
-- **Total Features**: 89
-- **Estimated Total Time**: ~150 hours
-- **Critical Path**: Phases 1-6 (~80 hours)
+- **Total Features**: 97
+- **Estimated Total Time**: ~169 hours
+- **Critical Path**: Phases 1-7 (~99 hours)
 
 ## How to Use This Roadmap
 

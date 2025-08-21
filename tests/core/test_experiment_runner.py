@@ -97,18 +97,22 @@ class TestExperimentRunner:
     @pytest.fixture
     def runner(self, config):
         """Create ExperimentRunner instance with mocked dependencies."""
-        with patch(
-            "src.core.experiment_runner.BBEHDatasetLoader"
-        ) as mock_dataset_loader_class, patch(
-            "src.core.experiment_runner.ReasoningInference"
-        ) as mock_inference_class:
+        with (
+            patch(
+                "src.core.experiment_runner.BBEHDatasetLoader"
+            ) as mock_dataset_loader_class,
+            patch(
+                "src.core.experiment_runner.ReasoningInference"
+            ) as mock_inference_class,
+        ):
             runner = ExperimentRunner(config)
             return runner
 
     def test_init(self, config, temp_dir):
         """Test ExperimentRunner initialization."""
-        with patch("src.core.experiment_runner.BBEHDatasetLoader"), patch(
-            "src.core.experiment_runner.ReasoningInference"
+        with (
+            patch("src.core.experiment_runner.BBEHDatasetLoader"),
+            patch("src.core.experiment_runner.ReasoningInference"),
         ):
             runner = ExperimentRunner(config)
 
@@ -344,14 +348,18 @@ class TestExperimentRunner:
             )
 
         # Setup mock dataset and reasoning engine
-        with patch.object(runner.dataset_loader, "load_dataset"), patch.object(
-            runner.dataset_loader,
-            "sample_data",
-            return_value=[{"input": "test", "id": 1}],
-        ), patch.object(
-            runner.reasoning_engine,
-            "run_inference",
-            side_effect=mock_reasoning_inference_with_state_tracking,
+        with (
+            patch.object(runner.dataset_loader, "load_dataset"),
+            patch.object(
+                runner.dataset_loader,
+                "sample_data",
+                return_value=[{"input": "test", "id": 1}],
+            ),
+            patch.object(
+                runner.reasoning_engine,
+                "run_inference",
+                side_effect=mock_reasoning_inference_with_state_tracking,
+            ),
         ):
             # Run parallel comparison
             result = runner.run_comparison(
@@ -404,17 +412,22 @@ class TestExperimentRunner:
                 metadata={},
             )
 
-        with patch.object(runner.dataset_loader, "load_dataset"), patch.object(
-            runner.dataset_loader,
-            "sample_data",
-            return_value=[{"input": "test", "id": 1}, {"input": "test2", "id": 2}],
-        ), patch.object(
-            runner.reasoning_engine,
-            "run_inference",
-            side_effect=mock_reasoning_with_cost,
-        ), patch(
-            "src.core.experiment_runner.get_available_approaches",
-            return_value=["None"] + approaches,
+        with (
+            patch.object(runner.dataset_loader, "load_dataset"),
+            patch.object(
+                runner.dataset_loader,
+                "sample_data",
+                return_value=[{"input": "test", "id": 1}, {"input": "test2", "id": 2}],
+            ),
+            patch.object(
+                runner.reasoning_engine,
+                "run_inference",
+                side_effect=mock_reasoning_with_cost,
+            ),
+            patch(
+                "src.core.experiment_runner.get_available_approaches",
+                return_value=["None"] + approaches,
+            ),
         ):
             result = runner.run_comparison(approaches, sample_count=2, parallel=True)
 
@@ -439,11 +452,12 @@ class TestExperimentRunner:
             temp_dir / f"checkpoint_ChainOfThought_{runner.experiment_id}.json"
         )
 
-        with patch.object(
-            runner, "_get_checkpoint_path", return_value=checkpoint_path
-        ), patch(
-            "src.core.experiment_runner.get_available_approaches",
-            return_value=["ChainOfThought"],
+        with (
+            patch.object(runner, "_get_checkpoint_path", return_value=checkpoint_path),
+            patch(
+                "src.core.experiment_runner.get_available_approaches",
+                return_value=["ChainOfThought"],
+            ),
         ):
             # First run - should save checkpoints
             result1 = runner.run_single_experiment(
@@ -503,9 +517,12 @@ class TestExperimentRunner:
             mock_pbar.update = track_update
             return mock_pbar
 
-        with patch("src.core.experiment_runner.tqdm", side_effect=mock_tqdm), patch(
-            "src.core.experiment_runner.get_available_approaches",
-            return_value=["None"] + approaches,
+        with (
+            patch("src.core.experiment_runner.tqdm", side_effect=mock_tqdm),
+            patch(
+                "src.core.experiment_runner.get_available_approaches",
+                return_value=["None"] + approaches,
+            ),
         ):
             result = runner.run_comparison(approaches, sample_count=2, parallel=False)
 
@@ -540,9 +557,10 @@ class TestExperimentRunner:
         )
 
         # Test CSV saving
-        with patch.object(runner, "_save_results_csv") as mock_save_csv, patch.object(
-            runner, "_save_summary_json"
-        ) as mock_save_json:
+        with (
+            patch.object(runner, "_save_results_csv") as mock_save_csv,
+            patch.object(runner, "_save_summary_json") as mock_save_json,
+        ):
             runner._save_experiment_results(summary, "ChainOfThought")
 
             mock_save_csv.assert_called()
@@ -597,9 +615,9 @@ class TestExperimentRunner:
                 ),
                 approach_name=approach,
                 execution_time=0.01,
-                cost_estimate=0.001
-                if approach != "ChainOfVerification"
-                else 0.003,  # Higher cost for multi-step
+                cost_estimate=(
+                    0.001 if approach != "ChainOfVerification" else 0.003
+                ),  # Higher cost for multi-step
                 metadata=metadata,
             )
 
@@ -676,13 +694,18 @@ class TestExperimentRunner:
 
             return future
 
-        with patch("src.core.experiment_runner.ThreadPoolExecutor") as mock_pool, patch(
-            "src.core.experiment_runner.get_available_approaches",
-            return_value=approaches,
-        ), patch.object(runner.dataset_loader, "load_dataset"), patch.object(
-            runner.dataset_loader,
-            "sample_data",
-            return_value=[{"input": "test", "id": 1}],
+        with (
+            patch("src.core.experiment_runner.ThreadPoolExecutor") as mock_pool,
+            patch(
+                "src.core.experiment_runner.get_available_approaches",
+                return_value=approaches,
+            ),
+            patch.object(runner.dataset_loader, "load_dataset"),
+            patch.object(
+                runner.dataset_loader,
+                "sample_data",
+                return_value=[{"input": "test", "id": 1}],
+            ),
         ):
             mock_executor = Mock()
             mock_pool.return_value.__enter__.return_value = mock_executor

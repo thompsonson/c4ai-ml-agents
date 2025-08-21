@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import pandas as pd
 from tqdm import tqdm
@@ -138,6 +138,7 @@ class ExperimentRunner:
         sample_count: Optional[int] = None,
         resume_from_checkpoint: bool = True,
         save_checkpoints: bool = True,
+        progress_callback: Optional[Callable[[str], None]] = None,
     ) -> ExperimentSummary:
         """Run a single reasoning approach experiment.
 
@@ -146,6 +147,7 @@ class ExperimentRunner:
             sample_count: Number of samples to process (uses config default if None)
             resume_from_checkpoint: Whether to resume from existing checkpoint
             save_checkpoints: Whether to save progress checkpoints
+            progress_callback: Optional callback function for progress updates
 
         Returns:
             ExperimentSummary with complete experiment results
@@ -177,14 +179,20 @@ class ExperimentRunner:
         try:
             # Load dataset
             logger.info("Loading dataset...")
+            if progress_callback:
+                progress_callback("Loading dataset...")
             dataset = self.dataset_loader.load_dataset()
-            samples = self.dataset_loader.sample_data(sample_count)
+            samples = self.dataset_loader.sample_data(sample_size=sample_count)
             self.total_samples = len(samples)
+            if progress_callback:
+                progress_callback(f"Loaded {len(samples)} samples")
 
             # Check for checkpoint if resuming
             checkpoint_path = self._get_checkpoint_path(approach)
             if resume_from_checkpoint and checkpoint_path.exists():
                 logger.info(f"Resuming from checkpoint: {checkpoint_path}")
+                if progress_callback:
+                    progress_callback("Resuming from checkpoint...")
                 self._load_checkpoint(checkpoint_path)
             else:
                 self.current_sample = 0
@@ -192,6 +200,8 @@ class ExperimentRunner:
                 self.errors = []
 
             # Run experiment with progress tracking
+            if progress_callback:
+                progress_callback(f"Starting {approach} processing...")
             progress = self._create_rich_progress()
             if progress:
                 with progress:
@@ -205,8 +215,11 @@ class ExperimentRunner:
 
                         try:
                             # Execute reasoning
+                            # Get dynamic column names
+                            input_col = self.dataset_loader.get_input_column_name()
+
                             result = self.reasoning_engine.run_inference(
-                                sample["input"], approach
+                                sample[input_col], approach
                             )
 
                             # Store result with enhanced Phase 4 metadata
@@ -215,8 +228,10 @@ class ExperimentRunner:
                             )
                             result_data = {
                                 "sample_id": i,
-                                "input": sample["input"],
-                                "expected_output": sample.get("output", ""),
+                                "input": sample[input_col],
+                                "expected_output": sample.get(
+                                    self.dataset_loader.get_output_column_name(), ""
+                                ),
                                 "approach": approach,
                                 "result": asdict(enhanced_result),
                                 "timestamp": datetime.now().isoformat(),
@@ -239,6 +254,8 @@ class ExperimentRunner:
                         # Save checkpoint periodically
                         if save_checkpoints and (i + 1) % self.checkpoint_interval == 0:
                             self._save_checkpoint(approach)
+                            if progress_callback:
+                                progress_callback(f"Checkpoint saved at sample {i + 1}")
             else:
                 # Fallback to tqdm if Rich not available
                 with tqdm(
@@ -252,8 +269,11 @@ class ExperimentRunner:
 
                         try:
                             # Execute reasoning
+                            # Get dynamic column names
+                            input_col = self.dataset_loader.get_input_column_name()
+
                             result = self.reasoning_engine.run_inference(
-                                sample["input"], approach
+                                sample[input_col], approach
                             )
 
                             # Store result with enhanced Phase 4 metadata
@@ -262,8 +282,10 @@ class ExperimentRunner:
                             )
                             result_data = {
                                 "sample_id": i,
-                                "input": sample["input"],
-                                "expected_output": sample.get("output", ""),
+                                "input": sample[input_col],
+                                "expected_output": sample.get(
+                                    self.dataset_loader.get_output_column_name(), ""
+                                ),
                                 "approach": approach,
                                 "result": asdict(enhanced_result),
                                 "timestamp": datetime.now().isoformat(),
@@ -288,10 +310,14 @@ class ExperimentRunner:
                             self._save_checkpoint(approach)
 
             self.end_time = datetime.now()
+            if progress_callback:
+                progress_callback("Processing completed, generating results...")
 
             # Generate and save final results
             summary = self._generate_summary([approach])
             self._save_results(summary)
+            if progress_callback:
+                progress_callback("Results saved successfully!")
 
             # Clean up checkpoint
             if checkpoint_path.exists():
@@ -310,6 +336,7 @@ class ExperimentRunner:
         sample_count: Optional[int] = None,
         parallel: bool = True,
         max_workers: Optional[int] = None,
+        progress_callback: Optional[Callable[[str], None]] = None,
     ) -> ExperimentSummary:
         """Run comparison experiment across multiple reasoning approaches.
 
@@ -318,6 +345,7 @@ class ExperimentRunner:
             sample_count: Number of samples to process (uses config default if None)
             parallel: Whether to run approaches in parallel
             max_workers: Maximum number of parallel workers (None for auto)
+            progress_callback: Optional callback function for progress updates
 
         Returns:
             ExperimentSummary with comparison results across all approaches
@@ -336,6 +364,8 @@ class ExperimentRunner:
         logger.info(
             f"Starting comparison experiment: {approaches} with {sample_count} samples"
         )
+        if progress_callback:
+            progress_callback(f"Starting comparison of {len(approaches)} approaches...")
         log_experiment_start(
             {
                 "experiment_id": self.experiment_id,
@@ -353,7 +383,7 @@ class ExperimentRunner:
             # Load dataset once for all approaches
             logger.info("Loading dataset...")
             dataset = self.dataset_loader.load_dataset()
-            samples = self.dataset_loader.sample_data(sample_count)
+            samples = self.dataset_loader.sample_data(sample_size=sample_count)
             self.total_samples = len(samples)
 
             if parallel and len(approaches) > 1:
@@ -534,6 +564,20 @@ class ExperimentRunner:
                 ]
                 costs = [r["result"]["cost_estimate"] for r in approach_results]
 
+                # Calculate basic accuracy by comparing outputs
+                correct_responses = 0
+                for result_data in approach_results:
+                    expected = result_data.get("expected_output", "").strip().lower()
+                    actual = result_data["result"]["response"]["text"].strip().lower()
+                    if expected and expected == actual:
+                        correct_responses += 1
+
+                accuracy = (
+                    (correct_responses / len(approach_results))
+                    if approach_results
+                    else 0
+                )
+
                 results_summary[approach] = {
                     "total_samples": len(approach_results),
                     "success_rate": len(approach_results)
@@ -542,6 +586,7 @@ class ExperimentRunner:
                     "avg_tokens": sum(token_counts) / len(token_counts),
                     "total_cost": sum(costs),
                     "error_count": len(approach_errors),
+                    "accuracy": f"{accuracy:.1%}",
                 }
 
                 cost_summary[approach] = sum(costs)
@@ -553,6 +598,7 @@ class ExperimentRunner:
                     "avg_tokens": 0.0,
                     "total_cost": 0.0,
                     "error_count": len(approach_errors),
+                    "accuracy": "0.0%",
                 }
                 cost_summary[approach] = 0.0
 
@@ -634,12 +680,21 @@ class ExperimentRunner:
             writer.writeheader()
 
             for result in self.results:
+                # Safely access the response text
+                try:
+                    response_text = result["result"]["response"]["text"]
+                except (KeyError, TypeError) as e:
+                    logger.warning(
+                        f"Error accessing response text for sample {result.get('sample_id', 'unknown')}: {e}"
+                    )
+                    response_text = "ERROR_ACCESSING_RESPONSE"
+
                 row = {
                     "sample_id": result["sample_id"],
                     "approach": result["approach"],
                     "input": result["input"],
                     "expected_output": result["expected_output"],
-                    "response_text": result["result"]["response"]["text"],
+                    "response_text": response_text,
                     "execution_time": result["result"]["execution_time"],
                     "total_tokens": result["result"]["response"]["total_tokens"],
                     "cost_estimate": result["result"]["cost_estimate"],
@@ -745,9 +800,11 @@ class ExperimentRunner:
                     "step": 1,
                     "type": "reasoning",
                     "approach": approach,
-                    "content": result.response.text[:100] + "..."
-                    if len(result.response.text) > 100
-                    else result.response.text,
+                    "content": (
+                        result.response.text[:100] + "..."
+                        if len(result.response.text) > 100
+                        else result.response.text
+                    ),
                 }
             )
 
@@ -777,18 +834,18 @@ class ExperimentRunner:
         if approach == "ChainOfVerification" and hasattr(
             self.config, "multi_step_verification"
         ):
-            approach_specific[
-                "multi_step_verification"
-            ] = self.config.multi_step_verification
+            approach_specific["multi_step_verification"] = (
+                self.config.multi_step_verification
+            )
             approach_specific["max_reasoning_calls"] = self.config.max_reasoning_calls
 
         if approach == "Reflection" and hasattr(self.config, "multi_step_reflection"):
-            approach_specific[
-                "multi_step_reflection"
-            ] = self.config.multi_step_reflection
-            approach_specific[
-                "max_reflection_iterations"
-            ] = self.config.max_reflection_iterations
+            approach_specific["multi_step_reflection"] = (
+                self.config.multi_step_reflection
+            )
+            approach_specific["max_reflection_iterations"] = (
+                self.config.max_reflection_iterations
+            )
             approach_specific["reflection_threshold"] = self.config.reflection_threshold
 
         base_config.update(approach_specific)
@@ -1047,9 +1104,11 @@ class ExperimentRunner:
                 approach: {
                     "total_samples": len(self.results),
                     "error_count": len(self.errors),
-                    "success_rate": len(self.results) / self.total_samples
-                    if self.total_samples > 0
-                    else 0.0,
+                    "success_rate": (
+                        len(self.results) / self.total_samples
+                        if self.total_samples > 0
+                        else 0.0
+                    ),
                     "completed": self.current_sample >= self.total_samples - 1,
                 }
             },

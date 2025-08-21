@@ -279,12 +279,12 @@ class ReflectionReasoning(BaseReasoning):
                 "multi_step_trace": steps,
                 "step_breakdown": {
                     "initial_tokens": steps[0].get("tokens", 0),
-                    "reflection_tokens": steps[1].get("tokens", 0)
-                    if len(steps) > 1
-                    else 0,
-                    "refinement_tokens": steps[2].get("tokens", 0)
-                    if len(steps) > 2
-                    else 0,
+                    "reflection_tokens": (
+                        steps[1].get("tokens", 0) if len(steps) > 1 else 0
+                    ),
+                    "refinement_tokens": (
+                        steps[2].get("tokens", 0) if len(steps) > 2 else 0
+                    ),
                 },
             },
         }

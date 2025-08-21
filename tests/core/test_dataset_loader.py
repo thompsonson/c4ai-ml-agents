@@ -70,8 +70,9 @@ class TestBBEHDatasetLoader:
         """Test successful dataset loading."""
         mock_load_dataset.return_value = sample_dataset
 
-        with patch.object(loader, "_load_from_cache", return_value=None), patch.object(
-            loader, "_save_to_cache"
+        with (
+            patch.object(loader, "_load_from_cache", return_value=None),
+            patch.object(loader, "_save_to_cache"),
         ):
             result = loader.load_dataset()
 
@@ -258,8 +259,9 @@ class TestBBEHDatasetLoader:
         """Test loading different dataset split."""
         mock_load_dataset.return_value = sample_dataset
 
-        with patch.object(loader, "_load_from_cache", return_value=None), patch.object(
-            loader, "_save_to_cache"
+        with (
+            patch.object(loader, "_load_from_cache", return_value=None),
+            patch.object(loader, "_save_to_cache"),
         ):
             loader.load_dataset(split="train")
 

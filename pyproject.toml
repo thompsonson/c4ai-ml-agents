@@ -75,7 +75,11 @@ ml-agents = "src.cli.main:app"
 ml-agents-cli = "src.cli.main:app"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools.package-dir]
+"" = "."
 
 [tool.black]
 line-length = 88

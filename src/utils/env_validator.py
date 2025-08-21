@@ -165,7 +165,9 @@ class EnvironmentValidator:
 
         # Check environment variables
         env_valid, missing_vars = cls.validate_env_vars()
-        print(f"\\n✓ Environment Variables: {'✅ PASSED' if env_valid else '❌ FAILED'}")
+        print(
+            f"\\n✓ Environment Variables: {'✅ PASSED' if env_valid else '❌ FAILED'}"
+        )
         if not env_valid:
             for var in missing_vars:
                 print(f"  ❌ {var}: Not set or invalid")

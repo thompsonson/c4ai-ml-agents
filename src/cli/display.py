@@ -60,13 +60,9 @@ def create_experiment_table(results: List[Dict[str, Any]]) -> Table:
         # Extract key metrics
         approach = result.get("approach", "Unknown")
         samples = str(result.get("total_samples", 0))
-        accuracy = (
-            f"{result.get('accuracy', 0):.1%}" if result.get("accuracy") else "N/A"
-        )
-        avg_time = (
-            f"{result.get('avg_time', 0):.1f}s" if result.get("avg_time") else "N/A"
-        )
-        total_cost = f"${result.get('total_cost', 0):.2f}"
+        accuracy = result.get("accuracy", "N/A")
+        avg_time = result.get("avg_time", "N/A")
+        total_cost = result.get("total_cost", "$0.00")
 
         # Status with color coding
         if result.get("error_count", 0) > 0:
@@ -87,6 +83,35 @@ def create_experiment_table(results: List[Dict[str, Any]]) -> Table:
             total_cost,
             f"[{status_style}]{status}[/{status_style}]",
         )
+
+    return table
+
+
+def create_accuracy_breakdown_table(results_data: List[Dict[str, Any]]) -> Table:
+    """Create a Rich table showing expected vs actual answers for accuracy analysis."""
+    table = Table(
+        show_header=True, header_style="bold yellow", title="📋 Accuracy Breakdown"
+    )
+
+    table.add_column("Sample ID", justify="right", style="dim")
+    table.add_column("Expected", style="cyan", max_width=30)
+    table.add_column("Actual", style="magenta", max_width=30)
+    table.add_column("Correct", justify="center")
+
+    for result in results_data:
+        sample_id = str(result.get("sample_id", "?"))
+        expected = str(result.get("expected_output", "N/A"))
+        actual = str(result.get("response_text", "N/A"))
+
+        # Truncate long responses for display
+        expected_display = expected[:27] + "..." if len(expected) > 30 else expected
+        actual_display = actual[:27] + "..." if len(actual) > 30 else actual
+
+        # Determine if correct (simple string comparison)
+        is_correct = expected.strip().lower() == actual.strip().lower()
+        correct_symbol = "✅" if is_correct else "❌"
+
+        table.add_row(sample_id, expected_display, actual_display, correct_symbol)
 
     return table
 

@@ -32,72 +32,77 @@ help:
 	@echo "  make test-backward  Test backward compatibility"
 
 # Variables
-VENV_ACTIVATE = source .venv/bin/activate
 UV = uv
-PYTHON = python
-PYTEST = pytest
-BLACK = black
-ISORT = isort
-MYPY = mypy
-FLAKE8 = flake8
+PYTHON = $(UV) run python
+PYTEST = $(UV) run pytest
+BLACK = $(UV) run black
+ISORT = $(UV) run isort
+MYPY = $(UV) run mypy
+FLAKE8 = $(UV) run flake8
 
 # Setup and Installation
 setup: install-dev pre-commit
 	@echo "✅ Project setup complete!"
 
-install:
-	@echo "📦 Installing package and dependencies..."
-	$(VENV_ACTIVATE) && $(UV) pip install -e .
+venv:
+	@if [ ! -d ".venv" ]; then \
+		echo "🐍 Creating virtual environment..."; \
+		$(UV) venv; \
+	fi
 
-install-dev:
+install: venv
+	@echo "📦 Installing package and dependencies..."
+	$(UV) pip install -e .
+
+install-dev: venv
 	@echo "📦 Installing package with development dependencies..."
-	$(VENV_ACTIVATE) && $(UV) pip install -e ".[dev]"
+	$(UV) pip install -e ".[dev]"
 
 # Testing
 test:
 	@echo "🧪 Running test suite..."
-	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v -m "not integration"
+	$(PYTEST) tests/ -v -m "not integration"
 
 test-cov:
 	@echo "🧪 Running test suite with coverage..."
-	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v --cov=src --cov-report=html --cov-report=term-missing -m "not integration"
+	$(PYTEST) tests/ -v --cov=src --cov-report=html --cov-report=term-missing -m "not integration"
 
 test-integration:
 	@echo "🌐 Running integration tests (may call real APIs)..."
-	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v -m integration
+	$(PYTEST) tests/ -v -m integration
 
 test-all:
 	@echo "🧪 Running all tests including integration..."
-	$(VENV_ACTIVATE) && $(PYTEST) tests/ -v
+	$(PYTEST) tests/ -v
 
 test-config:
 	@echo "🧪 Testing configuration module..."
-	$(VENV_ACTIVATE) && $(PYTEST) tests/test_config.py -v
+	$(PYTEST) tests/test_config.py -v
 
 test-logging:
 	@echo "🧪 Testing logging module..."
-	$(VENV_ACTIVATE) && $(PYTEST) tests/utils/test_logging_config.py -v
+	$(PYTEST) tests/utils/test_logging_config.py -v
 
 test-backward:
 	@echo "🧪 Testing backward compatibility..."
-	$(VENV_ACTIVATE) && $(PYTHON) -c "import config; print('✅ Backward compatibility works!')"
-	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.config import ExperimentConfig; print('✅ New imports work!')"
+	$(PYTHON) -c "import config; print('✅ Backward compatibility works!')"
+	$(PYTHON) -c "from src.config import ExperimentConfig; print('✅ New imports work!')"
 
 # Code Quality
 format:
 	@echo "🎨 Formatting code..."
-	$(VENV_ACTIVATE) && $(ISORT) src/ tests/
-	$(VENV_ACTIVATE) && $(BLACK) src/ tests/
+	$(ISORT) src/ tests/
+	$(BLACK) src/ tests/
 
 lint:
 	@echo "🔍 Running linting checks..."
-	$(VENV_ACTIVATE) && $(FLAKE8) src/ tests/
-	$(VENV_ACTIVATE) && $(ISORT) --check-only --diff src/ tests/
-	$(VENV_ACTIVATE) && $(BLACK) --check src/ tests/
+	$(FLAKE8) src/ tests/
+	$(ISORT) --check-only --diff src/ tests/
+	$(BLACK) --check src/ tests/
 
 type-check:
 	@echo "🔍 Running type checking..."
-	$(VENV_ACTIVATE) && $(MYPY) src/
+	$(MYPY) src/
 
 # Comprehensive check
 check: format lint type-check test
@@ -106,13 +111,13 @@ check: format lint type-check test
 # Pre-commit hooks
 pre-commit:
 	@echo "🪝 Setting up pre-commit hooks..."
-	$(VENV_ACTIVATE) && pre-commit install
-	$(VENV_ACTIVATE) && pre-commit run --all-files
+	$(UV) run pre-commit install
+	$(UV) run pre-commit run --all-files
 
 # Build and distribution
 build:
 	@echo "📦 Building distribution packages..."
-	$(VENV_ACTIVATE) && $(PYTHON) -m build
+	$(PYTHON) -m build
 
 # Cleanup
 clean:
@@ -133,12 +138,12 @@ dev-check: format lint type-check
 
 quick-test:
 	@echo "⚡ Running quick tests..."
-	$(VENV_ACTIVATE) && $(PYTEST) tests/ -x --ff
+	$(PYTEST) tests/ -x --ff
 
 # Environment validation
 validate-env:
 	@echo "🔍 Validating environment..."
-	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.config import validate_environment; result = validate_environment(); print('Environment validation:', result); exit(0 if all(result.values()) else 1)"
+	$(PYTHON) -c "from src.config import validate_environment; result = validate_environment(); print('Environment validation:', result); exit(0 if all(result.values()) else 1)"
 
 # Documentation (placeholder for future)
 docs:
@@ -148,36 +153,36 @@ docs:
 # CLI Testing
 test-cli:
 	@echo "🧪 Testing CLI functionality..."
-	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main --help
+	$(PYTHON) -m src.cli.main --help
 
 test-cli-commands:
 	@echo "🧪 Testing CLI commands..."
-	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main version
-	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main list-approaches
-	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main validate-env
+	$(PYTHON) -m src.cli.main version
+	$(PYTHON) -m src.cli.main list-approaches
+	$(PYTHON) -m src.cli.main validate-env
 
 # Experiment shortcuts
 run-sample:
 	@echo "🧪 Running sample experiment..."
-	$(VENV_ACTIVATE) && $(PYTHON) -m src.cli.main run --approach ChainOfThought --samples 5
+	$(PYTHON) -m src.cli.main run --approach ChainOfThought --samples 5
 
 # Debug and troubleshooting
 debug-imports:
 	@echo "🔍 Testing all imports..."
-	$(VENV_ACTIVATE) && $(PYTHON) -c "import src.config; print('✅ src.config')"
-	$(VENV_ACTIVATE) && $(PYTHON) -c "import src.utils.logging_config; print('✅ src.utils.logging_config')"
-	$(VENV_ACTIVATE) && $(PYTHON) -c "import config; print('✅ config (backward compatibility)')"
-	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.reasoning import get_available_approaches; print('✅ src.reasoning - Available approaches:', get_available_approaches())"
-	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.core.reasoning_inference import ReasoningInference; print('✅ src.core.reasoning_inference')"
-	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.core.experiment_runner import ExperimentRunner; print('✅ src.core.experiment_runner')"
+	$(PYTHON) -c "import src.config; print('✅ src.config')"
+	$(PYTHON) -c "import src.utils.logging_config; print('✅ src.utils.logging_config')"
+	$(PYTHON) -c "import config; print('✅ config (backward compatibility)')"
+	$(PYTHON) -c "from src.reasoning import get_available_approaches; print('✅ src.reasoning - Available approaches:', get_available_approaches())"
+	$(PYTHON) -c "from src.core.reasoning_inference import ReasoningInference; print('✅ src.core.reasoning_inference')"
+	$(PYTHON) -c "from src.core.experiment_runner import ExperimentRunner; print('✅ src.core.experiment_runner')"
 
 show-deps:
 	@echo "📦 Installed packages:"
-	$(VENV_ACTIVATE) && $(UV) pip list
+	$(UV) pip list
 
 show-config:
 	@echo "⚙️  Current configuration:"
-	$(VENV_ACTIVATE) && $(PYTHON) -c "from src.config import get_default_config; print(get_default_config().to_dict())"
+	$(PYTHON) -c "from src.config import get_default_config; print(get_default_config().to_dict())"
 
 # CI/CD helpers
 ci-install:
@@ -196,8 +201,8 @@ ci-lint:
 version:
 	@echo "ML Agents Project Information"
 	@echo "=============================="
-	$(VENV_ACTIVATE) && $(PYTHON) -c "import src; print(f'Version: {src.__version__}')"
-	@echo "Python: $$($(VENV_ACTIVATE) && python --version)"
+	$(PYTHON) -c "import src; print(f'Version: {src.__version__}')"
+	@echo "Python: $$($(PYTHON) --version)"
 	@echo "UV: $$(uv --version)"
 
 # All-in-one development setup

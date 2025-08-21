@@ -11,6 +11,7 @@ from rich.progress import track
 
 from src.cli.config_loader import load_and_validate_config
 from src.cli.display import (
+    create_accuracy_breakdown_table,
     create_experiment_table,
     display_error,
     display_experiment_complete,
@@ -142,34 +143,27 @@ def run_single_experiment(
 
         result = runner.run_single_experiment(
             approach=approach,
-            progress_callback=lambda msg: console.print(f"   {msg}")
-            if verbose
-            else None,
+            progress_callback=lambda msg: (
+                console.print(f"   {msg}") if verbose else None
+            ),
         )
 
         # Display results
         if result:
             display_success("Experiment completed successfully!")
 
-            # Create results table
+            # Create results table - extract data from results_summary
+            approach_data = result.results_summary.get(approach, {})
             results_table = create_experiment_table(
                 [
                     {
                         "approach": approach,
                         "total_samples": result.total_samples,
-                        "accuracy": result.accuracy
-                        if hasattr(result, "accuracy")
-                        else None,
-                        "avg_time": result.avg_time
-                        if hasattr(result, "avg_time")
-                        else None,
-                        "total_cost": result.total_cost
-                        if hasattr(result, "total_cost")
-                        else 0.0,
-                        "completed": True,
-                        "error_count": result.error_count
-                        if hasattr(result, "error_count")
-                        else 0,
+                        "accuracy": approach_data.get("accuracy", "N/A"),
+                        "avg_time": f"{approach_data.get('avg_execution_time', 0):.2f}s",
+                        "total_cost": f"${approach_data.get('total_cost', 0):.4f}",
+                        "completed": approach_data.get("error_count", 0) == 0,
+                        "error_count": approach_data.get("error_count", 0),
                     }
                 ]
             )
@@ -177,13 +171,41 @@ def run_single_experiment(
             console.print("\n📊 [bold blue]Experiment Results:[/bold blue]")
             console.print(results_table)
 
-            # Display completion info
+            # Display accuracy breakdown by reading the saved CSV
+            try:
+                import csv
+
+                # Find the most recent results CSV file
+                output_dir = Path(experiment_config.output_dir)
+                csv_files = list(output_dir.glob("*_results.csv"))
+                if csv_files:
+                    latest_csv = max(csv_files, key=lambda f: f.stat().st_mtime)
+
+                    # Read the CSV and extract sample data
+                    sample_results = []
+                    with open(latest_csv, "r") as f:
+                        reader = csv.DictReader(f)
+                        for row in reader:
+                            sample_results.append(
+                                {
+                                    "sample_id": row["sample_id"],
+                                    "expected_output": row["expected_output"],
+                                    "response_text": row["response_text"],
+                                }
+                            )
+
+                    if sample_results:
+                        accuracy_table = create_accuracy_breakdown_table(sample_results)
+                        console.print(accuracy_table)
+            except Exception as e:
+                console.print(f"[dim]Could not display accuracy breakdown: {e}[/dim]")
+
+            # Display completion info - calculate total cost from cost_summary
+            total_cost = sum(result.cost_summary.values())
             display_experiment_complete(
                 experiment_id=result.experiment_id,
-                duration=result.duration_seconds
-                if hasattr(result, "duration_seconds")
-                else 0.0,
-                total_cost=result.total_cost if hasattr(result, "total_cost") else 0.0,
+                duration=result.duration,
+                total_cost=total_cost,
                 output_dir=experiment_config.output_dir,
             )
         else:
@@ -326,9 +348,9 @@ def run_comparison_experiment(
             approaches=approaches,
             parallel=parallel,
             max_workers=max_workers if parallel else 1,
-            progress_callback=lambda msg: console.print(f"   {msg}")
-            if verbose
-            else None,
+            progress_callback=lambda msg: (
+                console.print(f"   {msg}") if verbose else None
+            ),
         )
 
         # Display results
@@ -356,6 +378,47 @@ def run_comparison_experiment(
 
             console.print("\n📊 [bold blue]Comparison Results:[/bold blue]")
             console.print(results_table)
+
+            # Display accuracy breakdown by reading the saved CSV
+            try:
+                import csv
+
+                # Find the most recent results CSV file
+                output_dir = Path(experiment_config.output_dir)
+                csv_files = list(output_dir.glob("*_results.csv"))
+                if csv_files:
+                    latest_csv = max(csv_files, key=lambda f: f.stat().st_mtime)
+
+                    # Read the CSV and extract sample data
+                    sample_results = []
+                    with open(latest_csv, "r") as f:
+                        reader = csv.DictReader(f)
+                        for row in reader:
+                            sample_results.append(
+                                {
+                                    "sample_id": row["sample_id"],
+                                    "expected_output": row["expected_output"],
+                                    "response_text": row["response_text"],
+                                    "approach": row["approach"],
+                                }
+                            )
+
+                    if sample_results:
+                        # Group by approach for comparison experiments
+                        for approach in approaches:
+                            approach_samples = [
+                                r for r in sample_results if r["approach"] == approach
+                            ]
+                            if approach_samples:
+                                console.print(
+                                    f"\n📋 [bold yellow]{approach} - Accuracy Breakdown:[/bold yellow]"
+                                )
+                                accuracy_table = create_accuracy_breakdown_table(
+                                    approach_samples
+                                )
+                                console.print(accuracy_table)
+            except Exception as e:
+                console.print(f"[dim]Could not display accuracy breakdown: {e}[/dim]")
 
             # Display completion info
             display_experiment_complete(

@@ -511,8 +511,24 @@ class OpenRouterClient(APIClient):
 
             end_time = time.time()
 
+            response_text = (
+                response.choices[0].message.content.strip()
+                if response.choices[0].message.content
+                else ""
+            )
+
+            # Handle empty responses due to token limits
+            if not response_text and response.choices[0].finish_reason == "length":
+                response_text = "[RESPONSE_TRUNCATED_DUE_TO_TOKEN_LIMIT]"
+                logger.warning(
+                    f"Response truncated due to token limit (max_tokens={self.max_tokens})"
+                )
+            elif not response_text:
+                response_text = "[EMPTY_RESPONSE]"
+                logger.warning("Received empty response from API")
+
             return StandardResponse(
-                text=response.choices[0].message.content.strip(),
+                text=response_text,
                 provider=self.provider,
                 model=self.model,
                 prompt_tokens=response.usage.prompt_tokens,
