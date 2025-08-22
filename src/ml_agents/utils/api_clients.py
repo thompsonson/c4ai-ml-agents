@@ -12,9 +12,9 @@ import openai
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from src.config import ExperimentConfig, get_api_key
-from src.utils.logging_config import get_logger
-from src.utils.rate_limiter import rate_limiter_manager
+from ml_agents.config import ExperimentConfig, get_api_key
+from ml_agents.utils.logging_config import get_logger
+from ml_agents.utils.rate_limiter import rate_limiter_manager
 
 logger = get_logger(__name__)
 

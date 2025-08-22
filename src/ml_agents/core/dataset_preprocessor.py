@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 from datasets import Dataset, load_dataset
 
-from src.core.database_manager import DatabaseConfig, DatabaseManager
-from src.utils.logging_config import get_logger
+from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
+from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 

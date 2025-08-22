@@ -6,9 +6,9 @@ Run with: pytest tests/test_integration_reasoning.py -m integration
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.core.reasoning_inference import ReasoningInference
-from src.reasoning import create_reasoning_approach
+from ml_agents.config import ExperimentConfig
+from ml_agents.core.reasoning_inference import ReasoningInference
+from ml_agents.reasoning import create_reasoning_approach
 
 
 class TestReasoningIntegration:

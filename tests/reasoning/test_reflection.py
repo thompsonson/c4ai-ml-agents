@@ -4,9 +4,9 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.reasoning.reflection import ReflectionReasoning
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning.reflection import ReflectionReasoning
+from ml_agents.utils.api_clients import StandardResponse
 
 
 class TestReflectionReasoning:
@@ -78,7 +78,7 @@ After reflection, I realize the answer requires more nuanced analysis. The corre
             metadata={},
         )
 
-    @patch("src.reasoning.reflection.create_api_client")
+    @patch("ml_agents.reasoning.reflection.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_initialization_with_prompt_file(
         self,
@@ -100,7 +100,7 @@ After reflection, I realize the answer requires more nuanced analysis. The corre
         assert "Think and reflect" in reasoning.reflection_prompt
         assert reasoning.max_iterations == 2  # Default value
 
-    @patch("src.reasoning.reflection.create_api_client")
+    @patch("ml_agents.reasoning.reflection.create_api_client")
     @patch("builtins.open", side_effect=FileNotFoundError)
     def test_initialization_without_prompt_file(
         self, mock_file, mock_create_client, config, mock_client
@@ -117,7 +117,7 @@ After reflection, I realize the answer requires more nuanced analysis. The corre
         )
         assert "{question}" in reasoning.reflection_prompt
 
-    @patch("src.reasoning.reflection.create_api_client")
+    @patch("ml_agents.reasoning.reflection.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_single_prompt_mode(
         self,
@@ -147,7 +147,7 @@ After reflection, I realize the answer requires more nuanced analysis. The corre
         assert result.metadata["reasoning_approach"] == "Reflection"
         assert result.metadata["reasoning_steps"] >= 2  # Initial + reflection sections
 
-    @patch("src.reasoning.reflection.create_api_client")
+    @patch("ml_agents.reasoning.reflection.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_metadata_analysis(
         self,
@@ -199,7 +199,7 @@ After careful reflection, the better answer is Y because of improved reasoning."
         """Test reflection structure parsing."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.reflection.create_api_client"):
+        with patch("ml_agents.reasoning.reflection.create_api_client"):
             reasoning = ReflectionReasoning(config)
 
             # Text with clear reflection structure
@@ -224,7 +224,7 @@ Here's my improved answer after reflection."""
         """Test reflection quality analysis."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.reflection.create_api_client"):
+        with patch("ml_agents.reasoning.reflection.create_api_client"):
             reasoning = ReflectionReasoning(config)
 
             # High quality reflection text
@@ -246,7 +246,7 @@ Here's my improved answer after reflection."""
         """Test reflection step counting."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.reflection.create_api_client"):
+        with patch("ml_agents.reasoning.reflection.create_api_client"):
             reasoning = ReflectionReasoning(config)
 
             # Text with reflection sections and actions
@@ -262,7 +262,7 @@ Here's my improved answer after reflection."""
         """Test structured reflection detection."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.reflection.create_api_client"):
+        with patch("ml_agents.reasoning.reflection.create_api_client"):
             reasoning = ReflectionReasoning(config)
 
             # Text with clear structure markers
@@ -283,7 +283,7 @@ Here's my improved answer after reflection."""
         """Test reflection section extraction."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.reflection.create_api_client"):
+        with patch("ml_agents.reasoning.reflection.create_api_client"):
             reasoning = ReflectionReasoning(config)
 
             text = """**Initial Response:** First attempt
@@ -300,7 +300,7 @@ Here's my improved answer after reflection."""
         """Test issue and improvement extraction."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.reflection.create_api_client"):
+        with patch("ml_agents.reasoning.reflection.create_api_client"):
             reasoning = ReflectionReasoning(config)
 
             # Text mentioning issues and improvements
@@ -316,7 +316,7 @@ Here's my improved answer after reflection."""
             assert "improve" in improvements
 
     # Multi-step mode tests would be added after implementing the multi-step functionality
-    @patch("src.reasoning.reflection.create_api_client")
+    @patch("ml_agents.reasoning.reflection.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_multi_step_reflection_flag(
         self,
@@ -341,7 +341,7 @@ Here's my improved answer after reflection."""
         assert reasoning.max_iterations == 2
         assert reasoning.reflection_threshold == 0.7
 
-    @patch("src.reasoning.reflection.create_api_client")
+    @patch("ml_agents.reasoning.reflection.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_performance_tracking(
         self,
@@ -369,7 +369,7 @@ Here's my improved answer after reflection."""
             == "Performance test"
         )
 
-    @patch("src.reasoning.reflection.create_api_client")
+    @patch("ml_agents.reasoning.reflection.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_without_clear_structure(
         self,
@@ -406,7 +406,7 @@ Here's my improved answer after reflection."""
             is False
         )
 
-    @patch("src.reasoning.reflection.create_api_client")
+    @patch("ml_agents.reasoning.reflection.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_multiple_executions_consistency(
         self,
@@ -451,7 +451,7 @@ Here's my improved answer after reflection."""
                 == prompt
             )
 
-    @patch("src.reasoning.reflection.create_api_client")
+    @patch("ml_agents.reasoning.reflection.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_cleanup(
         self,

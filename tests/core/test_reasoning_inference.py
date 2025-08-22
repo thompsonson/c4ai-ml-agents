@@ -5,10 +5,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.core.reasoning_inference import ReasoningInference, ReasoningResult
-from src.reasoning.base import BaseReasoning
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.core.reasoning_inference import ReasoningInference, ReasoningResult
+from ml_agents.reasoning.base import BaseReasoning
+from ml_agents.utils.api_clients import StandardResponse
 
 
 class MockReasoningApproach(BaseReasoning):
@@ -61,7 +61,7 @@ class TestReasoningInference:
         assert engine.approach_cache == {}
         assert engine.execution_history == []
 
-    @patch("src.core.reasoning_inference.create_reasoning_approach")
+    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_run_inference_basic(self, mock_create_approach, inference_engine):
         """Test basic inference execution."""
         # Setup mock approach
@@ -86,7 +86,7 @@ class TestReasoningInference:
         assert result.metadata["response_length"] == len("Mock response")
         assert "timestamp" in result.metadata
 
-    @patch("src.core.reasoning_inference.create_reasoning_approach")
+    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_run_inference_caching(self, mock_create_approach, inference_engine):
         """Test approach instance caching."""
         mock_approach = MockReasoningApproach(inference_engine.config)
@@ -113,7 +113,7 @@ class TestReasoningInference:
         with pytest.raises(ValueError, match="Reasoning approach name cannot be empty"):
             inference_engine.run_inference("Test prompt", "")
 
-    @patch("src.core.reasoning_inference.create_reasoning_approach")
+    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_run_inference_unknown_approach(
         self, mock_create_approach, inference_engine
     ):
@@ -123,7 +123,7 @@ class TestReasoningInference:
         with pytest.raises(KeyError):
             inference_engine.run_inference("Test", "UnknownApproach")
 
-    @patch("src.core.reasoning_inference.create_reasoning_approach")
+    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_run_inference_approach_error(self, mock_create_approach, inference_engine):
         """Test handling of approach execution errors."""
         # Create approach that raises error on execute
@@ -143,7 +143,7 @@ class TestReasoningInference:
         )
         assert error_result.cost_estimate == 0.0
 
-    @patch("src.core.reasoning_inference.create_reasoning_approach")
+    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_run_comparison(self, mock_create_approach, inference_engine):
         """Test comparison across multiple approaches."""
         # Setup different mock approaches
@@ -173,7 +173,7 @@ class TestReasoningInference:
             assert results[name].approach_name == name
             assert f"Response {name[-1]}" in results[name].response.text
 
-    @patch("src.core.reasoning_inference.create_reasoning_approach")
+    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_run_comparison_with_failures(self, mock_create_approach, inference_engine):
         """Test comparison handling approach failures."""
 
@@ -197,7 +197,7 @@ class TestReasoningInference:
         assert "AnotherWorkingApproach" in results
         assert "FailingApproach" not in results
 
-    @patch("src.core.reasoning_inference.create_reasoning_approach")
+    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_run_batch_inference(self, mock_create_approach, inference_engine):
         """Test batch inference on multiple prompts."""
         mock_approach = MockReasoningApproach(inference_engine.config)
@@ -224,7 +224,7 @@ class TestReasoningInference:
         assert progress_calls[1] == (2, 3, "Mock")
         assert progress_calls[2] == (3, 3, "Mock")
 
-    @patch("src.core.reasoning_inference.create_reasoning_approach")
+    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_cost_tracking(self, mock_create_approach, inference_engine):
         """Test cost tracking functionality."""
         mock_approach = MockReasoningApproach(inference_engine.config)
@@ -243,7 +243,7 @@ class TestReasoningInference:
         assert cost_summary["approach_counts"]["Mock"] == 3
         assert cost_summary["execution_count"] == 3
 
-    @patch("src.core.reasoning_inference.create_reasoning_approach")
+    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_performance_tracking(self, mock_create_approach, inference_engine):
         """Test performance tracking functionality."""
         mock_approach = MockReasoningApproach(inference_engine.config)

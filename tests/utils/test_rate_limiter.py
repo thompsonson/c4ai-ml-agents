@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.utils.rate_limiter import (
+from ml_agents.utils.rate_limiter import (
     PROVIDER_RATE_LIMITS,
     ExponentialBackoff,
     RateLimitConfig,
@@ -99,7 +99,7 @@ class TestTokenBucket:
         bucket.acquire(5)
 
         # Simulate time passage (1 second = 2 tokens)
-        with patch("src.utils.rate_limiter.time.time") as mock_time:
+        with patch("ml_agents.utils.rate_limiter.time.time") as mock_time:
             # Set initial time
             mock_time.return_value = 0
             bucket._last_update = 0

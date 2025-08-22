@@ -9,8 +9,8 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
-from src.cli.main import app
-from src.config import ExperimentConfig
+from ml_agents.cli.main import app
+from ml_agents.config import ExperimentConfig
 
 
 class TestRunCommand:
@@ -30,8 +30,8 @@ class TestRunCommand:
         assert "--samples" in result.stdout
         assert "--config" in result.stdout
 
-    @patch("src.cli.commands.ExperimentRunner")
-    @patch("src.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.check_environment_ready")
     def test_run_command_with_basic_args(self, mock_check_env, mock_experiment_runner):
         """Test run command with basic arguments."""
         # Mock the runner and its methods
@@ -72,8 +72,8 @@ class TestRunCommand:
         # Verify environment was checked
         mock_check_env.assert_called_once()
 
-    @patch("src.cli.commands.ExperimentRunner")
-    @patch("src.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.check_environment_ready")
     def test_run_command_with_config_file(self, mock_check_env, mock_experiment_runner):
         """Test run command with configuration file."""
         # Create a temporary config file
@@ -115,7 +115,7 @@ class TestRunCommand:
         finally:
             Path(config_path).unlink()
 
-    @patch("src.cli.commands.validate_reasoning_approach")
+    @patch("ml_agents.cli.commands.validate_reasoning_approach")
     def test_run_command_invalid_approach(self, mock_validate):
         """Test run command with invalid reasoning approach."""
         from typer import BadParameter
@@ -146,7 +146,7 @@ class TestRunCommand:
         assert result.exit_code != 0
         assert "Temperature must be between 0.0 and 2.0" in result.stdout
 
-    @patch("src.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.ExperimentRunner")
     def test_run_command_experiment_failure(self, mock_experiment_runner):
         """Test run command when experiment fails."""
         mock_runner_instance = Mock()
@@ -161,7 +161,7 @@ class TestRunCommand:
 
     def test_run_command_keyboard_interrupt(self):
         """Test run command handling of keyboard interrupt."""
-        with patch("src.cli.commands.ExperimentRunner") as mock_runner:
+        with patch("ml_agents.cli.commands.ExperimentRunner") as mock_runner:
             mock_runner_instance = Mock()
             mock_runner_instance.run_single_experiment.side_effect = KeyboardInterrupt()
             mock_runner.return_value = mock_runner_instance
@@ -188,8 +188,8 @@ class TestCompareCommand:
         assert "--parallel" in result.stdout
         assert "--max-workers" in result.stdout
 
-    @patch("src.cli.commands.ExperimentRunner")
-    @patch("src.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.check_environment_ready")
     def test_compare_command_sequential(self, mock_check_env, mock_experiment_runner):
         """Test compare command with sequential execution."""
         # Mock the runner and result
@@ -226,8 +226,8 @@ class TestCompareCommand:
         call_args = mock_runner_instance.run_comparison.call_args
         assert call_args[1]["parallel"] is False
 
-    @patch("src.cli.commands.ExperimentRunner")
-    @patch("src.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.check_environment_ready")
     def test_compare_command_parallel(self, mock_check_env, mock_experiment_runner):
         """Test compare command with parallel execution."""
         mock_runner_instance = Mock()
@@ -288,8 +288,8 @@ class TestCompareCommand:
 
         assert result.exit_code != 0
 
-    @patch("src.cli.commands.ExperimentRunner")
-    @patch("src.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.check_environment_ready")
     def test_compare_command_with_config_file(
         self, mock_check_env, mock_experiment_runner
     ):
@@ -336,8 +336,8 @@ class TestResumeCommand:
         assert "checkpoint" in result.stdout.lower()
         assert "resume" in result.stdout.lower()
 
-    @patch("src.cli.commands.ExperimentRunner")
-    @patch("src.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.check_environment_ready")
     def test_resume_command_valid_checkpoint(
         self, mock_check_env, mock_experiment_runner
     ):
@@ -422,7 +422,7 @@ class TestResumeCommand:
         finally:
             Path(checkpoint_path).unlink()
 
-    @patch("src.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.ExperimentRunner")
     def test_resume_command_experiment_failure(self, mock_experiment_runner):
         """Test resume command when resumed experiment fails."""
         checkpoint_data = {
@@ -556,7 +556,7 @@ class TestEnvironmentValidation:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch("src.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.check_environment_ready")
     def test_commands_check_environment(self, mock_check_env):
         """Test that commands check environment readiness."""
         # Mock environment check to fail
@@ -582,8 +582,8 @@ class TestConfigurationPrecedence:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch("src.cli.commands.ExperimentRunner")
-    @patch("src.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.check_environment_ready")
     def test_cli_args_override_config_file(
         self, mock_check_env, mock_experiment_runner
     ):

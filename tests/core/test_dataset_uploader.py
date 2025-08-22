@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from datasets import Dataset
 
-from src.core.dataset_uploader import DatasetUploader
+from ml_agents.core.dataset_uploader import DatasetUploader
 
 
 class TestDatasetUploader:
@@ -83,8 +83,8 @@ class TestDatasetUploader:
         assert uploader.org_name == "custom-org"
 
     @patch.dict(os.environ, {"HF_TOKEN": "test-token"})
-    @patch("src.core.dataset_uploader.login")
-    @patch("src.core.dataset_uploader.HfApi")
+    @patch("ml_agents.core.dataset_uploader.login")
+    @patch("ml_agents.core.dataset_uploader.HfApi")
     def test_authenticate_with_env_token(self, mock_hf_api, mock_login, uploader):
         """Test authentication with environment token."""
         mock_api_instance = Mock()
@@ -100,8 +100,8 @@ class TestDatasetUploader:
         mock_api_instance.whoami.assert_called_once()
 
     @patch.dict(os.environ, {}, clear=True)  # Clear HF_TOKEN
-    @patch("src.core.dataset_uploader.login")
-    @patch("src.core.dataset_uploader.HfApi")
+    @patch("ml_agents.core.dataset_uploader.login")
+    @patch("ml_agents.core.dataset_uploader.HfApi")
     @patch("builtins.input", return_value="input-token")
     def test_authenticate_with_input_token(
         self, mock_input, mock_hf_api, mock_login, uploader
@@ -127,7 +127,9 @@ class TestDatasetUploader:
         assert result is False
         assert uploader._authenticated is False
 
-    @patch("src.core.dataset_uploader.login", side_effect=Exception("Auth failed"))
+    @patch(
+        "ml_agents.core.dataset_uploader.login", side_effect=Exception("Auth failed")
+    )
     @patch.dict(os.environ, {"HF_TOKEN": "invalid-token"})
     def test_authenticate_failure(self, mock_login, uploader):
         """Test authentication failure handling."""
@@ -236,8 +238,8 @@ class TestDatasetUploader:
             "[https://example.com/dataset](https://example.com/dataset)" in card_content
         )
 
-    @patch("src.core.dataset_uploader.HfApi")
-    @patch("src.core.dataset_uploader.DatasetCard")
+    @patch("ml_agents.core.dataset_uploader.HfApi")
+    @patch("ml_agents.core.dataset_uploader.DatasetCard")
     def test_upload_dataset_success(
         self, mock_card_class, mock_hf_api, uploader, sample_json_dataset
     ):
@@ -321,7 +323,7 @@ class TestDatasetUploader:
 
         assert result == []
 
-    @patch("src.core.dataset_uploader.HfApi")
+    @patch("ml_agents.core.dataset_uploader.HfApi")
     def test_list_organization_datasets_success(self, mock_hf_api, uploader):
         """Test successful listing of organization datasets."""
         uploader._authenticated = True
@@ -358,7 +360,7 @@ class TestDatasetUploader:
 
         assert result is False
 
-    @patch("src.core.dataset_uploader.HfApi")
+    @patch("ml_agents.core.dataset_uploader.HfApi")
     def test_delete_dataset_success(self, mock_hf_api, uploader):
         """Test successful dataset deletion."""
         uploader._authenticated = True
@@ -375,7 +377,7 @@ class TestDatasetUploader:
             "test-org/test-dataset", repo_type="dataset"
         )
 
-    @patch("src.core.dataset_uploader.HfApi")
+    @patch("ml_agents.core.dataset_uploader.HfApi")
     def test_delete_dataset_failure(self, mock_hf_api, uploader):
         """Test dataset deletion failure."""
         uploader._authenticated = True

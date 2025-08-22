@@ -4,9 +4,9 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.reasoning.chain_of_thought import ChainOfThoughtReasoning
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning.chain_of_thought import ChainOfThoughtReasoning
+from ml_agents.utils.api_clients import StandardResponse
 
 
 class TestChainOfThoughtReasoning:
@@ -52,7 +52,7 @@ Please work through this systematically."""
             metadata={},
         )
 
-    @patch("src.reasoning.chain_of_thought.create_api_client")
+    @patch("ml_agents.gents.reasoning.chain_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_initialization_with_prompt_file(
         self, mock_file, mock_create_client, config, mock_client, cot_prompt_content
@@ -68,7 +68,7 @@ Please work through this systematically."""
         assert reasoning.approach_name == "ChainOfThought"
         assert "Think step by step" in reasoning.cot_prompt
 
-    @patch("src.reasoning.chain_of_thought.create_api_client")
+    @patch("ml_agents.gents.reasoning.chain_of_thought.create_api_client")
     @patch("builtins.open", side_effect=FileNotFoundError)
     def test_initialization_without_prompt_file(
         self, mock_file, mock_create_client, config, mock_client
@@ -82,7 +82,7 @@ Please work through this systematically."""
         assert "Please think through this step by step" in reasoning.cot_prompt
         assert "{question}" in reasoning.cot_prompt
 
-    @patch("src.reasoning.chain_of_thought.create_api_client")
+    @patch("ml_agents.gents.reasoning.chain_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_basic(
         self, mock_file, mock_create_client, config, mock_client, cot_prompt_content
@@ -108,7 +108,7 @@ Please work through this systematically."""
         assert result.metadata["reasoning_approach"] == "ChainOfThought"
         assert result.metadata["reasoning_steps"] > 0
 
-    @patch("src.reasoning.chain_of_thought.create_api_client")
+    @patch("ml_agents.gents.reasoning.chain_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_metadata_analysis(
         self, mock_file, mock_create_client, config, mock_client, cot_prompt_content
@@ -146,7 +146,7 @@ This means we have found the solution."""
         """Test CoT-specific step counting."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.chain_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.chain_of_thought.create_api_client"):
             reasoning = ChainOfThoughtReasoning(config)
 
             # Test numbered steps
@@ -175,7 +175,7 @@ This means we have found the solution."""
         """Test step quality analysis."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.chain_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.chain_of_thought.create_api_client"):
             reasoning = ChainOfThoughtReasoning(config)
 
             # High quality text with logical connectors
@@ -197,7 +197,7 @@ This means we have found the solution."""
         """Test numbered steps detection."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.chain_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.chain_of_thought.create_api_client"):
             reasoning = ChainOfThoughtReasoning(config)
 
             # Text with numbered steps
@@ -216,7 +216,7 @@ This means we have found the solution."""
         """Test logical connectors detection."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.chain_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.chain_of_thought.create_api_client"):
             reasoning = ChainOfThoughtReasoning(config)
 
             # Text with logical connectors
@@ -229,7 +229,7 @@ This means we have found the solution."""
             )
             assert reasoning._has_logical_connectors(text_without_connectors) is False
 
-    @patch("src.reasoning.chain_of_thought.create_api_client")
+    @patch("ml_agents.gents.reasoning.chain_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_with_complex_reasoning(
         self, mock_file, mock_create_client, config, mock_client, cot_prompt_content
@@ -273,7 +273,7 @@ This means we have found the solution."""
             is True
         )
 
-    @patch("src.reasoning.chain_of_thought.create_api_client")
+    @patch("ml_agents.gents.reasoning.chain_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_performance_tracking(
         self, mock_file, mock_create_client, config, mock_client, cot_prompt_content
@@ -296,7 +296,7 @@ This means we have found the solution."""
             == "Performance test"
         )
 
-    @patch("src.reasoning.chain_of_thought.create_api_client")
+    @patch("ml_agents.gents.reasoning.chain_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_multiple_executions_consistency(
         self, mock_file, mock_create_client, config, mock_client, cot_prompt_content

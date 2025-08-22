@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from src.utils.answer_extraction import (
+from ml_agents.utils.answer_extraction import (
     BaseAnswerExtraction,
     DefaultExtractionModel,
     ListExtraction,

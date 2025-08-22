@@ -8,7 +8,7 @@ import yaml
 from pydantic import BaseModel, Field, ValidationError
 from rich.console import Console
 
-from src.config import ExperimentConfig
+from ml_agents.config import ExperimentConfig
 
 console = Console()
 
@@ -86,7 +86,7 @@ class CLIExperimentConfig(BaseModel):
 
     def to_experiment_config(self) -> ExperimentConfig:
         """Convert to standard ExperimentConfig."""
-        from src.config import ParsingConfig
+        from ml_agents.config import ParsingConfig
 
         # Create parsing config
         parsing_config = ParsingConfig(

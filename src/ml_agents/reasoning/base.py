@@ -8,10 +8,10 @@ reasoning methodologies.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 
-from src.config import ExperimentConfig
-from src.utils.api_clients import StandardResponse, create_api_client
-from src.utils.logging_config import get_logger
-from src.utils.output_parser import OutputParser
+from ml_agents.config import ExperimentConfig
+from ml_agents.utils.api_clients import StandardResponse, create_api_client
+from ml_agents.utils.logging_config import get_logger
+from ml_agents.utils.output_parser import OutputParser
 
 logger = get_logger(__name__)
 

@@ -1,6 +1,6 @@
 """Configuration module for loading environment variables.
 
-DEPRECATED: This module is deprecated. Use src.config instead.
+DEPRECATED: This module is deprecated. Use ml_agents.config instead.
 This file is maintained for backward compatibility with the Jupyter notebook.
 """
 
@@ -14,7 +14,7 @@ if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
 # Import from new location
-from src.config import (
+from ml_agents.config import (
     API_KEYS,
     SUPPORTED_MODELS,
     SUPPORTED_REASONING,
@@ -27,7 +27,7 @@ from src.config import (
 
 # Issue deprecation warning
 warnings.warn(
-    "config.py is deprecated. Use 'from src.config import ...' instead.",
+    "config.py is deprecated. Use 'from ml_agents.config import ...' instead.",
     DeprecationWarning,
     stacklevel=2,
 )

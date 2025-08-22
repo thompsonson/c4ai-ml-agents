@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 import torch
 
-from src.config import ExperimentConfig
-from src.utils.api_clients import (
+from ml_agents.config import ExperimentConfig
+from ml_agents.utils.api_clients import (
     AnthropicClient,
     APIClient,
     APIClientError,
@@ -136,9 +136,9 @@ class TestHuggingFaceClient:
         assert client.model_instance is None
         assert not client._model_loaded
 
-    @patch("src.utils.api_clients.AutoTokenizer")
-    @patch("src.utils.api_clients.AutoModelForCausalLM")
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.AutoTokenizer")
+    @patch("ml_agents.utils.api_clients.AutoModelForCausalLM")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
     def test_load_model_success(self, mock_get_key, mock_model, mock_tokenizer, client):
         """Test successful model loading."""
         mock_tokenizer.from_pretrained.return_value = Mock()
@@ -153,17 +153,17 @@ class TestHuggingFaceClient:
         assert client.tokenizer is not None
         assert client.model_instance is not None
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
     def test_load_model_failure(self, mock_get_key, client):
         """Test model loading failure."""
-        with patch("src.utils.api_clients.AutoTokenizer") as mock_tokenizer:
+        with patch("ml_agents.utils.api_clients.AutoTokenizer") as mock_tokenizer:
             mock_tokenizer.from_pretrained.side_effect = Exception("Model not found")
 
             with pytest.raises(ModelNotFoundError):
                 client._load_model()
 
     @patch.object(HuggingFaceClient, "_load_model")
-    @patch("src.utils.api_clients.torch")
+    @patch("ml_agents.utils.api_clients.torch")
     def test_generate_success(self, mock_torch, mock_load_model, client):
         """Test successful text generation."""
         # Mock tokenizer and model
@@ -221,8 +221,8 @@ class TestAnthropicClient:
             max_tokens=100,
         )
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
-    @patch("src.utils.api_clients.anthropic.Anthropic")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.anthropic.Anthropic")
     def test_init_success(self, mock_anthropic, mock_get_key, config):
         """Test successful Anthropic client initialization."""
         client = AnthropicClient(config)
@@ -231,14 +231,14 @@ class TestAnthropicClient:
         assert client.model == "claude-sonnet-4-20250514"
         mock_anthropic.assert_called_once_with(api_key="test_key")
 
-    @patch("src.utils.api_clients.get_api_key", return_value=None)
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value=None)
     def test_init_no_api_key(self, mock_get_key, config):
         """Test initialization without API key."""
         with pytest.raises(AuthenticationError, match="Anthropic API key not found"):
             AnthropicClient(config)
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
-    @patch("src.utils.api_clients.anthropic.Anthropic")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.anthropic.Anthropic")
     def test_generate_success(self, mock_anthropic, mock_get_key, config):
         """Test successful text generation."""
         mock_client = Mock()
@@ -262,8 +262,8 @@ class TestAnthropicClient:
         assert result.total_tokens == 30
         assert result.response_id == "response_123"
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
-    @patch("src.utils.api_clients.anthropic.Anthropic")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.anthropic.Anthropic")
     def test_validate_connection_success(self, mock_anthropic, mock_get_key, config):
         """Test successful connection validation."""
         mock_client = Mock()
@@ -286,8 +286,8 @@ class TestCohereClient:
             provider="cohere", model="command-r", temperature=0.4, max_tokens=150
         )
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
-    @patch("src.utils.api_clients.cohere.Client")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.cohere.Client")
     def test_init_success(self, mock_cohere, mock_get_key, config):
         """Test successful Cohere client initialization."""
         client = CohereClient(config)
@@ -296,14 +296,14 @@ class TestCohereClient:
         assert client.model == "command-r"
         mock_cohere.assert_called_once_with("test_key")
 
-    @patch("src.utils.api_clients.get_api_key", return_value=None)
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value=None)
     def test_init_no_api_key(self, mock_get_key, config):
         """Test initialization without API key."""
         with pytest.raises(AuthenticationError, match="Cohere API key not found"):
             CohereClient(config)
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
-    @patch("src.utils.api_clients.cohere.Client")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.cohere.Client")
     def test_generate_success(self, mock_cohere, mock_get_key, config):
         """Test successful text generation."""
         mock_client = Mock()
@@ -326,8 +326,8 @@ class TestCohereClient:
         assert result.response_id == "gen_123"
         assert result.generation_time is not None
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
-    @patch("src.utils.api_clients.cohere.Client")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.cohere.Client")
     def test_validate_connection_success(self, mock_cohere, mock_get_key, config):
         """Test successful connection validation."""
         mock_client = Mock()
@@ -353,8 +353,8 @@ class TestOpenRouterClient:
             max_tokens=200,
         )
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
-    @patch("src.utils.api_clients.openai.OpenAI")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.openai.OpenAI")
     def test_init_success(self, mock_openai, mock_get_key, config):
         """Test successful OpenRouter client initialization."""
         client = OpenRouterClient(config)
@@ -365,14 +365,14 @@ class TestOpenRouterClient:
             base_url="https://openrouter.ai/api/v1", api_key="test_key"
         )
 
-    @patch("src.utils.api_clients.get_api_key", return_value=None)
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value=None)
     def test_init_no_api_key(self, mock_get_key, config):
         """Test initialization without API key."""
         with pytest.raises(AuthenticationError, match="OpenRouter API key not found"):
             OpenRouterClient(config)
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
-    @patch("src.utils.api_clients.openai.OpenAI")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.openai.OpenAI")
     def test_generate_success(self, mock_openai, mock_get_key, config):
         """Test successful text generation."""
         mock_client = Mock()
@@ -404,8 +404,8 @@ class TestOpenRouterClient:
         assert result.total_tokens == 40
         assert result.response_id == "chatcmpl_123"
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
-    @patch("src.utils.api_clients.openai.OpenAI")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.openai.OpenAI")
     def test_validate_connection_success(self, mock_openai, mock_get_key, config):
         """Test successful connection validation."""
         mock_client = Mock()
@@ -427,32 +427,32 @@ class TestCreateAPIClient:
         client = create_api_client(config)
         assert isinstance(client, HuggingFaceClient)
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
     def test_create_anthropic_client(self, mock_get_key):
         """Test creating Anthropic client."""
         config = ExperimentConfig(
             provider="anthropic", model="claude-sonnet-4-20250514"
         )
 
-        with patch("src.utils.api_clients.anthropic.Anthropic"):
+        with patch("ml_agents.utils.api_clients.anthropic.Anthropic"):
             client = create_api_client(config)
             assert isinstance(client, AnthropicClient)
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
     def test_create_cohere_client(self, mock_get_key):
         """Test creating Cohere client."""
         config = ExperimentConfig(provider="cohere", model="command-r")
 
-        with patch("src.utils.api_clients.cohere.Client"):
+        with patch("ml_agents.utils.api_clients.cohere.Client"):
             client = create_api_client(config)
             assert isinstance(client, CohereClient)
 
-    @patch("src.utils.api_clients.get_api_key", return_value="test_key")
+    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
     def test_create_openrouter_client(self, mock_get_key):
         """Test creating OpenRouter client."""
         config = ExperimentConfig(provider="openrouter", model="openai/gpt-oss-120b")
 
-        with patch("src.utils.api_clients.openai.OpenAI"):
+        with patch("ml_agents.utils.api_clients.openai.OpenAI"):
             client = create_api_client(config)
             assert isinstance(client, OpenRouterClient)
 

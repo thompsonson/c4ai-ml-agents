@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 from datasets import Dataset, load_dataset
 
-from src.config import ExperimentConfig
-from src.utils.logging_config import get_logger
+from ml_agents.config import ExperimentConfig
+from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 

@@ -4,9 +4,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.reasoning.base import BaseReasoning
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning.base import BaseReasoning
+from ml_agents.utils.api_clients import StandardResponse
 
 
 class TestReasoningImplementation(BaseReasoning):
@@ -58,7 +58,7 @@ class TestBaseReasoning:
         )
         return client
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_initialization(self, mock_create_client, config, mock_client):
         """Test BaseReasoning initialization."""
         mock_create_client.return_value = mock_client
@@ -70,7 +70,7 @@ class TestBaseReasoning:
         assert reasoning.approach_name == "TestReasoningImplementation"
         mock_create_client.assert_called_once_with(config)
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_execute_abstract_method(self, mock_create_client, config, mock_client):
         """Test that execute method is abstract and must be implemented."""
         mock_create_client.return_value = mock_client
@@ -81,7 +81,7 @@ class TestBaseReasoning:
         with pytest.raises(NotImplementedError):
             reasoning.execute("test prompt")
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_enhance_metadata(self, mock_create_client, config, mock_client):
         """Test metadata enhancement functionality."""
         mock_create_client.return_value = mock_client
@@ -110,7 +110,7 @@ class TestBaseReasoning:
         assert enhanced.metadata["test_metric"] == 42
         assert enhanced.metadata["test_flag"] is True
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_enhance_metadata_no_existing_metadata(
         self, mock_create_client, config, mock_client
     ):
@@ -139,7 +139,7 @@ class TestBaseReasoning:
         assert enhanced.metadata["reasoning_approach"] == "TestReasoningImplementation"
         assert enhanced.metadata["new_data"] == "test"
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_count_reasoning_steps_basic(self, mock_create_client, config, mock_client):
         """Test basic reasoning step counting."""
         mock_create_client.return_value = mock_client
@@ -161,7 +161,7 @@ class TestBaseReasoning:
         steps_none = reasoning._count_reasoning_steps(text_without_steps)
         assert steps_none == 0
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_count_reasoning_steps_numbered_lists(
         self, mock_create_client, config, mock_client
     ):
@@ -179,7 +179,7 @@ class TestBaseReasoning:
         steps = reasoning._count_reasoning_steps(text_with_numbers)
         assert steps >= 3
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_count_reasoning_steps_sequence_words(
         self, mock_create_client, config, mock_client
     ):
@@ -197,7 +197,7 @@ class TestBaseReasoning:
         steps = reasoning._count_reasoning_steps(text_with_sequence)
         assert steps >= 3
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_cleanup(self, mock_create_client, config, mock_client):
         """Test cleanup functionality."""
         mock_create_client.return_value = mock_client
@@ -208,7 +208,7 @@ class TestBaseReasoning:
 
         mock_client.cleanup.assert_called_once()
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_cleanup_no_cleanup_method(self, mock_create_client, config, mock_client):
         """Test cleanup when client has no cleanup method."""
         mock_create_client.return_value = mock_client
@@ -218,7 +218,7 @@ class TestBaseReasoning:
         # Should not raise an error
         reasoning.cleanup()
 
-    @patch("src.reasoning.base.create_api_client")
+    @patch("ml_agents.reasoning.base.create_api_client")
     def test_approach_name_extraction(self, mock_create_client, config, mock_client):
         """Test approach name extraction from class name."""
         mock_create_client.return_value = mock_client

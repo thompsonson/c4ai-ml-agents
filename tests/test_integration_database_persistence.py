@@ -7,11 +7,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.core.database_manager import DatabaseConfig
-from src.core.experiment_runner import ExperimentRunner
-from src.core.results_processor import ResultsProcessor
-from src.reasoning.base import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.core.database_manager import DatabaseConfig
+from ml_agents.core.experiment_runner import ExperimentRunner
+from ml_agents.core.results_processor import ResultsProcessor
+from ml_agents.reasoning.base import StandardResponse
 
 
 class TestDatabasePersistenceIntegration:
@@ -44,7 +44,7 @@ class TestDatabasePersistenceIntegration:
     @pytest.fixture
     def mock_dataset_loader(self):
         """Mock dataset loader to return test data."""
-        with patch("src.core.experiment_runner.BBEHDatasetLoader") as mock_loader:
+        with patch("ml_agents.core.experiment_runner.BBEHDatasetLoader") as mock_loader:
             # Create mock instance
             mock_instance = MagicMock()
             mock_instance.load_samples.return_value = [
@@ -61,7 +61,9 @@ class TestDatabasePersistenceIntegration:
     @pytest.fixture
     def mock_reasoning_engine(self):
         """Mock reasoning engine to return controlled responses."""
-        with patch("src.core.experiment_runner.ReasoningInference") as mock_engine:
+        with patch(
+            "ml_agents.core.experiment_runner.ReasoningInference"
+        ) as mock_engine:
             mock_instance = MagicMock()
 
             def mock_run_inference(input_text, approach):
@@ -115,7 +117,7 @@ class TestDatabasePersistenceIntegration:
         assert "gpt-4" in experiment["name"]
 
         # Mock the progress callback to avoid UI calls
-        with patch("src.core.experiment_runner.tqdm"):
+        with patch("ml_agents.core.experiment_runner.tqdm"):
             # Run single experiment
             summary = runner.run_single_experiment(
                 approach="None", sample_count=5, save_checkpoints=False
@@ -188,7 +190,7 @@ class TestDatabasePersistenceIntegration:
         assert runner.results_processor is None
 
         # Mock the progress callback to avoid UI calls
-        with patch("src.core.experiment_runner.tqdm"):
+        with patch("ml_agents.core.experiment_runner.tqdm"):
             # Run experiment should still work
             summary = runner.run_single_experiment(
                 approach="None", sample_count=3, save_checkpoints=False
@@ -206,7 +208,9 @@ class TestDatabasePersistenceIntegration:
         config, db_path = temp_config
 
         # Mock reasoning engine with parsing metrics
-        with patch("src.core.experiment_runner.ReasoningInference") as mock_engine:
+        with patch(
+            "ml_agents.core.experiment_runner.ReasoningInference"
+        ) as mock_engine:
             mock_instance = MagicMock()
 
             def mock_run_inference_with_metrics(input_text, approach):
@@ -241,7 +245,7 @@ class TestDatabasePersistenceIntegration:
             # Run experiment
             runner = ExperimentRunner(config)
 
-            with patch("src.core.experiment_runner.tqdm"):
+            with patch("ml_agents.core.experiment_runner.tqdm"):
                 runner.run_single_experiment(
                     approach="None", sample_count=2, save_checkpoints=False
                 )
@@ -281,7 +285,7 @@ class TestDatabasePersistenceIntegration:
         # Run experiment to generate data
         runner = ExperimentRunner(config)
 
-        with patch("src.core.experiment_runner.tqdm"):
+        with patch("ml_agents.core.experiment_runner.tqdm"):
             runner.run_single_experiment(
                 approach="None", sample_count=3, save_checkpoints=False
             )
@@ -342,7 +346,9 @@ class TestDatabasePersistenceIntegration:
         ]  # Test multiple approaches
 
         # Mock different results for different approaches
-        with patch("src.core.experiment_runner.ReasoningInference") as mock_engine:
+        with patch(
+            "ml_agents.core.experiment_runner.ReasoningInference"
+        ) as mock_engine:
             mock_instance = MagicMock()
 
             def mock_run_inference_variable(input_text, approach):
@@ -376,7 +382,7 @@ class TestDatabasePersistenceIntegration:
             # Run comparison experiment
             runner = ExperimentRunner(config)
 
-            with patch("src.core.experiment_runner.tqdm"):
+            with patch("ml_agents.core.experiment_runner.tqdm"):
                 summary = runner.run_comparison(
                     approaches=["None", "ChainOfThought"],
                     sample_count=3,
@@ -426,7 +432,9 @@ class TestDatabasePersistenceIntegration:
         config, db_path = temp_config
 
         # Mock reasoning engine that fails on certain inputs
-        with patch("src.core.experiment_runner.ReasoningInference") as mock_engine:
+        with patch(
+            "ml_agents.core.experiment_runner.ReasoningInference"
+        ) as mock_engine:
             mock_instance = MagicMock()
 
             def mock_run_inference_with_errors(input_text, approach):
@@ -455,7 +463,7 @@ class TestDatabasePersistenceIntegration:
             # Run experiment
             runner = ExperimentRunner(config)
 
-            with patch("src.core.experiment_runner.tqdm"):
+            with patch("ml_agents.core.experiment_runner.tqdm"):
                 summary = runner.run_single_experiment(
                     approach="None", sample_count=3, save_checkpoints=False
                 )

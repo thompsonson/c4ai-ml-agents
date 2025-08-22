@@ -6,8 +6,8 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 
-from src.config import API_KEYS, SUPPORTED_MODELS
-from src.reasoning import get_available_approaches
+from ml_agents.config import API_KEYS, SUPPORTED_MODELS
+from ml_agents.reasoning import get_available_approaches
 
 console = Console()
 

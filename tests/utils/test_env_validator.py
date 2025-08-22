@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.utils.env_validator import EnvironmentValidator, validate_startup
+from ml_agents.utils.env_validator import EnvironmentValidator, validate_startup
 
 
 class TestEnvironmentValidator:
@@ -229,7 +229,7 @@ class TestMainExecution:
             mock_validate.return_value = {"valid": True}
 
             # Call validate_startup which is the public interface
-            from src.utils.env_validator import validate_startup
+            from ml_agents.utils.env_validator import validate_startup
 
             result = validate_startup()
 

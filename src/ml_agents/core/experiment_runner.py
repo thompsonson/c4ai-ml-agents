@@ -31,13 +31,13 @@ try:
 except ImportError:
     RICH_AVAILABLE = False
 
-from src.config import ExperimentConfig
-from src.core.database_manager import DatabaseConfig
-from src.core.dataset_loader import BBEHDatasetLoader
-from src.core.reasoning_inference import ReasoningInference, ReasoningResult
-from src.core.results_processor import ResultsProcessor
-from src.reasoning import get_available_approaches
-from src.utils.logging_config import get_logger, log_experiment_start
+from ml_agents.config import ExperimentConfig
+from ml_agents.core.database_manager import DatabaseConfig
+from ml_agents.core.dataset_loader import BBEHDatasetLoader
+from ml_agents.core.reasoning_inference import ReasoningInference, ReasoningResult
+from ml_agents.core.results_processor import ResultsProcessor
+from ml_agents.reasoning import get_available_approaches
+from ml_agents.utils.logging_config import get_logger, log_experiment_start
 
 logger = get_logger(__name__)
 
@@ -1122,7 +1122,7 @@ class ExperimentRunner:
             logger.warning(
                 "Checkpoint config differs from current config - using checkpoint config"
             )
-            from src.config import ExperimentConfig
+            from ml_agents.config import ExperimentConfig
 
             self.config = ExperimentConfig.from_dict(saved_config)
 

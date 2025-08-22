@@ -19,7 +19,7 @@ The ML Agents CLI has comprehensive test coverage across all components:
 pytest tests/cli/ -v
 
 # Run with coverage
-pytest tests/cli/ --cov=src.cli --cov-report=term-missing
+pytest tests/cli/ --cov=ml_agents.cli --cov-report=term-missing
 ```
 
 ### Specific Test Categories
@@ -210,7 +210,7 @@ Current CLI test coverage:
 
 ### Mocking ExperimentRunner
 ```python
-@patch('src.cli.commands.ExperimentRunner')
+@patch('ml_agents.cli.commands.ExperimentRunner')
 def test_run_command(self, mock_experiment_runner):
     mock_runner_instance = Mock()
     mock_result = Mock()
@@ -240,7 +240,7 @@ def test_config_file_loading(self):
 
 ### Testing Rich Output
 ```python
-@patch('src.cli.display.console')
+@patch('ml_agents.cli.display.console')
 def test_display_error(self, mock_console):
     display_error("Test error message")
 
@@ -256,7 +256,7 @@ The CLI tests are integrated into the project's CI pipeline:
 
 ```bash
 # In GitHub Actions / CI
-pytest tests/cli/ --cov=src.cli --cov-fail-under=85
+pytest tests/cli/ --cov=ml_agents.cli --cov-fail-under=85
 ```
 
 ## Debugging Failed Tests
@@ -276,7 +276,7 @@ pytest tests/cli/test_commands.py::TestRunCommand::test_run_command_with_basic_a
 pytest tests/cli/ --pdb
 
 # Show test coverage gaps
-pytest tests/cli/ --cov=src.cli --cov-report=html
+pytest tests/cli/ --cov=ml_agents.cli --cov-report=html
 open htmlcov/index.html
 ```
 

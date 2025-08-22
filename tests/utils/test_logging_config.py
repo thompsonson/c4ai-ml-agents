@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.utils.logging_config import (
+from ml_agents.utils.logging_config import (
     HumanFormatter,
     JSONFormatter,
     get_logger,

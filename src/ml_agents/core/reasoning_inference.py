@@ -10,11 +10,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from src.config import ExperimentConfig
-from src.reasoning import create_reasoning_approach, get_available_approaches
-from src.reasoning.base import BaseReasoning
-from src.utils.api_clients import StandardResponse
-from src.utils.logging_config import get_logger, log_experiment_start
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning import create_reasoning_approach, get_available_approaches
+from ml_agents.reasoning.base import BaseReasoning
+from ml_agents.utils.api_clients import StandardResponse
+from ml_agents.utils.logging_config import get_logger, log_experiment_start
 
 logger = get_logger(__name__)
 

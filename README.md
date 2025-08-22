@@ -50,26 +50,64 @@ The platform currently supports **8 production-ready reasoning approaches**:
 
 ### Installation
 
-1. **Clone and setup the project:**
+#### Option 1: pip Install (Recommended)
 
-   ```bash
-   git clone <repository-url>
-   cd ml-agents
-   ./setup.sh  # Automated setup
-   ```
+Install the latest stable version from PyPI:
 
-2. **Configure API keys:**
+```bash
+# Install globally
+pip install ml-agents-reasoning
 
-   ```bash
-   cp .env.example .env
-   # Edit .env with your actual API keys
-   ```
+# Or install with development dependencies
+pip install ml-agents-reasoning[dev]
 
-3. **Activate the environment:**
+# Verify installation
+ml-agents --version
+ml-agents --help
+```
 
-   ```bash
-   source .venv/bin/activate
-   ```
+#### Option 2: Modern Python (uv/uvx)
+
+With [uv](https://github.com/astral-sh/uv) (fastest):
+
+```bash
+# Install with uv
+uv tool install ml-agents-reasoning
+
+# Run without installing (recommended for trying out)
+uvx ml-agents-reasoning run --approach CoT --samples 10
+
+# Add to project dependencies
+uv add ml-agents-reasoning
+```
+
+#### Option 3: Development Installation
+
+For contributors or advanced users:
+
+```bash
+# Clone and install in development mode
+git clone https://github.com/thompsonson/c4ai-ml-agents
+cd c4ai-ml-agents
+pip install -e .[dev]
+
+# Or with uv (recommended)
+uv sync --all-extras
+```
+
+### Configure API Keys
+
+After installation, configure your API keys:
+
+```bash
+# Create configuration file
+cp .env.example .env
+# Edit .env with your actual API keys
+
+# Or set environment variables directly
+export ANTHROPIC_API_KEY="your-key-here"
+export OPENROUTER_API_KEY="your-key-here"
+```
 
 ### CLI Quick Start
 

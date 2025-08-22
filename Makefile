@@ -91,7 +91,7 @@ test-logging:
 test-backward:
 	@echo "🧪 Testing backward compatibility..."
 	$(PYTHON) -c "import config; print('✅ Backward compatibility works!')"
-	$(PYTHON) -c "from src.config import ExperimentConfig; print('✅ New imports work!')"
+	$(PYTHON) -c "from ml_agents.config import ExperimentConfig; print('✅ New imports work!')"
 
 # Code Quality
 format:
@@ -148,7 +148,7 @@ quick-test:
 # Environment validation
 validate-env:
 	@echo "🔍 Validating environment..."
-	$(PYTHON) -c "from src.config import validate_environment; result = validate_environment(); print('Environment validation:', result); exit(0 if all(result.values()) else 1)"
+	$(PYTHON) -c "from ml_agents.config import validate_environment; result = validate_environment(); print('Environment validation:', result); exit(0 if all(result.values()) else 1)"
 
 # Documentation (placeholder for future)
 docs:
@@ -158,28 +158,28 @@ docs:
 # CLI Testing
 test-cli:
 	@echo "🧪 Testing CLI functionality..."
-	$(PYTHON) -m src.cli.main --help
+	$(PYTHON) -m ml_agents.cli.main --help
 
 test-cli-commands:
 	@echo "🧪 Testing CLI commands..."
-	$(PYTHON) -m src.cli.main version
-	$(PYTHON) -m src.cli.main list-approaches
-	$(PYTHON) -m src.cli.main validate-env
+	$(PYTHON) -m ml_agents.cli.main version
+	$(PYTHON) -m ml_agents.cli.main list-approaches
+	$(PYTHON) -m ml_agents.cli.main validate-env
 
 # Experiment shortcuts
 run-sample:
 	@echo "🧪 Running sample experiment..."
-	$(PYTHON) -m src.cli.main run --approach ChainOfThought --samples 5
+	$(PYTHON) -m ml_agents.cli.main run --approach ChainOfThought --samples 5
 
 # Debug and troubleshooting
 debug-imports:
 	@echo "🔍 Testing all imports..."
-	$(PYTHON) -c "import src.config; print('✅ src.config')"
-	$(PYTHON) -c "import src.utils.logging_config; print('✅ src.utils.logging_config')"
+	$(PYTHON) -c "import ml_agents.config; print('✅ ml_agents.config')"
+	$(PYTHON) -c "import ml_agents.utils.logging_config; print('✅ ml_agents.utils.logging_config')"
 	$(PYTHON) -c "import config; print('✅ config (backward compatibility)')"
-	$(PYTHON) -c "from src.reasoning import get_available_approaches; print('✅ src.reasoning - Available approaches:', get_available_approaches())"
-	$(PYTHON) -c "from src.core.reasoning_inference import ReasoningInference; print('✅ src.core.reasoning_inference')"
-	$(PYTHON) -c "from src.core.experiment_runner import ExperimentRunner; print('✅ src.core.experiment_runner')"
+	$(PYTHON) -c "from ml_agents.reasoning import get_available_approaches; print('✅ ml_agents.reasoning - Available approaches:', get_available_approaches())"
+	$(PYTHON) -c "from ml_agents.core.reasoning_inference import ReasoningInference; print('✅ ml_agents.core.reasoning_inference')"
+	$(PYTHON) -c "from ml_agents.core.experiment_runner import ExperimentRunner; print('✅ ml_agents.core.experiment_runner')"
 
 show-deps:
 	@echo "📦 Installed packages:"
@@ -187,7 +187,7 @@ show-deps:
 
 show-config:
 	@echo "⚙️  Current configuration:"
-	$(PYTHON) -c "from src.config import get_default_config; print(get_default_config().to_dict())"
+	$(PYTHON) -c "from ml_agents.config import get_default_config; print(get_default_config().to_dict())"
 
 # CI/CD helpers
 ci-install:
@@ -206,7 +206,7 @@ ci-lint:
 version:
 	@echo "ML Agents Project Information"
 	@echo "=============================="
-	$(PYTHON) -c "import src; print(f'Version: {src.__version__}')"
+	$(PYTHON) -c "import src; print(f'Version: {ml_agents.__version__}')"
 	@echo "Python: $$($(PYTHON) --version)"
 	@echo "UV: $$(uv --version)"
 

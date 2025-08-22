@@ -11,7 +11,7 @@ from huggingface_hub import DatasetCard, DatasetCardData, HfApi, login
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from src.utils.logging_config import get_logger
+from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 console = Console()

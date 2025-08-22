@@ -6,7 +6,7 @@ import pytest
 from rich.console import Console
 from rich.table import Table
 
-from src.cli.display import (
+from ml_agents.cli.display import (
     create_cost_summary_table,
     create_experiment_table,
     create_progress_display,
@@ -27,7 +27,7 @@ from src.cli.display import (
 class TestDisplayFunctions:
     """Test basic display functions."""
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_error(self, mock_console):
         """Test error message display."""
         display_error("Test error message")
@@ -38,7 +38,7 @@ class TestDisplayFunctions:
         assert "Error:" in args[0]
         assert "Test error message" in args[0]
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_warning(self, mock_console):
         """Test warning message display."""
         display_warning("Test warning message")
@@ -49,7 +49,7 @@ class TestDisplayFunctions:
         assert "Warning:" in args[0]
         assert "Test warning message" in args[0]
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_success(self, mock_console):
         """Test success message display."""
         display_success("Test success message")
@@ -59,7 +59,7 @@ class TestDisplayFunctions:
         assert "✅" in args[0]
         assert "Test success message" in args[0]
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_info(self, mock_console):
         """Test info message display."""
         display_info("Test info message")
@@ -69,7 +69,7 @@ class TestDisplayFunctions:
         assert "ℹ️" in args[0]
         assert "Test info message" in args[0]
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_banner(self, mock_console):
         """Test banner display."""
         display_banner()
@@ -317,7 +317,7 @@ class TestProgressDisplay:
 class TestExperimentDisplays:
     """Test experiment-specific display functions."""
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_experiment_start(self, mock_console):
         """Test experiment start display."""
         config = {
@@ -334,7 +334,7 @@ class TestExperimentDisplays:
         # Should have called print multiple times
         assert mock_console.print.call_count >= 2
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_experiment_complete(self, mock_console):
         """Test experiment completion display."""
         display_experiment_complete(
@@ -354,7 +354,7 @@ class TestExperimentDisplays:
         )
         assert completion_call is not None
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_checkpoint_info(self, mock_console):
         """Test checkpoint info display."""
         display_checkpoint_info(
@@ -375,7 +375,7 @@ class TestExperimentDisplays:
 class TestValidationErrorsDisplay:
     """Test validation error display functions."""
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_validation_errors_single(self, mock_console):
         """Test displaying single validation error."""
         errors = ["Temperature must be between 0.0 and 2.0"]
@@ -392,7 +392,7 @@ class TestValidationErrorsDisplay:
         )
         assert header_call is not None
 
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_validation_errors_multiple(self, mock_console):
         """Test displaying multiple validation errors."""
         errors = [
@@ -411,7 +411,7 @@ class TestCostWarning:
     """Test cost warning display and confirmation."""
 
     @patch("typer.confirm")
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_cost_warning_under_threshold(self, mock_console, mock_confirm):
         """Test cost warning not shown for costs under threshold."""
         result = display_cost_warning(estimated_cost=5.0, threshold=10.0)
@@ -421,7 +421,7 @@ class TestCostWarning:
         mock_confirm.assert_not_called()
 
     @patch("typer.confirm")
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_cost_warning_over_threshold_confirmed(
         self, mock_console, mock_confirm
     ):
@@ -435,7 +435,7 @@ class TestCostWarning:
         mock_confirm.assert_called_once_with("Do you want to continue?")
 
     @patch("typer.confirm")
-    @patch("src.cli.display.console")
+    @patch("ml_agents.cli.display.console")
     def test_display_cost_warning_over_threshold_declined(
         self, mock_console, mock_confirm
     ):

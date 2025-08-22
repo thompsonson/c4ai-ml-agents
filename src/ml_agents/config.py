@@ -223,7 +223,7 @@ class ExperimentConfig:
 
         # Get available approaches dynamically
         try:
-            from src.reasoning import get_available_approaches
+            from ml_agents.reasoning import get_available_approaches
 
             available_approaches = get_available_approaches()
 

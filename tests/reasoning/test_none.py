@@ -5,9 +5,9 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.reasoning.none import NoneReasoning
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning.none import NoneReasoning
+from ml_agents.utils.api_clients import StandardResponse
 
 
 class TestNoneReasoning:
@@ -38,7 +38,7 @@ class TestNoneReasoning:
         )
         return client
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch(
         "builtins.open", new_callable=mock_open, read_data="Please answer: {question}"
     )
@@ -55,7 +55,7 @@ class TestNoneReasoning:
         assert reasoning.approach_name == "None"
         assert "Please answer: {question}" in reasoning.base_prompt
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch("builtins.open", side_effect=FileNotFoundError)
     def test_initialization_without_prompt_file(
         self, mock_file, mock_create_client, config, mock_client
@@ -69,7 +69,7 @@ class TestNoneReasoning:
         assert "Please answer the following question:" in reasoning.base_prompt
         assert "{question}" in reasoning.base_prompt
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch("builtins.open", new_callable=mock_open, read_data="Base prompt: {question}")
     def test_execute_basic(self, mock_file, mock_create_client, config, mock_client):
         """Test basic execution of None reasoning."""
@@ -90,7 +90,7 @@ class TestNoneReasoning:
         assert result.metadata["reasoning_approach"] == "None"
         assert result.metadata["reasoning_steps"] == 0  # Baseline has 0 steps
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch("builtins.open", new_callable=mock_open, read_data="Question: {question}")
     def test_execute_metadata_structure(
         self, mock_file, mock_create_client, config, mock_client
@@ -115,7 +115,7 @@ class TestNoneReasoning:
         assert result.metadata["reasoning_steps"] == 0
         assert result.metadata["reasoning_approach"] == "None"
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch("builtins.open", new_callable=mock_open, read_data="{question}")
     def test_execute_empty_prompt(
         self, mock_file, mock_create_client, config, mock_client
@@ -131,7 +131,7 @@ class TestNoneReasoning:
         mock_client.generate.assert_called_once_with("")
         assert result.metadata["approach_specific_metrics"]["original_prompt"] == ""
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch(
         "builtins.open", new_callable=mock_open, read_data="Complex prompt: {question}"
     )
@@ -154,7 +154,7 @@ class TestNoneReasoning:
             == long_prompt
         )
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch("builtins.open", new_callable=mock_open, read_data="{question}")
     def test_execute_special_characters(
         self, mock_file, mock_create_client, config, mock_client
@@ -173,7 +173,7 @@ class TestNoneReasoning:
             == special_prompt
         )
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch("builtins.open", new_callable=mock_open, read_data="Q: {question}")
     def test_execute_api_client_integration(
         self, mock_file, mock_create_client, config, mock_client
@@ -210,7 +210,7 @@ class TestNoneReasoning:
         assert "original_tokens" in result.metadata
         assert result.metadata["reasoning_approach"] == "None"
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch("builtins.open", new_callable=mock_open, read_data="{question}")
     def test_multiple_executions(
         self, mock_file, mock_create_client, config, mock_client
@@ -241,7 +241,7 @@ class TestNoneReasoning:
             assert result.metadata["reasoning_steps"] == 0
             assert result.metadata["reasoning_approach"] == "None"
 
-    @patch("src.reasoning.none.create_api_client")
+    @patch("ml_agents.reasoning.none.create_api_client")
     @patch("builtins.open", new_callable=mock_open, read_data="Answer: {question}")
     def test_cleanup(self, mock_file, mock_create_client, config, mock_client):
         """Test cleanup functionality."""

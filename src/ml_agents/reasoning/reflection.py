@@ -10,9 +10,9 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List
 
-from src.reasoning.base import BaseReasoning
-from src.utils.api_clients import StandardResponse
-from src.utils.logging_config import get_logger
+from ml_agents.reasoning.base import BaseReasoning
+from ml_agents.utils.api_clients import StandardResponse
+from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 

@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 import typer
 
-from src.cli.validators import (
+from ml_agents.cli.validators import (
     check_environment_ready,
     validate_api_key_available,
     validate_checkpoint_file,
@@ -27,7 +27,7 @@ from src.cli.validators import (
 class TestReasoningApproachValidation:
     """Test reasoning approach validation functions."""
 
-    @patch("src.cli.validators.get_available_approaches")
+    @patch("ml_agents.cli.validators.get_available_approaches")
     def test_validate_valid_reasoning_approach(self, mock_get_approaches):
         """Test validation of valid reasoning approach."""
         mock_get_approaches.return_value = [
@@ -39,7 +39,7 @@ class TestReasoningApproachValidation:
         result = validate_reasoning_approach("ChainOfThought")
         assert result == "ChainOfThought"
 
-    @patch("src.cli.validators.get_available_approaches")
+    @patch("ml_agents.cli.validators.get_available_approaches")
     def test_validate_invalid_reasoning_approach(self, mock_get_approaches):
         """Test validation fails for invalid reasoning approach."""
         mock_get_approaches.return_value = ["ChainOfThought", "AsPlanning"]
@@ -49,7 +49,7 @@ class TestReasoningApproachValidation:
         ):
             validate_reasoning_approach("InvalidApproach")
 
-    @patch("src.cli.validators.get_available_approaches")
+    @patch("ml_agents.cli.validators.get_available_approaches")
     def test_validate_reasoning_approaches_list_valid(self, mock_get_approaches):
         """Test validation of valid reasoning approaches list."""
         mock_get_approaches.return_value = [
@@ -64,7 +64,7 @@ class TestReasoningApproachValidation:
         )
         assert result == ["ChainOfThought", "AsPlanning", "TreeOfThought"]
 
-    @patch("src.cli.validators.get_available_approaches")
+    @patch("ml_agents.cli.validators.get_available_approaches")
     def test_validate_reasoning_approaches_with_spaces(self, mock_get_approaches):
         """Test validation handles spaces in approaches list."""
         mock_get_approaches.return_value = [
@@ -78,7 +78,7 @@ class TestReasoningApproachValidation:
         )
         assert result == ["ChainOfThought", "AsPlanning", "Reflection"]
 
-    @patch("src.cli.validators.get_available_approaches")
+    @patch("ml_agents.cli.validators.get_available_approaches")
     def test_validate_reasoning_approaches_with_invalid(self, mock_get_approaches):
         """Test validation fails when one approach is invalid."""
         mock_get_approaches.return_value = ["ChainOfThought", "AsPlanning"]
@@ -92,7 +92,7 @@ class TestReasoningApproachValidation:
 class TestProviderModelValidation:
     """Test provider and model validation functions."""
 
-    @patch("src.cli.validators.SUPPORTED_MODELS")
+    @patch("ml_agents.cli.validators.SUPPORTED_MODELS")
     def test_validate_valid_provider_model(self, mock_supported_models):
         """Test validation of valid provider/model combination."""
         mock_supported_models.return_value = {
@@ -104,7 +104,7 @@ class TestProviderModelValidation:
         assert provider == "openrouter"
         assert model == "gpt-3.5-turbo"
 
-    @patch("src.cli.validators.SUPPORTED_MODELS")
+    @patch("ml_agents.cli.validators.SUPPORTED_MODELS")
     def test_validate_invalid_provider(self, mock_supported_models):
         """Test validation fails for invalid provider."""
         mock_supported_models.return_value = {
@@ -117,7 +117,7 @@ class TestProviderModelValidation:
         ):
             validate_provider_model("invalid_provider", "gpt-3.5-turbo")
 
-    @patch("src.cli.validators.SUPPORTED_MODELS")
+    @patch("ml_agents.cli.validators.SUPPORTED_MODELS")
     def test_validate_invalid_model_for_provider(self, mock_supported_models):
         """Test validation fails for invalid model for provider."""
         mock_supported_models.return_value = {
@@ -185,7 +185,7 @@ class TestOutputDirectoryValidation:
 class TestAPIKeyValidation:
     """Test API key availability validation."""
 
-    @patch("src.cli.validators.API_KEYS")
+    @patch("ml_agents.cli.validators.API_KEYS")
     def test_validate_api_key_available_valid(self, mock_api_keys):
         """Test API key is available and valid."""
         mock_api_keys.get.return_value = "sk-valid-api-key-12345"
@@ -193,7 +193,7 @@ class TestAPIKeyValidation:
         result = validate_api_key_available("openrouter")
         assert result is True
 
-    @patch("src.cli.validators.API_KEYS")
+    @patch("ml_agents.cli.validators.API_KEYS")
     def test_validate_api_key_missing(self, mock_api_keys):
         """Test API key is missing."""
         mock_api_keys.get.return_value = None
@@ -201,7 +201,7 @@ class TestAPIKeyValidation:
         result = validate_api_key_available("openrouter")
         assert result is False
 
-    @patch("src.cli.validators.API_KEYS")
+    @patch("ml_agents.cli.validators.API_KEYS")
     def test_validate_api_key_placeholder(self, mock_api_keys):
         """Test API key is placeholder value."""
         mock_api_keys.get.return_value = "your_key_here"
@@ -209,7 +209,7 @@ class TestAPIKeyValidation:
         result = validate_api_key_available("anthropic")
         assert result is False
 
-    @patch("src.cli.validators.API_KEYS")
+    @patch("ml_agents.cli.validators.API_KEYS")
     def test_validate_api_key_empty_string(self, mock_api_keys):
         """Test API key is empty string."""
         mock_api_keys.get.return_value = ""
@@ -499,7 +499,7 @@ class TestParameterValidation:
 class TestEnvironmentValidation:
     """Test environment readiness validation."""
 
-    @patch("src.cli.validators.validate_api_key_available")
+    @patch("ml_agents.cli.validators.validate_api_key_available")
     def test_check_environment_ready_valid_key(self, mock_validate_api_key):
         """Test environment ready with valid API key."""
         mock_validate_api_key.return_value = True
@@ -508,7 +508,7 @@ class TestEnvironmentValidation:
         check_environment_ready("openrouter")
         mock_validate_api_key.assert_called_once_with("openrouter")
 
-    @patch("src.cli.validators.validate_api_key_available")
+    @patch("ml_agents.cli.validators.validate_api_key_available")
     def test_check_environment_ready_invalid_key(self, mock_validate_api_key):
         """Test environment not ready with invalid API key."""
         mock_validate_api_key.return_value = False
@@ -516,7 +516,7 @@ class TestEnvironmentValidation:
         with pytest.raises(typer.Exit):
             check_environment_ready("openrouter")
 
-    @patch("src.cli.validators.validate_api_key_available")
+    @patch("ml_agents.cli.validators.validate_api_key_available")
     def test_check_environment_ready_anthropic_instructions(
         self, mock_validate_api_key
     ):
@@ -528,7 +528,7 @@ class TestEnvironmentValidation:
 
         # Would need to capture console output to verify instruction message
 
-    @patch("src.cli.validators.validate_api_key_available")
+    @patch("ml_agents.cli.validators.validate_api_key_available")
     def test_check_environment_ready_cohere_instructions(self, mock_validate_api_key):
         """Test environment check shows Cohere API key instructions."""
         mock_validate_api_key.return_value = False
@@ -536,7 +536,7 @@ class TestEnvironmentValidation:
         with pytest.raises(typer.Exit):
             check_environment_ready("cohere")
 
-    @patch("src.cli.validators.validate_api_key_available")
+    @patch("ml_agents.cli.validators.validate_api_key_available")
     def test_check_environment_ready_huggingface_instructions(
         self, mock_validate_api_key
     ):

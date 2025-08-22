@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.reasoning.chain_of_verification import ChainOfVerificationReasoning
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning.chain_of_verification import ChainOfVerificationReasoning
+from ml_agents.utils.api_clients import StandardResponse
 
 
 @pytest.fixture
@@ -111,7 +111,7 @@ def mock_client_multi_step():
     return client
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.gents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_init_with_prompt_file(mock_file, mock_create_client, config, mock_client):
     """Test initialization with existing prompt file."""
@@ -127,7 +127,7 @@ def test_init_with_prompt_file(mock_file, mock_create_client, config, mock_clien
     assert reasoning.multi_step_verification is False
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.gents.utils.api_clients.create_api_client")
 @patch("builtins.open", side_effect=FileNotFoundError)
 def test_init_with_fallback_prompt(mock_file, mock_create_client, config, mock_client):
     """Test initialization with fallback prompt when file is missing."""
@@ -140,7 +140,7 @@ def test_init_with_fallback_prompt(mock_file, mock_create_client, config, mock_c
     assert "verification" in reasoning.cove_prompt
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.gents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_init_multi_step_config(
     mock_file, mock_create_client, config_multi_step, mock_client
@@ -155,7 +155,7 @@ def test_init_multi_step_config(
     assert reasoning.max_iterations == 3
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.gents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_single_prompt_mode(mock_file, mock_create_client, config, mock_client):
     """Test execution in single-prompt mode."""
@@ -184,7 +184,7 @@ def test_execute_single_prompt_mode(mock_file, mock_create_client, config, mock_
     assert metrics["template_used"] == "chain_of_verification"
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.gents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_multi_step_mode(
     mock_file, mock_create_client, config_multi_step, mock_client_multi_step
@@ -217,7 +217,7 @@ def test_execute_multi_step_mode(
     assert "multi_step_details" in result.metadata
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.gents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_metadata_analysis(mock_file, mock_create_client, config, mock_client):
     """Test metadata analysis for verification characteristics."""
@@ -244,7 +244,7 @@ class TestVerificationAnalysis:
     @pytest.fixture
     def reasoning_instance(self, config, mock_client):
         """Create reasoning instance for testing."""
-        with patch("src.utils.api_clients.create_api_client") as mock_create:
+        with patch("ml_agents.utils.api_clients.create_api_client") as mock_create:
             mock_create.return_value = mock_client
             with patch("builtins.open", side_effect=FileNotFoundError):
                 return ChainOfVerificationReasoning(config)
@@ -330,7 +330,7 @@ class TestVerificationAnalysis:
         assert reasoning_instance._has_refined_response(text_without_refined) is False
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.gents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_error_handling(mock_file, mock_create_client, config):
     """Test error handling during execution."""
@@ -345,7 +345,7 @@ def test_execute_error_handling(mock_file, mock_create_client, config):
         reasoning.execute("Test question")
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.gents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_inheritance_from_base(mock_file, mock_create_client, config, mock_client):
     """Test that the class properly inherits from BaseReasoning."""
@@ -360,7 +360,7 @@ def test_inheritance_from_base(mock_file, mock_create_client, config, mock_clien
     assert reasoning.approach_name == "ChainOfVerification"
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.gents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_complex_verification_response(
     mock_file, mock_create_client, config, mock_client

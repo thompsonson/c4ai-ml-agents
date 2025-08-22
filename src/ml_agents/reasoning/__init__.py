@@ -9,9 +9,9 @@ import importlib
 from pathlib import Path
 from typing import Dict, List, Type
 
-from src.config import ExperimentConfig
-from src.reasoning.base import BaseReasoning
-from src.utils.logging_config import get_logger
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning.base import BaseReasoning
+from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -84,7 +84,7 @@ def _auto_discover_approaches() -> None:
         module_name = py_file.stem
         try:
             # Dynamically import the module
-            module = importlib.import_module(f"src.reasoning.{module_name}")
+            module = importlib.import_module(f"ml_agents.reasoning.{module_name}")
 
             # Look for classes that inherit from BaseReasoning
             for attr_name in dir(module):

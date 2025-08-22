@@ -9,13 +9,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.core.database_manager import DatabaseConfig
-from src.core.results_processor import (
+from ml_agents.core.database_manager import DatabaseConfig
+from ml_agents.core.results_processor import (
     ApproachComparison,
     ExperimentSummary,
     ResultsProcessor,
 )
-from src.reasoning.base import StandardResponse
+from ml_agents.reasoning.base import StandardResponse
 
 
 class TestExperimentSummary:

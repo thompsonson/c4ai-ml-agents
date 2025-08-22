@@ -4,9 +4,9 @@ from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.reasoning.program_of_thought import ProgramOfThoughtReasoning
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning.program_of_thought import ProgramOfThoughtReasoning
+from ml_agents.utils.api_clients import StandardResponse
 
 
 class TestProgramOfThoughtReasoning:
@@ -65,7 +65,7 @@ The answer is 30."""
             metadata={},
         )
 
-    @patch("src.reasoning.program_of_thought.create_api_client")
+    @patch("ml_agents.reasoning.program_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_initialization_with_prompt_file(
         self, mock_file, mock_create_client, config, mock_client, pot_prompt_content
@@ -81,7 +81,7 @@ The answer is 30."""
         assert reasoning.approach_name == "ProgramOfThought"
         assert "Solve this with code" in reasoning.pot_prompt
 
-    @patch("src.reasoning.program_of_thought.create_api_client")
+    @patch("ml_agents.reasoning.program_of_thought.create_api_client")
     @patch("builtins.open", side_effect=FileNotFoundError)
     def test_initialization_without_prompt_file(
         self, mock_file, mock_create_client, config, mock_client
@@ -98,7 +98,7 @@ The answer is 30."""
         )
         assert "{question}" in reasoning.pot_prompt
 
-    @patch("src.reasoning.program_of_thought.create_api_client")
+    @patch("ml_agents.reasoning.program_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_basic(
         self, mock_file, mock_create_client, config, mock_client, pot_prompt_content
@@ -124,7 +124,7 @@ The answer is 30."""
         assert result.metadata["reasoning_approach"] == "ProgramOfThought"
         assert result.metadata["reasoning_steps"] > 0
 
-    @patch("src.reasoning.program_of_thought.create_api_client")
+    @patch("ml_agents.reasoning.program_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_metadata_analysis(
         self, mock_file, mock_create_client, config, mock_client, pot_prompt_content
@@ -175,7 +175,7 @@ This code calculates the sum as 15."""
         """Test code block counting functionality."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.program_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.program_of_thought.create_api_client"):
             reasoning = ProgramOfThoughtReasoning(config)
 
             # Test markdown code blocks
@@ -207,7 +207,7 @@ result = x + y"""
         """Test programming quality analysis."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.program_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.program_of_thought.create_api_client"):
             reasoning = ProgramOfThoughtReasoning(config)
 
             # High quality programming text
@@ -229,7 +229,7 @@ result = x + y"""
         """Test computational step counting."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.program_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.program_of_thought.create_api_client"):
             reasoning = ProgramOfThoughtReasoning(config)
 
             # Text with code blocks and steps
@@ -251,7 +251,7 @@ result = x + y
         """Test variable detection."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.program_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.program_of_thought.create_api_client"):
             reasoning = ProgramOfThoughtReasoning(config)
 
             # Text with variable assignments
@@ -266,7 +266,7 @@ result = x + y
         """Test function detection."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.program_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.program_of_thought.create_api_client"):
             reasoning = ProgramOfThoughtReasoning(config)
 
             # Text with function definition
@@ -285,7 +285,7 @@ result = x + y
         """Test control structure detection."""
         config = ExperimentConfig()
 
-        with patch("src.reasoning.program_of_thought.create_api_client"):
+        with patch("ml_agents.reasoning.program_of_thought.create_api_client"):
             reasoning = ProgramOfThoughtReasoning(config)
 
             # Text with control structures
@@ -298,7 +298,7 @@ result = x + y
             text_without_control = "Simple assignment operation."
             assert reasoning._has_control_structures(text_without_control) is False
 
-    @patch("src.reasoning.program_of_thought.create_api_client")
+    @patch("ml_agents.reasoning.program_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_with_complex_code(
         self, mock_file, mock_create_client, config, mock_client, pot_prompt_content
@@ -361,7 +361,7 @@ result = x + y
             is True
         )
 
-    @patch("src.reasoning.program_of_thought.create_api_client")
+    @patch("ml_agents.reasoning.program_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_execute_performance_tracking(
         self, mock_file, mock_create_client, config, mock_client, pot_prompt_content
@@ -384,7 +384,7 @@ result = x + y
             == "Performance test"
         )
 
-    @patch("src.reasoning.program_of_thought.create_api_client")
+    @patch("ml_agents.reasoning.program_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_multiple_executions_consistency(
         self, mock_file, mock_create_client, config, mock_client, pot_prompt_content
@@ -415,7 +415,7 @@ result = x + y
                 == prompt
             )
 
-    @patch("src.reasoning.program_of_thought.create_api_client")
+    @patch("ml_agents.reasoning.program_of_thought.create_api_client")
     @patch("builtins.open", new_callable=mock_open)
     def test_no_code_response(
         self, mock_file, mock_create_client, config, mock_client, pot_prompt_content

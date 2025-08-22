@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 
-from src.config import (
+from ml_agents.config import (
     SUPPORTED_MODELS,
     SUPPORTED_REASONING,
     ExperimentConfig,
@@ -210,7 +210,7 @@ class TestConfigurationValidation:
         assert isinstance(config, ExperimentConfig)
         assert config.dataset_name == "MrLight/bbeh-eval"
 
-    @patch("src.config.Path")
+    @patch("ml_agents.config.Path")
     @patch("builtins.open")
     def test_validate_environment_success(self, mock_open, mock_path, mock_env_vars):
         """Test environment validation success."""

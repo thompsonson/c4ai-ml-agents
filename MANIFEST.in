@@ -1,0 +1,32 @@
+# MANIFEST.in - Package manifest for ml-agents-reasoning
+# Include essential documentation files
+include README.md
+include LICENSE
+include EXAMPLE_EXPERIMENT.md
+include ROADMAP.md
+
+# Include configuration files
+recursive-include src/ml_agents/reasoning/prompts *.txt
+recursive-include src/ml_agents/configs *.yaml
+include pyproject.toml
+include uv.lock
+
+# Include example configurations
+recursive-include examples *.yaml
+recursive-include examples *.sh
+include examples/README.md
+
+# Exclude development and testing files
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+exclude .gitignore
+exclude .pre-commit-config.yaml
+exclude Makefile
+recursive-exclude tests *
+recursive-exclude .git *
+recursive-exclude htmlcov *
+recursive-exclude outputs *
+exclude ml_agents_results.backup_*
+exclude ml_agents_results.db*
+exclude *.log
+exclude config.py

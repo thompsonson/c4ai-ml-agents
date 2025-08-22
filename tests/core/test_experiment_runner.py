@@ -14,10 +14,10 @@ import pandas as pd
 import pytest
 from datasets import Dataset
 
-from src.config import ExperimentConfig
-from src.core.experiment_runner import ExperimentRunner, ExperimentSummary
-from src.core.reasoning_inference import ReasoningResult
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.core.experiment_runner import ExperimentRunner, ExperimentSummary
+from ml_agents.core.reasoning_inference import ReasoningResult
+from ml_agents.utils.api_clients import StandardResponse
 
 
 class TestExperimentRunner:
@@ -99,10 +99,10 @@ class TestExperimentRunner:
         """Create ExperimentRunner instance with mocked dependencies."""
         with (
             patch(
-                "src.core.experiment_runner.BBEHDatasetLoader"
+                "ml_agents.core.experiment_runner.BBEHDatasetLoader"
             ) as mock_dataset_loader_class,
             patch(
-                "src.core.experiment_runner.ReasoningInference"
+                "ml_agents.core.experiment_runner.ReasoningInference"
             ) as mock_inference_class,
         ):
             runner = ExperimentRunner(config)
@@ -111,8 +111,8 @@ class TestExperimentRunner:
     def test_init(self, config, temp_dir):
         """Test ExperimentRunner initialization."""
         with (
-            patch("src.core.experiment_runner.BBEHDatasetLoader"),
-            patch("src.core.experiment_runner.ReasoningInference"),
+            patch("ml_agents.core.experiment_runner.BBEHDatasetLoader"),
+            patch("ml_agents.core.experiment_runner.ReasoningInference"),
         ):
             runner = ExperimentRunner(config)
 
@@ -128,7 +128,7 @@ class TestExperimentRunner:
             assert runner.output_dir == Path(temp_dir / "outputs")
             assert runner.output_dir.exists()
 
-    @patch("src.core.experiment_runner.get_available_approaches")
+    @patch("ml_agents.core.experiment_runner.get_available_approaches")
     def test_run_single_experiment_basic(
         self,
         mock_get_approaches,
@@ -168,7 +168,7 @@ class TestExperimentRunner:
         ]
         mock_reasoning_inference.run_inference.assert_has_calls(expected_calls)
 
-    @patch("src.core.experiment_runner.get_available_approaches")
+    @patch("ml_agents.core.experiment_runner.get_available_approaches")
     def test_run_single_experiment_invalid_approach(self, mock_get_approaches, runner):
         """Test single experiment with invalid approach."""
         mock_get_approaches.return_value = ["None", "ChainOfThought"]
@@ -178,7 +178,7 @@ class TestExperimentRunner:
         ):
             runner.run_single_experiment("InvalidApproach")
 
-    @patch("src.core.experiment_runner.get_available_approaches")
+    @patch("ml_agents.core.experiment_runner.get_available_approaches")
     def test_run_single_experiment_error_handling(
         self, mock_get_approaches, runner, mock_dataset_loader, mock_reasoning_inference
     ):
@@ -207,7 +207,7 @@ class TestExperimentRunner:
         assert "API Error" in runner.errors[0]["error"]
         assert result.error_summary["ChainOfThought"] == 1
 
-    @patch("src.core.experiment_runner.get_available_approaches")
+    @patch("ml_agents.core.experiment_runner.get_available_approaches")
     def test_run_comparison_sequential(
         self, mock_get_approaches, runner, mock_dataset_loader, mock_reasoning_inference
     ):
@@ -231,8 +231,8 @@ class TestExperimentRunner:
             mock_reasoning_inference.run_inference.call_count == 6
         )  # 3 approaches * 2 samples
 
-    @patch("src.core.experiment_runner.get_available_approaches")
-    @patch("src.core.experiment_runner.ThreadPoolExecutor")
+    @patch("ml_agents.core.experiment_runner.get_available_approaches")
+    @patch("ml_agents.core.experiment_runner.ThreadPoolExecutor")
     def test_run_comparison_parallel(
         self,
         mock_thread_pool,
@@ -279,7 +279,7 @@ class TestExperimentRunner:
 
         # Mock as_completed to return futures in order
         with patch(
-            "src.core.experiment_runner.as_completed", return_value=mock_futures
+            "ml_agents.core.experiment_runner.as_completed", return_value=mock_futures
         ):
             result = runner.run_comparison(
                 approaches, sample_count=2, parallel=True, max_workers=4
@@ -293,7 +293,7 @@ class TestExperimentRunner:
         mock_thread_pool.assert_called_once_with(max_workers=4)
         assert mock_executor.submit.call_count == 4  # One per approach
 
-    @patch("src.core.experiment_runner.get_available_approaches")
+    @patch("ml_agents.core.experiment_runner.get_available_approaches")
     def test_run_comparison_thread_safety_validation(self, mock_get_approaches, runner):
         """Test thread safety with real threading for new reasoning approaches."""
         # This test validates that new approaches (AsPlanning, ChainOfVerification,
@@ -425,7 +425,7 @@ class TestExperimentRunner:
                 side_effect=mock_reasoning_with_cost,
             ),
             patch(
-                "src.core.experiment_runner.get_available_approaches",
+                "ml_agents.core.experiment_runner.get_available_approaches",
                 return_value=["None"] + approaches,
             ),
         ):
@@ -455,7 +455,7 @@ class TestExperimentRunner:
         with (
             patch.object(runner, "_get_checkpoint_path", return_value=checkpoint_path),
             patch(
-                "src.core.experiment_runner.get_available_approaches",
+                "ml_agents.core.experiment_runner.get_available_approaches",
                 return_value=["ChainOfThought"],
             ),
         ):
@@ -518,9 +518,9 @@ class TestExperimentRunner:
             return mock_pbar
 
         with (
-            patch("src.core.experiment_runner.tqdm", side_effect=mock_tqdm),
+            patch("ml_agents.core.experiment_runner.tqdm", side_effect=mock_tqdm),
             patch(
-                "src.core.experiment_runner.get_available_approaches",
+                "ml_agents.core.experiment_runner.get_available_approaches",
                 return_value=["None"] + approaches,
             ),
         ):
@@ -566,7 +566,7 @@ class TestExperimentRunner:
             mock_save_csv.assert_called()
             mock_save_json.assert_called()
 
-    @patch("src.core.experiment_runner.get_available_approaches")
+    @patch("ml_agents.core.experiment_runner.get_available_approaches")
     def test_multi_step_chain_of_verification_parallel(
         self, mock_get_approaches, runner, mock_dataset_loader, mock_reasoning_inference
     ):
@@ -695,9 +695,9 @@ class TestExperimentRunner:
             return future
 
         with (
-            patch("src.core.experiment_runner.ThreadPoolExecutor") as mock_pool,
+            patch("ml_agents.core.experiment_runner.ThreadPoolExecutor") as mock_pool,
             patch(
-                "src.core.experiment_runner.get_available_approaches",
+                "ml_agents.core.experiment_runner.get_available_approaches",
                 return_value=approaches,
             ),
             patch.object(runner.dataset_loader, "load_dataset"),
@@ -741,7 +741,7 @@ class TestExperimentRunner:
                 resource_tracker["completed_threads"] >= 1
             ), "No threads completed successfully"
 
-    @patch("src.core.experiment_runner.get_available_approaches")
+    @patch("ml_agents.core.experiment_runner.get_available_approaches")
     def test_critical_success_scenario(
         self, mock_get_approaches, runner, mock_dataset_loader, mock_reasoning_inference
     ):

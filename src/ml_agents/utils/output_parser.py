@@ -12,13 +12,13 @@ from typing import Any, Dict, Optional, Type, Union
 import instructor
 from pydantic import BaseModel, ValidationError
 
-from src.utils.answer_extraction import (
+from ml_agents.utils.answer_extraction import (
     BaseAnswerExtraction,
     DefaultExtractionModel,
     get_extraction_model,
 )
-from src.utils.api_clients import APIClient, StandardResponse
-from src.utils.logging_config import get_logger
+from ml_agents.utils.api_clients import APIClient, StandardResponse
+from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
@@ -155,7 +155,7 @@ class OutputParser:
         metadata: Dict[str, Any],
     ) -> Optional[BaseAnswerExtraction]:
         """Extract answer using Instructor library."""
-        from src.utils.answer_extraction import detect_multiple_tool_calls
+        from ml_agents.utils.answer_extraction import detect_multiple_tool_calls
 
         # Detect if response contains multiple tool calls
         has_multiple_calls = detect_multiple_tool_calls(response_text)
@@ -173,7 +173,7 @@ class OutputParser:
         else:
             # Use multiple response model if tool calls detected
             if has_multiple_calls:
-                from src.utils.answer_extraction import MultipleAnswerExtraction
+                from ml_agents.utils.answer_extraction import MultipleAnswerExtraction
 
                 model_class = MultipleAnswerExtraction
             else:

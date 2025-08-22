@@ -8,7 +8,7 @@ from typing import Any, Dict
 import pytest
 import yaml
 
-from src.cli.config_loader import (
+from ml_agents.cli.config_loader import (
     CLIExperimentConfig,
     create_example_config,
     flatten_nested_config,
@@ -18,7 +18,7 @@ from src.cli.config_loader import (
     save_config_template,
     validate_cli_config,
 )
-from src.config import ExperimentConfig
+from ml_agents.config import ExperimentConfig
 
 
 class TestCLIExperimentConfig:

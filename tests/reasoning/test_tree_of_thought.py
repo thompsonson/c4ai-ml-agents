@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.reasoning.tree_of_thought import TreeOfThoughtReasoning
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning.tree_of_thought import TreeOfThoughtReasoning
+from ml_agents.utils.api_clients import StandardResponse
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def mock_client():
     return client
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_init_with_prompt_file(mock_file, mock_create_client, config, mock_client):
     """Test initialization with existing prompt file."""
@@ -63,7 +63,7 @@ def test_init_with_prompt_file(mock_file, mock_create_client, config, mock_clien
     assert "Test ToT prompt" in reasoning.tot_prompt
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", side_effect=FileNotFoundError)
 def test_init_with_fallback_prompt(mock_file, mock_create_client, config, mock_client):
     """Test initialization with fallback prompt when file is missing."""
@@ -76,7 +76,7 @@ def test_init_with_fallback_prompt(mock_file, mock_create_client, config, mock_c
     assert "reasoning paths" in reasoning.tot_prompt
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_basic(mock_file, mock_create_client, config, mock_client):
     """Test basic execution of reasoning approach."""
@@ -106,7 +106,7 @@ def test_execute_basic(mock_file, mock_create_client, config, mock_client):
     )
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_metadata_analysis(mock_file, mock_create_client, config, mock_client):
     """Test metadata analysis for tree reasoning characteristics."""
@@ -137,7 +137,7 @@ class TestBranchAnalysis:
     @pytest.fixture
     def reasoning_instance(self, config, mock_client):
         """Create reasoning instance for testing."""
-        with patch("src.utils.api_clients.create_api_client") as mock_create:
+        with patch("ml_agents.utils.api_clients.create_api_client") as mock_create:
             mock_create.return_value = mock_client
             with patch("builtins.open", side_effect=FileNotFoundError):
                 return TreeOfThoughtReasoning(config)
@@ -296,7 +296,7 @@ class TestBranchAnalysis:
         assert reasoning_instance._has_synthesis(text_without_synthesis) is False
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_error_handling(mock_file, mock_create_client, config):
     """Test error handling during execution."""
@@ -311,7 +311,7 @@ def test_execute_error_handling(mock_file, mock_create_client, config):
         reasoning.execute("Test question")
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_inheritance_from_base(mock_file, mock_create_client, config, mock_client):
     """Test that the class properly inherits from BaseReasoning."""
@@ -326,7 +326,7 @@ def test_inheritance_from_base(mock_file, mock_create_client, config, mock_clien
     assert reasoning.approach_name == "TreeOfThought"
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_complex_tree_response(mock_file, mock_create_client, config, mock_client):
     """Test with a complex tree-structured response."""
@@ -406,7 +406,7 @@ def test_complex_tree_response(mock_file, mock_create_client, config, mock_clien
     assert metrics["contains_synthesis"] is True
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_analyze_branches_comprehensive(
     mock_file, mock_create_client, config, mock_client

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.core.database_manager import DatabaseConfig, DatabaseManager
+from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
 
 
 class TestDatabaseConfig:

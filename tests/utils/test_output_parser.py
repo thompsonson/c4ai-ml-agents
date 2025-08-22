@@ -4,9 +4,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.utils.answer_extraction import BaseAnswerExtraction
-from src.utils.api_clients import StandardResponse
-from src.utils.output_parser import OutputParser, ParsingError
+from ml_agents.utils.answer_extraction import BaseAnswerExtraction
+from ml_agents.utils.api_clients import StandardResponse
+from ml_agents.utils.output_parser import OutputParser, ParsingError
 
 
 class TestOutputParser:
@@ -118,7 +118,7 @@ class TestOutputParser:
         assert response_text in prompt
         assert "numerical value" in prompt.lower()
 
-    @patch("src.utils.output_parser.instructor")
+    @patch("ml_agents.utils.output_parser.instructor")
     def test_instructor_initialization_failure(self, mock_instructor):
         """Test handling of instructor initialization failure."""
         mock_instructor.patch.side_effect = Exception("Instructor failed")

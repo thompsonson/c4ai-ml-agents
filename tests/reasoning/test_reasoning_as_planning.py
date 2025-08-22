@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from src.config import ExperimentConfig
-from src.reasoning.reasoning_as_planning import ReasoningAsPlanningReasoning
-from src.utils.api_clients import StandardResponse
+from ml_agents.config import ExperimentConfig
+from ml_agents.reasoning.reasoning_as_planning import ReasoningAsPlanningReasoning
+from ml_agents.utils.api_clients import StandardResponse
 
 
 @pytest.fixture
@@ -46,7 +46,7 @@ def mock_client():
     return client
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_init_with_prompt_file(mock_file, mock_create_client, config, mock_client):
     """Test initialization with existing prompt file."""
@@ -61,7 +61,7 @@ def test_init_with_prompt_file(mock_file, mock_create_client, config, mock_clien
     assert "Test RAP prompt" in reasoning.rap_prompt
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", side_effect=FileNotFoundError)
 def test_init_with_fallback_prompt(mock_file, mock_create_client, config, mock_client):
     """Test initialization with fallback prompt when file is missing."""
@@ -74,7 +74,7 @@ def test_init_with_fallback_prompt(mock_file, mock_create_client, config, mock_c
     assert "planning problem" in reasoning.rap_prompt
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_basic(mock_file, mock_create_client, config, mock_client):
     """Test basic execution of reasoning approach."""
@@ -104,7 +104,7 @@ def test_execute_basic(mock_file, mock_create_client, config, mock_client):
     )
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_metadata_analysis(mock_file, mock_create_client, config, mock_client):
     """Test metadata analysis for planning characteristics."""
@@ -132,7 +132,7 @@ class TestPlanningAnalysis:
     def reasoning_instance(self, config, mock_client):
         """Create reasoning instance for testing."""
         with patch(
-            "src.reasoning.reasoning_as_planning.create_api_client"
+            "ml_agents.reasoning.reasoning_as_planning.create_api_client"
         ) as mock_create:
             mock_create.return_value = mock_client
             with patch("builtins.open", side_effect=FileNotFoundError):
@@ -217,7 +217,7 @@ class TestPlanningAnalysis:
         )
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_execute_error_handling(mock_file, mock_create_client, config):
     """Test error handling during execution."""
@@ -232,7 +232,7 @@ def test_execute_error_handling(mock_file, mock_create_client, config):
         reasoning.execute("Test question")
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_inheritance_from_base(mock_file, mock_create_client, config, mock_client):
     """Test that the class properly inherits from BaseReasoning."""
@@ -247,7 +247,7 @@ def test_inheritance_from_base(mock_file, mock_create_client, config, mock_clien
     assert reasoning.approach_name == "ReasoningAsPlanning"
 
 
-@patch("src.utils.api_clients.create_api_client")
+@patch("ml_agents.utils.api_clients.create_api_client")
 @patch("builtins.open", new_callable=mock_open)
 def test_complex_planning_response(mock_file, mock_create_client, config, mock_client):
     """Test with a complex planning response."""

@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from src.utils.logging_config import get_logger
+from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 

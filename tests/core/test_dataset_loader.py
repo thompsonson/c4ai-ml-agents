@@ -9,8 +9,8 @@ import pandas as pd
 import pytest
 from datasets import Dataset
 
-from src.config import ExperimentConfig
-from src.core.dataset_loader import BBEHDatasetLoader
+from ml_agents.config import ExperimentConfig
+from ml_agents.core.dataset_loader import BBEHDatasetLoader
 
 
 class TestBBEHDatasetLoader:
@@ -65,7 +65,7 @@ class TestBBEHDatasetLoader:
         assert loader._dataset is None
         assert loader._cache_dir.exists()
 
-    @patch("src.core.dataset_loader.load_dataset")
+    @patch("ml_agents.core.dataset_loader.load_dataset")
     def test_load_dataset_success(self, mock_load_dataset, loader, sample_dataset):
         """Test successful dataset loading."""
         mock_load_dataset.return_value = sample_dataset
@@ -82,7 +82,7 @@ class TestBBEHDatasetLoader:
                 "test/dataset", split="test", trust_remote_code=True
             )
 
-    @patch("src.core.dataset_loader.load_dataset")
+    @patch("ml_agents.core.dataset_loader.load_dataset")
     def test_load_dataset_from_cache(self, mock_load_dataset, loader, sample_dataset):
         """Test loading dataset from cache."""
         with patch.object(loader, "_load_from_cache", return_value=sample_dataset):
@@ -92,7 +92,7 @@ class TestBBEHDatasetLoader:
             assert loader._dataset == sample_dataset
             mock_load_dataset.assert_not_called()
 
-    @patch("src.core.dataset_loader.load_dataset")
+    @patch("ml_agents.core.dataset_loader.load_dataset")
     def test_load_dataset_failure(self, mock_load_dataset, loader):
         """Test dataset loading failure."""
         mock_load_dataset.side_effect = Exception("API Error")
@@ -252,7 +252,7 @@ class TestBBEHDatasetLoader:
 
             assert len(list(loader._cache_dir.glob("*.json"))) == 0
 
-    @patch("src.core.dataset_loader.load_dataset")
+    @patch("ml_agents.core.dataset_loader.load_dataset")
     def test_load_dataset_different_split(
         self, mock_load_dataset, loader, sample_dataset
     ):

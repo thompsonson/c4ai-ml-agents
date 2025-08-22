@@ -10,8 +10,8 @@ from rich.console import Console
 from rich.progress import track
 from rich.table import Table
 
-from src.cli.config_loader import load_and_validate_config
-from src.cli.display import (
+from ml_agents.cli.config_loader import load_and_validate_config
+from ml_agents.cli.display import (
     create_accuracy_breakdown_table,
     create_experiment_table,
     display_error,
@@ -21,7 +21,7 @@ from src.cli.display import (
     display_success,
     display_warning,
 )
-from src.cli.validators import (
+from ml_agents.cli.validators import (
     check_environment_ready,
     validate_checkpoint_file,
     validate_config_file,
@@ -33,8 +33,8 @@ from src.cli.validators import (
     validate_temperature,
     validate_top_p,
 )
-from src.core.experiment_runner import ExperimentRunner
-from src.utils.logging_config import get_logger
+from ml_agents.core.experiment_runner import ExperimentRunner
+from ml_agents.utils.logging_config import get_logger
 
 console = Console()
 logger = get_logger(__name__)
@@ -137,7 +137,7 @@ def run_single_experiment(
 
     try:
         # Validate reasoning approach
-        from src.cli.validators import validate_reasoning_approach
+        from ml_agents.cli.validators import validate_reasoning_approach
 
         approach = validate_reasoning_approach(approach)
 
@@ -528,7 +528,7 @@ def resume_experiment(
         display_info(f"Resuming experiment: {experiment_id}")
 
         # Recreate experiment config
-        from src.config import ExperimentConfig
+        from ml_agents.config import ExperimentConfig
 
         experiment_config = ExperimentConfig.from_dict(config_dict)
 
@@ -652,7 +652,7 @@ def db_init(
     ),
 ) -> None:
     """Initialize the database for storing experiment results."""
-    from src.core.database_manager import DatabaseConfig, DatabaseManager
+    from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
 
     db_path = db_path or "./ml_agents_results.db"
 
@@ -692,7 +692,7 @@ def db_backup(
     """Create a backup of the experiment database."""
     from datetime import datetime
 
-    from src.core.database_manager import DatabaseConfig, DatabaseManager
+    from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
 
     source_db = source_db or "./ml_agents_results.db"
 
@@ -726,7 +726,7 @@ def db_stats(
     )
 ) -> None:
     """Show database statistics and information."""
-    from src.core.database_manager import DatabaseConfig, DatabaseManager
+    from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
 
     db_path = db_path or "./ml_agents_results.db"
 
@@ -776,7 +776,7 @@ def db_migrate(
     """Migrate database schema to the latest version."""
     from datetime import datetime
 
-    from src.core.database_manager import DatabaseConfig, DatabaseManager
+    from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
 
     db_path = db_path or "./ml_agents_results.db"
 
@@ -865,8 +865,8 @@ def export_experiment(
     """Export experiment results to various formats."""
     from datetime import datetime
 
-    from src.core.database_manager import DatabaseConfig
-    from src.core.results_processor import ResultsProcessor
+    from ml_agents.core.database_manager import DatabaseConfig
+    from ml_agents.core.results_processor import ResultsProcessor
 
     db_path = db_path or "./ml_agents_results.db"
 
@@ -933,8 +933,8 @@ def compare_experiments(
     """Compare results across multiple experiments."""
     from datetime import datetime
 
-    from src.core.database_manager import DatabaseConfig
-    from src.core.results_processor import ResultsProcessor
+    from ml_agents.core.database_manager import DatabaseConfig
+    from ml_agents.core.results_processor import ResultsProcessor
 
     db_path = db_path or "./ml_agents_results.db"
     exp_ids = [exp_id.strip() for exp_id in experiment_ids.split(",")]
@@ -1008,8 +1008,8 @@ def analyze_experiment(
     ),
 ) -> None:
     """Generate detailed analysis reports for an experiment."""
-    from src.core.database_manager import DatabaseConfig
-    from src.core.results_processor import ResultsProcessor
+    from ml_agents.core.database_manager import DatabaseConfig
+    from ml_agents.core.results_processor import ResultsProcessor
 
     db_path = db_path or "./ml_agents_results.db"
 
@@ -1101,8 +1101,8 @@ def list_experiments(
     ),
 ) -> None:
     """List experiments stored in the database."""
-    from src.core.database_manager import DatabaseConfig
-    from src.core.results_processor import ResultsProcessor
+    from ml_agents.core.database_manager import DatabaseConfig
+    from ml_agents.core.results_processor import ResultsProcessor
 
     db_path = db_path or "./ml_agents_results.db"
 
@@ -1172,7 +1172,7 @@ def preprocess_list_unprocessed(
     ),
 ) -> None:
     """List datasets that haven't been preprocessed yet."""
-    from src.core.dataset_preprocessor import DatasetPreprocessor
+    from ml_agents.core.dataset_preprocessor import DatasetPreprocessor
 
     display_info(f"Scanning for unprocessed datasets in: {benchmark_csv}")
 
@@ -1258,7 +1258,7 @@ def preprocess_inspect(
     ),
 ) -> None:
     """Inspect dataset schema and detect input/output patterns."""
-    from src.core.dataset_preprocessor import DatasetPreprocessor
+    from ml_agents.core.dataset_preprocessor import DatasetPreprocessor
 
     display_info(
         f"Inspecting dataset schema: {dataset}"
@@ -1354,7 +1354,7 @@ def preprocess_generate_rules(
     ),
 ) -> None:
     """Generate transformation rules for a dataset based on schema analysis."""
-    from src.core.dataset_preprocessor import DatasetPreprocessor
+    from ml_agents.core.dataset_preprocessor import DatasetPreprocessor
 
     display_info(
         f"Generating transformation rules for: {dataset}"
@@ -1421,7 +1421,7 @@ def preprocess_transform(
     ),
 ) -> None:
     """Apply transformation rules to convert dataset to {INPUT, OUTPUT} format."""
-    from src.core.dataset_preprocessor import DatasetPreprocessor
+    from ml_agents.core.dataset_preprocessor import DatasetPreprocessor
 
     display_info(
         f"Transforming dataset: {dataset}" + (f" (config: {config})" if config else "")
@@ -1555,7 +1555,7 @@ def preprocess_batch(
     """Batch process multiple unprocessed datasets."""
     from pathlib import Path
 
-    from src.core.dataset_preprocessor import DatasetPreprocessor
+    from ml_agents.core.dataset_preprocessor import DatasetPreprocessor
 
     display_info(f"Starting batch preprocessing of datasets from: {benchmark_csv}")
 
@@ -1738,7 +1738,7 @@ def preprocess_upload(
     - CSV file if available (*.csv)
     - Generated README.md with metadata and transformation rules
     """
-    from src.core.dataset_uploader import DatasetUploader
+    from ml_agents.core.dataset_uploader import DatasetUploader
 
     display_info(f"Preparing to upload: {processed_file}")
     display_info(f"Source dataset: {source_dataset}")

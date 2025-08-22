@@ -5,7 +5,7 @@ from typing import Optional
 import typer
 from rich.console import Console
 
-from src.cli.commands import (
+from ml_agents.cli.commands import (
     analyze_experiment,
     compare_experiments,
     db_backup,
@@ -25,8 +25,8 @@ from src.cli.commands import (
     run_comparison_experiment,
     run_single_experiment,
 )
-from src.cli.display import display_banner, display_error
-from src.config import validate_environment
+from ml_agents.cli.display import display_banner, display_error
+from ml_agents.config import validate_environment
 
 app = typer.Typer(
     name="ml-agents",
@@ -90,7 +90,7 @@ def validate_env() -> None:
 @app.command()
 def list_approaches() -> None:
     """List all available reasoning approaches."""
-    from src.reasoning import get_available_approaches
+    from ml_agents.reasoning import get_available_approaches
 
     approaches = get_available_approaches()
 
@@ -105,7 +105,7 @@ def list_approaches() -> None:
 @app.command()
 def version() -> None:
     """Show version information."""
-    from src.cli import __version__
+    from ml_agents import __version__
 
     console.print(f"\n🧠 [bold blue]ML Agents CLI[/bold blue] v{__version__}")
     console.print("🔬 [dim]Cohere Labs Open Science Initiative[/dim]")
