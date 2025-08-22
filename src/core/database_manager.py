@@ -291,6 +291,9 @@ class DatabaseManager:
             isolation_level="DEFERRED",  # Better for concurrent access
         )
         conn.row_factory = sqlite3.Row  # Enable column access by name
+        conn.execute(
+            "PRAGMA foreign_keys = ON"
+        )  # Enable foreign keys for this connection
         try:
             yield conn
         finally:

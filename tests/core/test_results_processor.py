@@ -112,9 +112,15 @@ class TestResultsProcessor:
             is_correct = i % 3 != 0  # 2/3 correct
 
             response = StandardResponse(
-                response=f"Answer {i}",
-                parsed_answer=str(i),
-                is_correct=is_correct,
+                text=f"Answer {i}",
+                provider="openai",
+                model="gpt-4",
+                prompt_tokens=10,
+                completion_tokens=5,
+                total_tokens=15,
+                generation_time=1.5 + (i * 0.1),
+                parameters={},
+                extracted_answer=str(i),
                 metadata={
                     "experiment_id": experiment_id,
                     "approach": approach,
@@ -581,9 +587,15 @@ class TestResultsProcessor:
         processor.save_experiment(experiment_id, "Test", {})
 
         response = StandardResponse(
-            response="Answer",
-            parsed_answer="42",
-            is_correct=True,
+            text="Answer",
+            provider="openai",
+            model="gpt-4",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            generation_time=1.5,
+            parameters={},
+            extracted_answer="42",
             metadata={
                 "experiment_id": experiment_id,
                 "approach": "CoT",
@@ -635,9 +647,15 @@ class TestResultsProcessor:
 
         # Test with invalid experiment ID in run result
         response = StandardResponse(
-            response="Answer",
-            parsed_answer="42",
-            is_correct=True,
+            text="Answer",
+            provider="openai",
+            model="gpt-4",
+            prompt_tokens=10,
+            completion_tokens=5,
+            total_tokens=15,
+            generation_time=1.5,
+            parameters={},
+            extracted_answer="42",
             metadata={
                 "experiment_id": "nonexistent_experiment",
                 "approach": "CoT",

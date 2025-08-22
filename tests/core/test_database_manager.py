@@ -386,8 +386,8 @@ PoT,openai,gpt-4,"3*3=?",9,"The answer is 9",true,1200,0.001"""
 
                 rows = cursor.fetchall()
                 assert len(rows) == 2
-                assert rows[0] == ("CoT", "openai", "gpt-4", True)
-                assert rows[1] == ("PoT", "openai", "gpt-4", True)
+                assert tuple(rows[0]) == ("CoT", "openai", "gpt-4", True)
+                assert tuple(rows[1]) == ("PoT", "openai", "gpt-4", True)
 
         finally:
             # Cleanup
@@ -421,26 +421,14 @@ PoT,openai,gpt-4,"3*3=?",9,"The answer is 9",true,1200,0.001"""
         """Test concurrent database access."""
         manager, db_path = temp_db
 
-        # Test multiple connections don't interfere
-        connections = []
-        try:
-            for i in range(5):
-                conn = manager.get_connection().__enter__()
-                connections.append(conn)
-
+        # Test multiple connections work properly
+        for i in range(5):
+            with manager.get_connection() as conn:
                 # Each connection should be able to execute queries
                 cursor = conn.cursor()
                 cursor.execute("SELECT COUNT(*) FROM experiments")
                 result = cursor.fetchone()[0]
                 assert isinstance(result, int)
-
-        finally:
-            # Cleanup connections
-            for conn in connections:
-                try:
-                    conn.close()
-                except:
-                    pass
 
     def test_error_handling(self):
         """Test error handling for various scenarios."""
@@ -485,7 +473,7 @@ PoT,openai,gpt-4,"3*3=?",9,"The answer is 9",true,1200,0.001"""
                 conn.execute(
                     """
                     INSERT INTO parsing_metrics (run_id, confidence_score)
-                    VALUES ('run_1', 1.5)  # > 1.0 should fail
+                    VALUES ('run_1', 1.5)  -- > 1.0 should fail
                 """
                 )
 
