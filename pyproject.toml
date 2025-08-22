@@ -1,15 +1,15 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=68.0", "wheel", "setuptools-scm>=7.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ml-agents-reasoning"
-version = "0.1.0"
+dynamic = ["version"]
 description = "ML Agents Reasoning Research Platform"
 readme = "README.md"
 license = "CC-BY-4.0"
 authors = [
-    {name = "Cohere Labs", email = "labs@cohere.com"}
+    {name = "Matthew Thompson", email = "thompsonson@gmail.com"}
 ]
 keywords = ["reasoning", "llm", "benchmark", "research", "ai"]
 classifiers = [
@@ -56,6 +56,7 @@ dev = [
     "pre-commit>=3.4.0",
     "build>=0.10.0",
     "twine>=4.0.0",
+    "setuptools-scm>=7.0.0",
 ]
 
 [project.urls]
@@ -72,6 +73,10 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 ml_agents = ["reasoning/prompts/*.txt", "configs/*.yaml"]
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "no-local-version"
 
 [tool.black]
 line-length = 88
