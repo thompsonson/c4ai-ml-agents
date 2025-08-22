@@ -264,6 +264,7 @@ The project includes **SQLite database persistence** for all experiment results 
 - **Real-time persistence**: All experiment results are automatically saved to `ml_agents_results.db`
 - **Read-only MCP access**: Query the database directly from Claude Code conversations
 - **Development workflow**: Enhanced debugging and analysis capabilities
+- **Preprocessing Metadata**: Dataset preprocessing status and rules tracked in schema v1.2.0
 
 ### MCP Server Setup (Development)
 
@@ -303,6 +304,44 @@ ml-agents export EXPERIMENT_ID --format excel     # Export to Excel
 ml-agents compare-experiments "exp1,exp2,exp3"    # Compare experiments
 ml-agents analyze EXPERIMENT_ID --type accuracy   # Generate reports
 ml-agents list-experiments --status completed     # List experiments
+```
+
+### Dataset Preprocessing CLI Commands (Phase 9)
+
+The project includes comprehensive dataset preprocessing capabilities to standardize diverse benchmark datasets to consistent `{INPUT, OUTPUT}` schema:
+
+```bash
+# Dataset preprocessing workflow
+ml-agents preprocess-list --benchmark-csv ./documentation/Tasks\ -\ Benchmarks.csv     # List unprocessed datasets
+ml-agents preprocess-inspect <dataset> --config <config> --samples 100                  # Analyze dataset schema
+ml-agents preprocess-generate-rules <dataset> --config <config>                         # Generate transformation rules
+ml-agents preprocess-transform <dataset> <rules.json> --config <config>                 # Apply transformation
+ml-agents preprocess-batch --benchmark-csv <file> --confidence-threshold 0.6            # Batch process datasets
+```
+
+**Key Features:**
+- **Automated Schema Detection**: Detects input/output fields with 90%+ confidence
+- **Native HuggingFace Config Support**: Handles datasets with multiple configurations seamlessly
+- **Enhanced Field Selection**: Prioritizes complete answer fields (e.g., `oracle_full_answer` over `oracle_answer`)
+- **Database Integration**: Tracks preprocessing metadata in SQLite (schema v1.2.0)
+- **JSON Output Format**: Produces `[{"INPUT": "...", "OUTPUT": "..."}, ...]` for ML workflows
+
+**Default Output Location**: All preprocessing outputs save to `./outputs/preprocessing/` by default
+
+**Example Preprocessing Workflow:**
+```bash
+# 1. Inspect a dataset to understand its structure
+ml-agents preprocess-inspect MilaWang/SpatialEval --config tqa --samples 100
+# → Saves analysis to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa_analysis.json
+
+# 2. Generate transformation rules based on detected patterns
+ml-agents preprocess-generate-rules MilaWang/SpatialEval --config tqa
+# → Saves rules to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa_rules.json
+
+# 3. Apply transformation to create standardized dataset
+ml-agents preprocess-transform MilaWang/SpatialEval ./outputs/preprocessing/MilaWang_SpatialEval_tqa_rules.json --config tqa
+# → Saves dataset to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa.json
+# → Format: [{"INPUT": "...", "OUTPUT": "..."}, {"INPUT": "...", "OUTPUT": "..."}, ...]
 ```
 
 ## Community Collaboration

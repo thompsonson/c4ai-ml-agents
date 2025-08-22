@@ -15,6 +15,11 @@ from src.cli.commands import (
     export_experiment,
     list_checkpoints,
     list_experiments,
+    preprocess_batch,
+    preprocess_generate_rules,
+    preprocess_inspect,
+    preprocess_list_unprocessed,
+    preprocess_transform,
     resume_experiment,
     run_comparison_experiment,
     run_single_experiment,
@@ -47,6 +52,13 @@ app.command("export")(export_experiment)
 app.command("compare-experiments")(compare_experiments)
 app.command("analyze")(analyze_experiment)
 app.command("list-experiments")(list_experiments)
+
+# Add preprocessing commands
+app.command("preprocess-list")(preprocess_list_unprocessed)
+app.command("preprocess-inspect")(preprocess_inspect)
+app.command("preprocess-generate-rules")(preprocess_generate_rules)
+app.command("preprocess-transform")(preprocess_transform)
+app.command("preprocess-batch")(preprocess_batch)
 
 
 @app.command()

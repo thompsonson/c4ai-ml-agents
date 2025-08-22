@@ -34,7 +34,7 @@ class DatabaseManager:
     """Manages SQLite database for ML Agents experiment results."""
 
     # Schema version for migration tracking
-    CURRENT_SCHEMA_VERSION = "1.1.0"
+    CURRENT_SCHEMA_VERSION = "1.2.0"
 
     # SQL for creating tables
     SCHEMA_SQL = """
@@ -82,6 +82,23 @@ class DatabaseManager:
         FOREIGN KEY (run_id) REFERENCES runs(id) ON DELETE CASCADE
     );
 
+    -- Dataset_preprocessing: Track dataset preprocessing metadata
+    CREATE TABLE IF NOT EXISTS dataset_preprocessing (
+        id TEXT PRIMARY KEY,
+        dataset_name TEXT UNIQUE NOT NULL,
+        dataset_url TEXT,
+        status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processed', 'failed')),
+        schema_analysis TEXT,  -- JSON with detected patterns and field mapping
+        transformation_rules TEXT,  -- JSON with transformation configuration
+        confidence_score REAL CHECK(confidence_score >= 0 AND confidence_score <= 1),
+        original_samples INTEGER,
+        processed_samples INTEGER,
+        validation_results TEXT,  -- JSON with validation metrics
+        output_path TEXT,
+        processed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Schema version tracking
     CREATE TABLE IF NOT EXISTS schema_version (
         version TEXT PRIMARY KEY,
@@ -94,6 +111,8 @@ class DatabaseManager:
     CREATE INDEX IF NOT EXISTS idx_runs_accuracy ON runs(is_correct);
     CREATE INDEX IF NOT EXISTS idx_parsing_confidence ON parsing_metrics(confidence_score);
     CREATE INDEX IF NOT EXISTS idx_experiments_status ON experiments(status);
+    CREATE INDEX IF NOT EXISTS idx_preprocessing_status ON dataset_preprocessing(status);
+    CREATE INDEX IF NOT EXISTS idx_preprocessing_confidence ON dataset_preprocessing(confidence_score);
     """
 
     def __init__(self, config: DatabaseConfig):

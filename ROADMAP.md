@@ -2,16 +2,19 @@
 
 This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into a production-ready CLI application. Each feature is designed to be a bite-sized, independently implementable unit.
 
-## 🎉 Phase 4 Complete - August 18, 2025
+## 🎉 Phase 8 Complete - August 22, 2025
 
 **Major Accomplishments:**
 - ✅ **8 Reasoning Approaches** implemented and tested (None, ChainOfThought, ProgramOfThought, Reflection, AsPlanning, ChainOfVerification, SkeletonOfThought, TreeOfThought)
 - ✅ **ExperimentRunner** with parallel execution, checkpointing, and progress tracking
 - ✅ **Enhanced Metadata** for experiment reproducibility and traceability
 - ✅ **Comprehensive Testing** with thread safety validation for parallel execution
-- ✅ **Production-Ready Platform** for comparative reasoning research studies
+- ✅ **Production-Ready CLI Interface** with full argument parsing and configuration management
+- ✅ **Structured Output Parsing** with Instructor library integration
+- ✅ **Results Processing** with SQLite database persistence and multiple export formats
+- ✅ **Testing Suite** with comprehensive coverage across all components
 
-**Next Phase:** Phase 6 (Results processing and enhanced output formats)
+**Current Phase:** Phase 9 (Dataset Preprocessing & Standardization)
 
 ## Legend
 - 🟢 Complete
@@ -346,93 +349,93 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
 
 **Phase 5 Total Time:** ~30 hours (significantly exceeded original estimates due to enhanced scope and comprehensive testing)
 
-## Phase 6: Output Parser Implementation
+## Phase 6: Output Parser Implementation ✅ **COMPLETE**
 
 ### 6.1 Structured Output Parsing (Based on ADR-001)
-- [ ] ⚪ Implement Instructor library integration - **P0**
+- [x] 🟢 Implement Instructor library integration - **P0**
   - Add instructor dependency to requirements.txt
   - Create enhanced parsing infrastructure
   - Time: 2 hours
 
-- [ ] ⚪ Create Pydantic answer extraction models - **P0**
+- [x] 🟢 Create Pydantic answer extraction models - **P0**
   - Implement BaseAnswerExtraction, MultipleChoiceExtraction, NumericalExtraction
   - Add confidence scoring and validation
   - Time: 1.5 hours
 
-- [ ] ⚪ Integrate structured parsing with reasoning approaches - **P0**
+- [x] 🟢 Integrate structured parsing with reasoning approaches - **P0**
   - Enhance all 8 reasoning approaches with instructor-based parsing
   - Maintain fallback to regex patterns
   - Time: 4 hours
 
-- [ ] ⚪ Add multi-provider compatibility - **P1**
+- [x] 🟢 Add multi-provider compatibility - **P1**
   - Test function calling support across OpenAI, Anthropic, Cohere, OpenRouter
   - Implement provider-specific optimizations
   - Time: 2 hours
 
 ### 6.2 Parsing Infrastructure
-- [ ] ⚪ Implement parsing configuration - **P1**
+- [x] 🟢 Implement parsing configuration - **P1**
   - Add ParsingConfig with confidence thresholds and retry logic
   - Integrate with ExperimentConfig
   - Time: 1 hour
 
-- [ ] ⚪ Add parsing metrics and monitoring - **P1**
+- [x] 🟢 Add parsing metrics and monitoring - **P1**
   - Track parsing success rates and confidence scores
   - Add parsing method metadata to StandardResponse
   - Time: 1.5 hours
 
-- [ ] ⚪ Create comprehensive test suite - **P0**
+- [x] 🟢 Create comprehensive test suite - **P0**
   - Test structured parsing across all reasoning approaches
   - Validate accuracy improvements vs regex baseline
   - Time: 3 hours
 
 ### 6.3 Fallback and Error Handling
-- [ ] ⚪ Implement graceful degradation - **P1**
+- [x] 🟢 Implement graceful degradation - **P1**
   - Automatic fallback to regex patterns on parsing failures
   - Comprehensive error logging and monitoring
   - Time: 2 hours
 
-- [ ] ⚪ Add parsing performance validation - **P2**
+- [x] 🟢 Add parsing performance validation - **P2**
   - Benchmark accuracy improvements (>15% target)
   - Monitor latency and cost impacts
   - Time: 2 hours
 
 **Phase 6 Total Time**: ~19 hours
 
-## Phase 7: Results Processing
+## Phase 7: Results Processing ✅ **COMPLETE**
 
 ### 7.1 ResultsProcessor Class
-- [ ] ⚪ Implement basic processor - **P0**
+- [x] 🟢 Implement basic processor - **P0**
   - Create core/results_processor.py
   - Add CSV saving functionality
   - Time: 1.5 hours
 
-- [ ] ⚪ Add summary generation - **P1**
+- [x] 🟢 Add summary generation - **P1**
   - Implement generate_summary method
   - Calculate statistics
   - Time: 1.5 hours
 
-- [ ] ⚪ Add comparison analysis - **P1**
+- [x] 🟢 Add comparison analysis - **P1**
   - Implement compare_approaches method
   - Create comparison tables
   - Time: 2 hours
 
-- [ ] ⚪ Add report generation - **P1**
+- [x] 🟢 Add report generation - **P1**
   - Implement create_report method
   - Generate markdown reports
   - Time: 2 hours
 
 ### 7.2 Output Formats
-- [ ] ⚪ Add JSON export - **P2**
+- [x] 🟢 Add JSON export - **P2**
   - Export results as JSON
   - Include metadata
   - Time: 1 hour
 
-- [ ] ⚪ Add Excel export - **P3**
+- [x] 🟢 Add Excel export - **P3**
   - Export to Excel format
   - Add formatting
   - Time: 1.5 hours
 
-## Phase 8: Testing Suite
+## Phase 8: Testing Suite ✅ **COMPLETE**
 
 ### 8.1 Unit Tests
 - [x] 🟢 Test ExperimentConfig - **P1** (Completed in Phase 1)
@@ -465,12 +468,12 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Test checkpoint save/resume functionality
   - Time: 2.5 hours
 
-- [ ] ⚪ Test ResultsProcessor - **P1**
+- [x] 🟢 Test ResultsProcessor - **P1**
   - Test output generation for CSV/JSON formats
   - Test statistics calculation and summaries
   - Time: 2 hours
 
-- [ ] ⚪ Test Output Parser - **P0** (New for Phase 6)
+- [x] 🟢 Test Output Parser - **P0** (New for Phase 6)
   - Test Instructor integration across all reasoning approaches
   - Test fallback mechanisms and error handling
   - Validate parsing accuracy improvements
@@ -483,14 +486,70 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Test error scenarios and validation
   - Time: 4 hours
 
-- [ ] ⚪ Test end-to-end pipeline - **P2**
+- [x] 🟢 Test end-to-end pipeline - **P2**
   - Small dataset integration tests
   - Mock API responses for full workflows
   - Time: 3 hours
 
-## Phase 9: Documentation
+## Phase 9: Dataset Preprocessing & Standardization ✅ **COMPLETE**
 
-### 9.1 Code Documentation
+**Strategic Context**: Standardize diverse benchmark datasets to consistent `{INPUT, OUTPUT}` schema for uniform evaluation across reasoning approaches.
+
+**Major Accomplishments:**
+- ✅ **Automated Schema Detection** with pattern recognition for common dataset structures (90%+ confidence)
+- ✅ **Enhanced Field Selection Heuristics** prioritizing complete answer fields (e.g., `oracle_full_answer` over `oracle_answer`)
+- ✅ **Native HuggingFace Config Support** handling datasets with multiple configurations without workarounds
+- ✅ **Transformation Pipeline** converting diverse schemas to standardized `{INPUT, OUTPUT}` format
+- ✅ **CLI Integration** with 5 new preprocessing commands, all outputting to `./outputs/preprocessing/` by default
+- ✅ **Database Integration** with SQLite metadata tracking and migration to schema v1.2.0
+- ✅ **JSON Output Format** producing ML-ready `[{"INPUT": "...", "OUTPUT": "..."}, ...]` record structure
+- ✅ **Validation System** ensuring data integrity throughout transformation process
+
+### 9.1 Core DatasetPreprocessor Implementation
+- [x] 🟢 Implement schema detection system - **P0**
+  - Auto-detect input/output fields from column names and content
+  - Pattern matching for common structures (single field, sentence pairs, context+question)
+  - Time: 2.5 hours
+
+- [x] 🟢 Create transformation pipeline - **P0**
+  - Generate transformation rules based on detected patterns
+  - Apply standardization to convert to {INPUT, OUTPUT} format
+  - Data integrity validation throughout transformation
+  - Time: 2.5 hours
+
+### 9.2 CLI Integration
+- [x] 🟢 Add preprocessing CLI commands - **P0**
+  - `ml-agents preprocess list-unprocessed --benchmark-csv`
+  - `ml-agents preprocess inspect --dataset <name>`
+  - `ml-agents preprocess transform --dataset <name> --rules <file>`
+  - `ml-agents preprocess batch --benchmark-csv <file> --output-dir <dir>`
+  - Time: 1.5 hours
+
+### 9.3 Database Integration & Testing
+- [x] 🟢 SQLite3 integration for metadata storage - **P1**
+  - Track preprocessing status and transformation rules
+  - Store schema detection results
+  - Time: 1 hour
+
+- [x] 🟢 Validation with known datasets - **P1**
+  - Test with MilaWang/SpatialEval and other benchmark datasets
+  - Verify processed datasets work with all 8 reasoning approaches
+  - Data integrity checks and quality validation
+  - Time: 1.5 hours
+
+**New CLI Commands**:
+- `ml-agents preprocess-list` - List datasets that haven't been preprocessed yet
+- `ml-agents preprocess-inspect` - Inspect dataset schema and detect input/output patterns
+- `ml-agents preprocess-generate-rules` - Generate transformation rules based on schema analysis
+- `ml-agents preprocess-transform` - Apply transformation rules to convert dataset to {INPUT, OUTPUT} format
+- `ml-agents preprocess-batch` - Batch process multiple unprocessed datasets with confidence thresholds
+
+**Phase 9 Total Time**: ~15 hours (exceeded estimate due to enhanced features and comprehensive testing)
+**Success Criteria**: ✅ **EXCEEDED** - 90% confidence schema detection, database tracking, native config support, enhanced field selection, and centralized output management
+
+## Phase 10: Documentation
+
+### 10.1 Code Documentation
 - [ ] ⚪ Add comprehensive docstrings - **P1**
   - All classes and methods
   - Include examples
@@ -501,7 +560,7 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Auto-generate from docstrings
   - Time: 2 hours
 
-### 9.2 User Documentation
+### 10.2 User Documentation
 - [ ] ⚪ Update README.md - **P1**
   - Installation instructions
   - Usage examples
@@ -517,7 +576,7 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Best practices
   - Time: 2 hours
 
-## Phase 10: Performance & Optimization
+## Phase 11: Performance & Optimization
 
 ### 10.1 Performance Improvements
 - [ ] ⚪ Add response caching - **P2**
@@ -546,7 +605,7 @@ This roadmap breaks down the refactoring of the ML Agents Jupyter notebook into 
   - Error reporting
   - Time: 2 hours
 
-## Phase 11: Future Enhancements
+## Phase 12: Future Enhancements
 
 ### 11.1 Advanced Features
 - [ ] ⚪ Web UI dashboard - **P3**
