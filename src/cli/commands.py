@@ -34,8 +34,10 @@ from src.cli.validators import (
     validate_top_p,
 )
 from src.core.experiment_runner import ExperimentRunner
+from src.utils.logging_config import get_logger
 
 console = Console()
+logger = get_logger(__name__)
 
 # Default preprocessing output directory
 PREPROCESSING_OUTPUT_DIR = Path("./outputs/preprocessing")
@@ -1694,4 +1696,137 @@ def preprocess_batch(
 
     except Exception as e:
         display_error(f"Failed to run batch preprocessing: {e}")
+        raise typer.Exit(1)
+
+
+def preprocess_upload(
+    processed_file: str = typer.Argument(
+        ...,
+        help="Path to processed dataset JSON file (will also upload related _analysis.json, _rules.json, and .csv files)",
+    ),
+    source_dataset: str = typer.Option(
+        ...,
+        "--source-dataset",
+        "-s",
+        help="Original dataset name/URL for attribution (e.g., MilaWang/SpatialEval)",
+    ),
+    target_name: str = typer.Option(
+        ...,
+        "--target-name",
+        "-t",
+        help="Target name for uploaded dataset (will be uploaded to c4ai-ml-agents/<target-name>)",
+    ),
+    config: Optional[str] = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Dataset configuration that was used during preprocessing",
+    ),
+    description: Optional[str] = typer.Option(
+        None, "--description", "-d", help="Custom description for the dataset"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Validate and prepare but don't actually upload"
+    ),
+) -> None:
+    """Upload processed dataset and all related preprocessing files to HuggingFace Hub.
+
+    This command uploads:
+    - Main dataset JSON file
+    - Schema analysis JSON file (*_analysis.json)
+    - Transformation rules JSON file (*_rules.json)
+    - CSV file if available (*.csv)
+    - Generated README.md with metadata and transformation rules
+    """
+    from src.core.dataset_uploader import DatasetUploader
+
+    display_info(f"Preparing to upload: {processed_file}")
+    display_info(f"Source dataset: {source_dataset}")
+    display_info(f"Target: c4ai-ml-agents/{target_name}")
+
+    if config:
+        display_info(f"Configuration: {config}")
+
+    if description:
+        display_info(f"Description: {description}")
+
+    try:
+        uploader = DatasetUploader(org_name="c4ai-ml-agents")
+
+        # Validate the processed file first
+        console.print("\n🔍 [bold blue]Validating processed dataset...[/bold blue]")
+        validation_results = uploader.validate_processed_file(processed_file)
+
+        if not validation_results["validation_passed"]:
+            display_error("Dataset validation failed:")
+            for issue in validation_results["issues"]:
+                console.print(f"  [red]❌ {issue}[/red]")
+            raise typer.Exit(1)
+
+        # Display validation results
+        console.print(f"[green]✅ Dataset validation passed[/green]")
+        console.print(f"  - Format: {validation_results['format'].upper()}")
+        console.print(f"  - Samples: {validation_results['sample_count']:,}")
+        console.print(f"  - File size: {validation_results['file_size_mb']:.1f} MB")
+        console.print(
+            f"  - Schema: {'INPUT/OUTPUT' if validation_results['has_input_output_schema'] else 'Unknown'}"
+        )
+
+        if validation_results["issues"]:
+            console.print("[yellow]⚠️ Warnings:[/yellow]")
+            for issue in validation_results["issues"]:
+                console.print(f"  [yellow]• {issue}[/yellow]")
+
+        if dry_run:
+            display_info("Dry run mode - skipping actual upload")
+            console.print(
+                f"\n[green]✅ Dry run successful! Dataset is ready for upload.[/green]"
+            )
+            console.print(
+                f"[green]   Target: https://huggingface.co/datasets/c4ai-ml-agents/{target_name}[/green]"
+            )
+            console.print(
+                f"[green]   Run without --dry-run to perform actual upload[/green]"
+            )
+            return
+
+        # Confirm upload
+        console.print(
+            f"\n📤 [bold yellow]Ready to upload to HuggingFace Hub[/bold yellow]"
+        )
+        console.print(f"Target repository: [cyan]c4ai-ml-agents/{target_name}[/cyan]")
+
+        confirm = typer.confirm("Proceed with upload?")
+        if not confirm:
+            display_info("Upload cancelled by user")
+            return
+
+        # Perform upload
+        console.print("\n🚀 [bold green]Starting upload...[/bold green]")
+        repo_id = uploader.upload_dataset(
+            processed_file=processed_file,
+            source_dataset=source_dataset,
+            target_name=target_name,
+            config=config,
+            description=description,
+        )
+
+        display_success(
+            f"✅ Dataset successfully uploaded to: https://huggingface.co/datasets/{repo_id}"
+        )
+
+        # Display usage instructions
+        console.print("\n📋 [bold blue]Usage Instructions:[/bold blue]")
+        console.print(f"[cyan]# Load in Python[/cyan]")
+        console.print(f"from datasets import load_dataset")
+        console.print(f"dataset = load_dataset('{repo_id}')")
+        console.print()
+        console.print(f"[cyan]# Use with ML Agents CLI[/cyan]")
+        console.print(
+            f"ml-agents run --custom-dataset {repo_id} --approach ChainOfThought"
+        )
+
+    except Exception as e:
+        display_error(f"Failed to upload dataset: {e}")
+        logger.error(f"Dataset upload failed: {e}")
         raise typer.Exit(1)

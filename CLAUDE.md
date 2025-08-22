@@ -317,6 +317,9 @@ ml-agents preprocess-inspect <dataset> --config <config> --samples 100          
 ml-agents preprocess-generate-rules <dataset> --config <config>                         # Generate transformation rules
 ml-agents preprocess-transform <dataset> <rules.json> --config <config>                 # Apply transformation
 ml-agents preprocess-batch --benchmark-csv <file> --confidence-threshold 0.6            # Batch process datasets
+
+# HuggingFace Hub upload (Phase 9a)
+ml-agents preprocess-upload <processed_file> --source-dataset <source> --target-name <name>  # Upload to c4ai-ml-agents
 ```
 
 **Key Features:**
@@ -325,8 +328,15 @@ ml-agents preprocess-batch --benchmark-csv <file> --confidence-threshold 0.6    
 - **Enhanced Field Selection**: Prioritizes complete answer fields (e.g., `oracle_full_answer` over `oracle_answer`)
 - **Database Integration**: Tracks preprocessing metadata in SQLite (schema v1.2.0)
 - **JSON Output Format**: Produces `[{"INPUT": "...", "OUTPUT": "..."}, ...]` for ML workflows
+- **HuggingFace Hub Integration**: Upload processed datasets to `c4ai-ml-agents` org with automated metadata
 
 **Default Output Location**: All preprocessing outputs save to `./outputs/preprocessing/` by default
+
+**HuggingFace Hub Authentication**: For uploading datasets, set the `HF_TOKEN` environment variable with a token that has write access to the `c4ai-ml-agents` organization:
+```bash
+export HF_TOKEN=your_huggingface_token_here
+# Or add to .env file: HF_TOKEN=your_huggingface_token_here
+```
 
 **Example Preprocessing Workflow:**
 ```bash
@@ -342,6 +352,16 @@ ml-agents preprocess-generate-rules MilaWang/SpatialEval --config tqa
 ml-agents preprocess-transform MilaWang/SpatialEval ./outputs/preprocessing/MilaWang_SpatialEval_tqa_rules.json --config tqa
 # → Saves dataset to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa.json
 # → Format: [{"INPUT": "...", "OUTPUT": "..."}, {"INPUT": "...", "OUTPUT": "..."}, ...]
+
+# 4. Upload processed dataset to HuggingFace Hub (Phase 9a)
+ml-agents preprocess-upload ./outputs/preprocessing/MilaWang_SpatialEval_tqa.json \
+  --source-dataset MilaWang/SpatialEval \
+  --target-name SpatialEval \
+  --config tqa \
+  --description "Processed SpatialEval dataset in standardized INPUT/OUTPUT format for reasoning evaluation"
+# → Uploads to: https://huggingface.co/datasets/c4ai-ml-agents/SpatialEval
+# → Uploads all related files: .json, _analysis.json, _rules.json, .csv (if exists)
+# → Includes dataset card (README.md) with transformation rules and metadata
 ```
 
 ## Community Collaboration

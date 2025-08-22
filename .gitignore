@@ -67,6 +67,7 @@ models/
 *.db-wal
 *.db-shm
 ml_agents_results.db
+ml_agents_results.backup_*
 
 # MCP configuration (project-specific)
 .mcp.json

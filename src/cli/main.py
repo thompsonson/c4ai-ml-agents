@@ -20,6 +20,7 @@ from src.cli.commands import (
     preprocess_inspect,
     preprocess_list_unprocessed,
     preprocess_transform,
+    preprocess_upload,
     resume_experiment,
     run_comparison_experiment,
     run_single_experiment,
@@ -59,6 +60,7 @@ app.command("preprocess-inspect")(preprocess_inspect)
 app.command("preprocess-generate-rules")(preprocess_generate_rules)
 app.command("preprocess-transform")(preprocess_transform)
 app.command("preprocess-batch")(preprocess_batch)
+app.command("preprocess-upload")(preprocess_upload)
 
 
 @app.command()
