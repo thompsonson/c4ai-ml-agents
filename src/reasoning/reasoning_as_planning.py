@@ -106,6 +106,12 @@ class ReasoningAsPlanningReasoning(BaseReasoning):
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(response, reasoning_data)
 
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response,
+            answer_type="reasoning_chain",  # Planning involves step-by-step reasoning
+        )
+
         logger.info(
             f"Completed Reasoning-as-Planning - "
             f"stages: {planning_stages}, tokens: {response.total_tokens}"

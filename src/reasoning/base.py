@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 from src.config import ExperimentConfig
 from src.utils.api_clients import StandardResponse, create_api_client
 from src.utils.logging_config import get_logger
+from src.utils.output_parser import OutputParser
 
 logger = get_logger(__name__)
 
@@ -40,6 +41,15 @@ class BaseReasoning(ABC):
         self.config = config
         self.client = create_api_client(config)
         self.approach_name = self.__class__.__name__.replace("Reasoning", "")
+
+        # Initialize output parser with configuration
+        self.output_parser = OutputParser(
+            client=self.client,
+            use_structured_parsing=config.parsing.use_structured_parsing,
+            fallback_to_regex=config.parsing.fallback_to_regex,
+            confidence_threshold=config.parsing.confidence_threshold,
+            max_retries=config.parsing.max_parsing_retries,
+        )
 
         logger.info(f"Initialized {self.approach_name} reasoning approach")
 
@@ -132,6 +142,86 @@ class BaseReasoning(ABC):
 
         # Return at least 1 if we found any indicators, otherwise 0
         return max(1, step_count) if step_count > 0 else 0
+
+    def _extract_answer(
+        self,
+        response: StandardResponse,
+        answer_type: Optional[str] = None,
+        extraction_prompt: Optional[str] = None,
+    ) -> StandardResponse:
+        """Extract structured answer from the response using output parser.
+
+        Args:
+            response: The StandardResponse from the reasoning execution
+            answer_type: Type of answer expected (optional)
+            extraction_prompt: Custom extraction prompt (optional)
+
+        Returns:
+            Enhanced StandardResponse with extracted answer and parsing metadata
+        """
+        try:
+            # Extract answer using output parser
+            parsing_result = self.output_parser.extract_answer(
+                response_text=response.text,
+                answer_type=answer_type,
+                extraction_prompt=extraction_prompt,
+            )
+
+            # Update response with parsing results
+            response.parsing_metadata = parsing_result["metadata"]
+            response.extracted_answer = parsing_result["extraction"].final_answer
+
+            # Add parsing information to response metadata
+            if response.metadata is None:
+                response.metadata = {}
+
+            response.metadata.update(
+                {
+                    "parsing_method": parsing_result["metadata"]["parsing_method"],
+                    "parsing_confidence": parsing_result["metadata"][
+                        "parsing_confidence"
+                    ],
+                    "parsing_attempts": parsing_result["metadata"]["parsing_attempts"],
+                    "extraction_time_ms": parsing_result["metadata"][
+                        "extraction_time_ms"
+                    ],
+                }
+            )
+
+            logger.debug(
+                f"Answer extraction completed for {self.approach_name}: "
+                f"method={parsing_result['metadata']['parsing_method']}, "
+                f"confidence={parsing_result['metadata']['parsing_confidence']:.2f}, "
+                f"extracted_answer='{parsing_result['extraction'].final_answer[:50]}'"
+            )
+
+        except Exception as e:
+            logger.warning(f"Answer extraction failed for {self.approach_name}: {e}")
+
+            # Fallback: use the original response text as extracted answer
+            response.extracted_answer = response.text.strip()
+            logger.info(
+                f"Using fallback answer extraction for {self.approach_name}: '{response.extracted_answer[:50]}...'."
+            )
+            response.parsing_metadata = {
+                "parsing_method": "fallback",
+                "parsing_confidence": 0.1,
+                "parsing_attempts": 0,
+                "extraction_time_ms": 0,
+                "errors": [str(e)],
+            }
+
+            if response.metadata is None:
+                response.metadata = {}
+            response.metadata.update(
+                {
+                    "parsing_method": "fallback",
+                    "parsing_confidence": 0.1,
+                    "parsing_error": str(e),
+                }
+            )
+
+        return response
 
     def cleanup(self) -> None:
         """Clean up any resources used by the reasoning approach.

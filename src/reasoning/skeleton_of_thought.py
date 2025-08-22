@@ -110,6 +110,12 @@ class SkeletonOfThoughtReasoning(BaseReasoning):
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(response, reasoning_data)
 
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response,
+            answer_type="textual",  # SoT creates structured textual outlines
+        )
+
         logger.info(
             f"Completed Skeleton-of-Thought reasoning - "
             f"sections: {structure_analysis['outline_sections']}, "

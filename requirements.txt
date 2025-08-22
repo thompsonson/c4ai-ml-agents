@@ -16,3 +16,5 @@ torch
 typer
 rich
 pydantic
+instructor>=1.0.0
+openpyxl>=3.1.0

@@ -99,6 +99,12 @@ class ChainOfThoughtReasoning(BaseReasoning):
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(response, reasoning_data)
 
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response,
+            answer_type="reasoning_chain",  # CoT is well-suited for reasoning chains
+        )
+
         logger.info(
             f"Completed Chain-of-Thought reasoning - "
             f"steps: {reasoning_steps}, tokens: {response.total_tokens}"

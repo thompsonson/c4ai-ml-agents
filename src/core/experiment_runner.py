@@ -32,8 +32,10 @@ except ImportError:
     RICH_AVAILABLE = False
 
 from src.config import ExperimentConfig
+from src.core.database_manager import DatabaseConfig
 from src.core.dataset_loader import BBEHDatasetLoader
 from src.core.reasoning_inference import ReasoningInference, ReasoningResult
+from src.core.results_processor import ResultsProcessor
 from src.reasoning import get_available_approaches
 from src.utils.logging_config import get_logger, log_experiment_start
 
@@ -95,6 +97,16 @@ class ExperimentRunner:
         self.dataset_loader = BBEHDatasetLoader(config)
         self.reasoning_engine = ReasoningInference(config)
 
+        # Database and results processing
+        self.results_processor = None
+        if config.database_enabled:
+            db_config = DatabaseConfig(
+                db_path=config.database_path,
+                backup_frequency=config.database_backup_frequency,
+                auto_vacuum=config.database_auto_vacuum,
+            )
+            self.results_processor = ResultsProcessor(db_config)
+
         # Experiment tracking
         self.experiment_id = self._generate_experiment_id()
         self.start_time: Optional[datetime] = None
@@ -114,6 +126,15 @@ class ExperimentRunner:
         # Rich progress setup
         self.use_rich = RICH_AVAILABLE
         self.console = Console() if RICH_AVAILABLE else None
+
+        # Save experiment metadata to database if enabled
+        if self.results_processor:
+            self.results_processor.save_experiment(
+                experiment_id=self.experiment_id,
+                name=f"{config.provider}_{config.model}_{config.reasoning_approaches}",
+                config=config.to_dict(),
+                description=f"Experiment testing {', '.join(config.reasoning_approaches)} on {config.dataset_name}",
+            )
 
         logger.info(f"Initialized ExperimentRunner with ID: {self.experiment_id}")
 
@@ -238,6 +259,12 @@ class ExperimentRunner:
                             }
                             self.results.append(result_data)
 
+                            # Save to database if enabled
+                            if self.results_processor:
+                                self._save_result_to_database(
+                                    result, approach, i, sample
+                                )
+
                         except Exception as e:
                             logger.warning(f"Error processing sample {i}: {e}")
                             error_data = {
@@ -291,6 +318,12 @@ class ExperimentRunner:
                                 "timestamp": datetime.now().isoformat(),
                             }
                             self.results.append(result_data)
+
+                            # Save to database if enabled
+                            if self.results_processor:
+                                self._save_result_to_database(
+                                    result, approach, i, sample
+                                )
 
                         except Exception as e:
                             logger.warning(f"Error processing sample {i}: {e}")
@@ -568,7 +601,16 @@ class ExperimentRunner:
                 correct_responses = 0
                 for result_data in approach_results:
                     expected = result_data.get("expected_output", "").strip().lower()
-                    actual = result_data["result"]["response"]["text"].strip().lower()
+                    # Use extracted answer if available, otherwise fall back to raw text
+                    extracted = result_data["result"]["response"].get(
+                        "extracted_answer"
+                    )
+                    if extracted and extracted.strip():
+                        actual = extracted.strip().lower()
+                    else:
+                        actual = (
+                            result_data["result"]["response"]["text"].strip().lower()
+                        )
                     if expected and expected == actual:
                         correct_responses += 1
 
@@ -653,6 +695,12 @@ class ExperimentRunner:
         if self.errors:
             logger.info(f"- Errors: {errors_file}")
 
+        # Update experiment status in database
+        if self.results_processor:
+            self.results_processor.update_experiment_status(
+                self.experiment_id, "completed"
+            )
+
     def _save_results_csv(self, filepath: Path) -> None:
         """Save results as CSV file.
 
@@ -669,6 +717,7 @@ class ExperimentRunner:
                 "approach",
                 "input",
                 "expected_output",
+                "extracted_answer",
                 "response_text",
                 "execution_time",
                 "total_tokens",
@@ -680,20 +729,37 @@ class ExperimentRunner:
             writer.writeheader()
 
             for result in self.results:
-                # Safely access the response text
+                # Safely access the response text and extracted answer
                 try:
                     response_text = result["result"]["response"]["text"]
+                    extracted_answer = result["result"]["response"].get(
+                        "extracted_answer"
+                    )
+
+                    # Use extracted answer if available, otherwise fall back to response text
+                    if extracted_answer and extracted_answer.strip():
+                        display_answer = extracted_answer
+                    else:
+                        # For backward compatibility, use the original response text
+                        display_answer = response_text
+                        logger.debug(
+                            f"No extracted answer found for sample {result.get('sample_id')}, using full response"
+                        )
+
                 except (KeyError, TypeError) as e:
                     logger.warning(
-                        f"Error accessing response text for sample {result.get('sample_id', 'unknown')}: {e}"
+                        f"Error accessing response data for sample {result.get('sample_id', 'unknown')}: {e}"
                     )
                     response_text = "ERROR_ACCESSING_RESPONSE"
+                    extracted_answer = None
+                    display_answer = "ERROR_ACCESSING_RESPONSE"
 
                 row = {
                     "sample_id": result["sample_id"],
                     "approach": result["approach"],
                     "input": result["input"],
                     "expected_output": result["expected_output"],
+                    "extracted_answer": extracted_answer or "",
                     "response_text": response_text,
                     "execution_time": result["result"]["execution_time"],
                     "total_tokens": result["result"]["response"]["total_tokens"],
@@ -704,6 +770,50 @@ class ExperimentRunner:
                     "timestamp": result["timestamp"],
                 }
                 writer.writerow(row)
+
+    def _save_result_to_database(
+        self,
+        result: ReasoningResult,
+        approach: str,
+        sample_index: int,
+        sample: Dict[str, Any],
+    ) -> None:
+        """Save a single result to the database.
+
+        Args:
+            result: ReasoningResult from inference
+            approach: Reasoning approach name
+            sample_index: Index of the sample
+            sample: The input sample data
+        """
+        try:
+            # Convert ReasoningResult to StandardResponse for ResultsProcessor
+            standard_response = result.response
+
+            # Add metadata needed for database storage
+            standard_response.metadata.update(
+                {
+                    "experiment_id": self.experiment_id,
+                    "approach": approach,
+                    "sample_index": sample_index,
+                    "input_text": sample.get(
+                        self.dataset_loader.get_input_column_name(), ""
+                    ),
+                    "expected_answer": sample.get(
+                        self.dataset_loader.get_output_column_name(), ""
+                    ),
+                    "provider": self.config.provider,
+                    "model": self.config.model,
+                    "latency": result.execution_time,
+                    "cost": result.cost_estimate,
+                }
+            )
+
+            # Save to database
+            self.results_processor.save_run_result(standard_response)
+
+        except Exception as e:
+            logger.warning(f"Failed to save result to database: {e}")
 
     def _enhance_result_metadata(
         self, result: ReasoningResult, approach: str, sample_id: int

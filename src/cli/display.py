@@ -101,7 +101,13 @@ def create_accuracy_breakdown_table(results_data: List[Dict[str, Any]]) -> Table
     for result in results_data:
         sample_id = str(result.get("sample_id", "?"))
         expected = str(result.get("expected_output", "N/A"))
-        actual = str(result.get("response_text", "N/A"))
+
+        # Use extracted_answer if available, otherwise fall back to response_text
+        extracted_answer = result.get("extracted_answer")
+        if extracted_answer and extracted_answer.strip():
+            actual = str(extracted_answer)
+        else:
+            actual = str(result.get("response_text", "N/A"))
 
         # Truncate long responses for display
         expected_display = expected[:27] + "..." if len(expected) > 30 else expected

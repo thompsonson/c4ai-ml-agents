@@ -21,7 +21,7 @@ reasoning:
     - ChainOfThought
   multi_step_reflection: false
   multi_step_verification: false
-  max_reasoning_calls: 3
+  max_reasoning_calls: 5
 
 execution:
   parallel: false

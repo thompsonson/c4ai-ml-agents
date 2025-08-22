@@ -204,7 +204,7 @@ reasoning:
     - AsPlanning
     - TreeOfThought
   multi_step_verification: true
-  max_reasoning_calls: 3
+  max_reasoning_calls: 5
 
 execution:
   parallel: true

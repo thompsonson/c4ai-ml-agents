@@ -136,6 +136,12 @@ class ReflectionReasoning(BaseReasoning):
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(response, reasoning_data)
 
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response,
+            answer_type="reasoning_chain",  # Reflection involves self-evaluation reasoning
+        )
+
         logger.info(
             f"Completed single-prompt Reflection reasoning - "
             f"quality: {reflection_quality}, steps: {reflection_steps}, "
@@ -291,6 +297,12 @@ class ReflectionReasoning(BaseReasoning):
 
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(multi_step_response, reasoning_data)
+
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response,
+            answer_type="reasoning_chain",  # Multi-step reflection involves iterative reasoning
+        )
 
         logger.info(
             f"Completed multi-step Reflection reasoning - "

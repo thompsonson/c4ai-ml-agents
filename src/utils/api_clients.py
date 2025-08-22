@@ -43,6 +43,10 @@ class StandardResponse:
     response_id: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
+    # Parsing metadata (Phase 6 enhancement)
+    parsing_metadata: Optional[Dict[str, Any]] = None
+    extracted_answer: Optional[str] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert response to dictionary."""
         return {
@@ -56,6 +60,8 @@ class StandardResponse:
             "parameters": self.parameters,
             "response_id": self.response_id,
             "metadata": self.metadata,
+            "parsing_metadata": self.parsing_metadata,
+            "extracted_answer": self.extracted_answer,
         }
 
 

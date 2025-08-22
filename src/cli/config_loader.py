@@ -31,7 +31,7 @@ class CLIExperimentConfig(BaseModel):
     model: str = Field("openai/gpt-oss-120b", description="Model name")
     temperature: float = Field(0.3, ge=0.0, le=2.0, description="Sampling temperature")
     max_tokens: int = Field(
-        512, ge=1, le=4096, description="Maximum tokens to generate"
+        16384, ge=1, le=131000, description="Maximum tokens to generate"
     )
     top_p: float = Field(0.9, ge=0.0, le=1.0, description="Top-p sampling parameter")
 
@@ -46,7 +46,7 @@ class CLIExperimentConfig(BaseModel):
     multi_step_verification: bool = Field(
         False, description="Enable multi-step verification"
     )
-    max_reasoning_calls: int = Field(3, ge=1, description="Maximum reasoning API calls")
+    max_reasoning_calls: int = Field(5, ge=1, description="Maximum reasoning API calls")
     max_reflection_iterations: int = Field(
         2, ge=1, description="Maximum reflection iterations"
     )
@@ -70,8 +70,32 @@ class CLIExperimentConfig(BaseModel):
         description="Output formats (csv, json)",
     )
 
+    # Parsing settings
+    use_structured_parsing: bool = Field(
+        True, description="Enable structured output parsing with Instructor"
+    )
+    fallback_to_regex: bool = Field(
+        True, description="Enable fallback to regex parsing"
+    )
+    confidence_threshold: float = Field(
+        0.7, ge=0.0, le=1.0, description="Minimum confidence threshold for parsing"
+    )
+    max_parsing_retries: int = Field(
+        2, ge=0, description="Maximum number of parsing retry attempts"
+    )
+
     def to_experiment_config(self) -> ExperimentConfig:
         """Convert to standard ExperimentConfig."""
+        from src.config import ParsingConfig
+
+        # Create parsing config
+        parsing_config = ParsingConfig(
+            use_structured_parsing=self.use_structured_parsing,
+            fallback_to_regex=self.fallback_to_regex,
+            confidence_threshold=self.confidence_threshold,
+            max_parsing_retries=self.max_parsing_retries,
+        )
+
         return ExperimentConfig(
             dataset_name=self.dataset_name,
             sample_count=self.sample_count,
@@ -90,6 +114,7 @@ class CLIExperimentConfig(BaseModel):
             max_reasoning_calls=self.max_reasoning_calls,
             max_reflection_iterations=self.max_reflection_iterations,
             reflection_threshold=self.reflection_threshold,
+            parsing=parsing_config,
         )
 
 
@@ -293,7 +318,7 @@ def create_example_config() -> Dict[str, Any]:
         "reasoning": {
             "approaches": ["ChainOfThought", "AsPlanning", "TreeOfThought"],
             "multi_step_verification": True,
-            "max_reasoning_calls": 3,
+            "max_reasoning_calls": 5,
         },
         "execution": {"parallel": True, "max_workers": 4, "save_checkpoints": True},
         "output": {"formats": ["csv", "json"]},

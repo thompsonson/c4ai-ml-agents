@@ -45,7 +45,7 @@ class ChainOfVerificationReasoning(BaseReasoning):
         super().__init__(config)
 
         # Configuration for multi-step verification
-        self.max_iterations = getattr(config, "max_reasoning_calls", 3)
+        self.max_iterations = getattr(config, "max_reasoning_calls", 5)
         self.multi_step_verification = getattr(config, "multi_step_verification", False)
 
         # Load Chain-of-Verification prompt template
@@ -134,6 +134,12 @@ class ChainOfVerificationReasoning(BaseReasoning):
 
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(response, reasoning_data)
+
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response,
+            answer_type="reasoning_chain",  # CoVe involves verification reasoning chains
+        )
 
         logger.info(
             f"Completed single-prompt Chain-of-Verification - "
@@ -255,6 +261,12 @@ class ChainOfVerificationReasoning(BaseReasoning):
 
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(combined_response, reasoning_data)
+
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response,
+            answer_type="reasoning_chain",  # Multi-step verification with reasoning chains
+        )
 
         logger.info(
             f"Completed multi-step Chain-of-Verification - "

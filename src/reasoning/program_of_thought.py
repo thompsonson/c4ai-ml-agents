@@ -103,6 +103,12 @@ class ProgramOfThoughtReasoning(BaseReasoning):
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(response, reasoning_data)
 
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response,
+            answer_type="numerical",  # PoT often produces numerical answers
+        )
+
         logger.info(
             f"Completed Program-of-Thought reasoning - "
             f"code blocks: {code_blocks}, steps: {computational_steps}, "

@@ -173,9 +173,15 @@ def validate_top_p(top_p: float) -> float:
 
 
 def validate_max_tokens(max_tokens: int) -> int:
-    """Validate max_tokens parameter."""
-    if not 1 <= max_tokens <= 4096:
-        raise typer.BadParameter("max_tokens must be between 1 and 4096")
+    """Validate max_tokens parameter.
+
+    Range allows for modern models:
+    - Claude Sonnet 4: up to 128K output tokens
+    - GPT-4o Long Output: up to 64K output tokens
+    - GPT-4o mini: up to 16K output tokens
+    """
+    if not 1 <= max_tokens <= 128000:
+        raise typer.BadParameter("max_tokens must be between 1 and 128,000")
     return max_tokens
 
 

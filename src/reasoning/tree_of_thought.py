@@ -115,6 +115,12 @@ class TreeOfThoughtReasoning(BaseReasoning):
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(response, reasoning_data)
 
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response,
+            answer_type="reasoning_chain",  # ToT involves exploring multiple reasoning paths
+        )
+
         logger.info(
             f"Completed Tree-of-Thought reasoning - "
             f"branches: {branch_analysis['reasoning_branches']}, "

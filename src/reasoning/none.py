@@ -82,5 +82,10 @@ class NoneReasoning(BaseReasoning):
         # Enhance metadata and return
         enhanced_response = self._enhance_metadata(response, reasoning_data)
 
+        # Extract structured answer using output parser
+        enhanced_response = self._extract_answer(
+            enhanced_response, answer_type="base"  # Simple baseline extraction
+        )
+
         logger.info(f"Completed None reasoning - tokens: {response.total_tokens}")
         return enhanced_response

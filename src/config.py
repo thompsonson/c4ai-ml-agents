@@ -82,6 +82,57 @@ def validate_api_keys() -> Dict[str, bool]:
 
 
 @dataclass
+class ParsingConfig:
+    """Configuration for output parsing behavior."""
+
+    # Structured parsing settings
+    use_structured_parsing: bool = True
+    fallback_to_regex: bool = True
+    confidence_threshold: float = 0.7
+    max_parsing_retries: int = 2
+
+    # Answer type detection
+    auto_detect_answer_type: bool = True
+    default_answer_type: str = "base"
+
+    # Performance settings
+    parsing_temperature: float = 0.1
+    parsing_max_tokens: int = 200
+
+    def validate(self) -> None:
+        """Validate parsing configuration parameters."""
+        errors = []
+
+        if not (0.0 <= self.confidence_threshold <= 1.0):
+            errors.append("confidence_threshold must be between 0.0 and 1.0")
+
+        if self.max_parsing_retries < 0:
+            errors.append("max_parsing_retries must be >= 0")
+
+        if not (0.0 <= self.parsing_temperature <= 2.0):
+            errors.append("parsing_temperature must be between 0.0 and 2.0")
+
+        if self.parsing_max_tokens < 1:
+            errors.append("parsing_max_tokens must be >= 1")
+
+        if self.default_answer_type not in [
+            "base",
+            "multiple_choice",
+            "numerical",
+            "textual",
+            "yes_no",
+            "list",
+            "reasoning_chain",
+        ]:
+            errors.append(f"Invalid default_answer_type: {self.default_answer_type}")
+
+        if errors:
+            raise ValueError(
+                f"Parsing configuration validation failed: {'; '.join(errors)}"
+            )
+
+
+@dataclass
 class ExperimentConfig:
     """Configuration for ML Agents experiments with validation."""
 
@@ -93,7 +144,13 @@ class ExperimentConfig:
     provider: str = "openrouter"
     model: str = "openai/gpt-oss-120b"
     temperature: float = 0.3
-    max_tokens: int = 512
+    max_tokens: int = 16384  # Max output tokens - model-specific limits apply:
+    # - Claude 3.5 Sonnet: up to 64,000 tokens
+    # - Claude Sonnet 4: up to 128,000 tokens (with beta header)
+    # - GPT-4o standard: up to 4,000 tokens
+    # - GPT-4o Long Output: up to 64,000 tokens
+    # - GPT-4o mini: up to 16,000 tokens
+    # - GPT-4 Turbo: up to 4,096 tokens
     top_p: float = 0.9
 
     # Experiment configuration
@@ -108,9 +165,18 @@ class ExperimentConfig:
     # Cost control and reasoning configuration
     multi_step_reflection: bool = False
     multi_step_verification: bool = False
-    max_reasoning_calls: int = 3
+    max_reasoning_calls: int = 5
     max_reflection_iterations: int = 2
     reflection_threshold: float = 0.7
+
+    # Output parsing configuration
+    parsing: ParsingConfig = field(default_factory=ParsingConfig)
+
+    # Database configuration
+    database_enabled: bool = True
+    database_path: str = "./ml_agents_results.db"
+    database_backup_frequency: int = 100
+    database_auto_vacuum: bool = True
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -119,6 +185,12 @@ class ExperimentConfig:
     def validate(self) -> None:
         """Validate all configuration parameters."""
         errors = []
+
+        # Validate parsing configuration first
+        try:
+            self.parsing.validate()
+        except ValueError as e:
+            errors.append(str(e))
 
         # Validate dataset
         if not self.dataset_name or not self.dataset_name.strip():
@@ -139,8 +211,8 @@ class ExperimentConfig:
         if not (0.0 <= self.temperature <= 2.0):
             errors.append("temperature must be between 0.0 and 2.0")
 
-        if not (1 <= self.max_tokens <= 4096):
-            errors.append("max_tokens must be between 1 and 4096")
+        if not (1 <= self.max_tokens <= 128000):
+            errors.append("max_tokens must be between 1 and 128,000")
 
         if not (0.0 <= self.top_p <= 1.0):
             errors.append("top_p must be between 0.0 and 1.0")
@@ -204,7 +276,15 @@ class ExperimentConfig:
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "ExperimentConfig":
         """Create config from dictionary."""
-        return cls(**config_dict)
+        # Handle parsing config separately
+        parsing_dict = config_dict.pop("parsing", {})
+        parsing_config = (
+            ParsingConfig(**parsing_dict) if parsing_dict else ParsingConfig()
+        )
+
+        config = cls(**config_dict)
+        config.parsing = parsing_config
+        return config
 
     @classmethod
     def from_yaml(cls, yaml_path: Union[str, Path]) -> "ExperimentConfig":
@@ -228,6 +308,20 @@ class ExperimentConfig:
             "parallel_requests": self.parallel_requests,
             "retry_attempts": self.retry_attempts,
             "request_timeout": self.request_timeout,
+            "parsing": {
+                "use_structured_parsing": self.parsing.use_structured_parsing,
+                "fallback_to_regex": self.parsing.fallback_to_regex,
+                "confidence_threshold": self.parsing.confidence_threshold,
+                "max_parsing_retries": self.parsing.max_parsing_retries,
+                "auto_detect_answer_type": self.parsing.auto_detect_answer_type,
+                "default_answer_type": self.parsing.default_answer_type,
+                "parsing_temperature": self.parsing.parsing_temperature,
+                "parsing_max_tokens": self.parsing.parsing_max_tokens,
+            },
+            "database_enabled": self.database_enabled,
+            "database_path": self.database_path,
+            "database_backup_frequency": self.database_backup_frequency,
+            "database_auto_vacuum": self.database_auto_vacuum,
         }
 
     def to_yaml(self, yaml_path: Union[str, Path]) -> None:
@@ -261,6 +355,36 @@ class ExperimentConfig:
             self.retry_attempts = args.retry_attempts
         if hasattr(args, "request_timeout") and args.request_timeout:
             self.request_timeout = args.request_timeout
+
+        # Update parsing configuration
+        if (
+            hasattr(args, "use_structured_parsing")
+            and args.use_structured_parsing is not None
+        ):
+            self.parsing.use_structured_parsing = args.use_structured_parsing
+        if hasattr(args, "fallback_to_regex") and args.fallback_to_regex is not None:
+            self.parsing.fallback_to_regex = args.fallback_to_regex
+        if (
+            hasattr(args, "confidence_threshold")
+            and args.confidence_threshold is not None
+        ):
+            self.parsing.confidence_threshold = args.confidence_threshold
+        if (
+            hasattr(args, "max_parsing_retries")
+            and args.max_parsing_retries is not None
+        ):
+            self.parsing.max_parsing_retries = args.max_parsing_retries
+
+        # Update database configuration
+        if hasattr(args, "database_enabled") and args.database_enabled is not None:
+            self.database_enabled = args.database_enabled
+        if hasattr(args, "database_path") and args.database_path:
+            self.database_path = args.database_path
+        if (
+            hasattr(args, "database_backup_frequency")
+            and args.database_backup_frequency is not None
+        ):
+            self.database_backup_frequency = args.database_backup_frequency
 
         # Re-validate after updates
         self.validate()

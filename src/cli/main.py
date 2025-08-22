@@ -6,7 +6,14 @@ import typer
 from rich.console import Console
 
 from src.cli.commands import (
+    analyze_experiment,
+    compare_experiments,
+    db_backup,
+    db_init,
+    db_stats,
+    export_experiment,
     list_checkpoints,
+    list_experiments,
     resume_experiment,
     run_comparison_experiment,
     run_single_experiment,
@@ -22,11 +29,22 @@ app = typer.Typer(
 )
 console = Console()
 
-# Add experiment commands directly
+# Add experiment commands
 app.command("run")(run_single_experiment)
 app.command("compare")(run_comparison_experiment)
 app.command("resume")(resume_experiment)
 app.command("list-checkpoints")(list_checkpoints)
+
+# Add database management commands
+app.command("db-init")(db_init)
+app.command("db-backup")(db_backup)
+app.command("db-stats")(db_stats)
+
+# Add export and analysis commands
+app.command("export")(export_experiment)
+app.command("compare-experiments")(compare_experiments)
+app.command("analyze")(analyze_experiment)
+app.command("list-experiments")(list_experiments)
 
 
 @app.command()
