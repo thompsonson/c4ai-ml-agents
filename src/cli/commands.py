@@ -754,6 +754,82 @@ def db_stats(
         raise typer.Exit(1)
 
 
+def db_migrate(
+    db_path: Optional[str] = typer.Option(
+        None, "--db-path", help="Database path (default: ./ml_agents_results.db)"
+    ),
+    backup_before: bool = typer.Option(
+        True, "--backup/--no-backup", help="Create backup before migration"
+    ),
+) -> None:
+    """Migrate database schema to the latest version."""
+    from datetime import datetime
+
+    from src.core.database_manager import DatabaseConfig, DatabaseManager
+
+    db_path = db_path or "./ml_agents_results.db"
+
+    if not Path(db_path).exists():
+        display_error(f"Database not found: {db_path}")
+        raise typer.Exit(1)
+
+    try:
+        config = DatabaseConfig(db_path=db_path)
+        db_manager = DatabaseManager(config)
+
+        # Check current schema version
+        with db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT version FROM schema_version ORDER BY applied_at DESC LIMIT 1"
+            )
+            result = cursor.fetchone()
+            current_version = result[0] if result else "unknown"
+
+        display_info(f"Current schema version: {current_version}")
+        display_info(f"Target schema version: {db_manager.CURRENT_SCHEMA_VERSION}")
+
+        if current_version == db_manager.CURRENT_SCHEMA_VERSION:
+            display_success("Database schema is already up to date!")
+            return
+
+        # Create backup if requested
+        if backup_before:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = Path(db_path).with_name(
+                f"{Path(db_path).stem}_migration_backup_{timestamp}.db"
+            )
+            display_info(f"Creating backup: {backup_path}")
+            db_manager.backup_database(str(backup_path))
+
+        # Confirm migration
+        if not typer.confirm(
+            f"Migrate database from {current_version} to {db_manager.CURRENT_SCHEMA_VERSION}?"
+        ):
+            display_info("Migration cancelled")
+            return
+
+        # Perform migration by triggering schema check
+        display_info("Starting database migration...")
+
+        # The migration happens automatically when we create a new DatabaseManager
+        # because it checks and updates the schema version in __init__
+        new_manager = DatabaseManager(config)
+
+        display_success("Database migration completed successfully!")
+        display_info(f"Schema updated to version: {new_manager.CURRENT_SCHEMA_VERSION}")
+
+        # Validate integrity after migration
+        if db_manager.validate_integrity():
+            display_success("Database integrity check passed")
+        else:
+            display_warning("Database integrity check failed - please review migration")
+
+    except Exception as e:
+        display_error(f"Failed to migrate database: {e}")
+        raise typer.Exit(1)
+
+
 # ==================== Export and Analysis Commands ====================
 
 

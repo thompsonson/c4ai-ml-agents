@@ -10,6 +10,7 @@ from src.cli.commands import (
     compare_experiments,
     db_backup,
     db_init,
+    db_migrate,
     db_stats,
     export_experiment,
     list_checkpoints,
@@ -38,6 +39,7 @@ app.command("list-checkpoints")(list_checkpoints)
 # Add database management commands
 app.command("db-init")(db_init)
 app.command("db-backup")(db_backup)
+app.command("db-migrate")(db_migrate)
 app.command("db-stats")(db_stats)
 
 # Add export and analysis commands
