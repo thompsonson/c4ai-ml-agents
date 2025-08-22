@@ -23,7 +23,7 @@ jobs:
         uv tool install build
     - name: Build a binary wheel and a source tarball
       run: |
-        uv tool run python -m build
+        uv tool run build
     - name: Store the distribution packages
       uses: actions/upload-artifact@v4
       with:
