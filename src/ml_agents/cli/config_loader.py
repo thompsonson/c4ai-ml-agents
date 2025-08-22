@@ -226,9 +226,9 @@ def merge_config_sources(
 
     # Override with config file (medium priority)
     if config_file:
-        # Check if config file is nested structure
+        # Check if config file is nested structure (values must be dictionaries)
         if any(
-            key in config_file
+            key in config_file and isinstance(config_file[key], dict)
             for key in ["experiment", "model", "reasoning", "execution"]
         ):
             # Flatten nested structure
@@ -282,7 +282,7 @@ def load_and_validate_config(
             raise
 
     # Get base configuration (from defaults)
-    base_config = CLIExperimentConfig().dict()
+    base_config = CLIExperimentConfig().model_dump()
 
     # Filter out None values from CLI overrides
     cli_args = {k: v for k, v in cli_overrides.items() if v is not None}

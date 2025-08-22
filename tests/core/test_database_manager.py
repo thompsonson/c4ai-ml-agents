@@ -178,13 +178,16 @@ class TestDatabaseManager:
         # Cleanup
         Path(backup_path).unlink(missing_ok=True)
 
-    def test_backup_nonexistent_database(self):
+    def test_backup_nonexistent_database(self, tmp_path):
         """Test backup of non-existent database."""
-        config = DatabaseConfig(db_path="/nonexistent/path.db")
+        nonexistent_db = tmp_path / "nonexistent.db"
+        backup_path = tmp_path / "backup.db"
+
+        config = DatabaseConfig(db_path=str(nonexistent_db))
         manager = DatabaseManager(config)
 
         # This should not raise an error, just log a warning
-        manager.backup_database("/tmp/backup.db")
+        manager.backup_database(str(backup_path))
 
     def test_validate_integrity_success(self, temp_db):
         """Test database integrity validation with valid database."""
@@ -412,10 +415,11 @@ PoT,openai,gpt-4,"3*3=?",9,"The answer is 9",true,1200,0.001"""
 
         # Test migration (should handle gracefully)
         with patch.object(manager, "_migrate_schema") as mock_migrate:
-            manager._check_schema_version(conn)
-            mock_migrate.assert_called_once_with(
-                conn, "0.9.0", DatabaseManager.CURRENT_SCHEMA_VERSION
-            )
+            with manager.get_connection() as conn:
+                manager._check_schema_version(conn)
+                mock_migrate.assert_called_once_with(
+                    conn, "0.9.0", DatabaseManager.CURRENT_SCHEMA_VERSION
+                )
 
     def test_concurrent_access(self, temp_db):
         """Test concurrent database access."""

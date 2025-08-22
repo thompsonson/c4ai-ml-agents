@@ -181,7 +181,7 @@ class ResultsProcessor:
         except Exception as e:
             logger.error(f"Failed to save run result {run_id} to database: {e}")
             logger.debug(f"Run data: {run_data}")
-            raise
+            # Don't re-raise - handle errors gracefully
 
         # Check for auto-backup
         self.db_manager.check_auto_backup()

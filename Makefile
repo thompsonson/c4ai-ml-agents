@@ -40,6 +40,7 @@ BLACK = $(UV) run black
 ISORT = $(UV) run isort
 MYPY = $(UV) run mypy
 FLAKE8 = $(UV) run flake8
+ML_AGENTS = $(UV) run ml-agents
 
 # Setup and Installation
 setup: install-dev pre-commit
@@ -158,18 +159,18 @@ docs:
 # CLI Testing
 test-cli:
 	@echo "🧪 Testing CLI functionality..."
-	$(PYTHON) -m ml_agents.cli.main --help
+	$(ML_AGENTS) --help
 
 test-cli-commands:
 	@echo "🧪 Testing CLI commands..."
-	$(PYTHON) -m ml_agents.cli.main version
-	$(PYTHON) -m ml_agents.cli.main list-approaches
-	$(PYTHON) -m ml_agents.cli.main validate-env
+	$(ML_AGENTS) version
+	$(ML_AGENTS) list-approaches
+	$(ML_AGENTS) validate-env
 
 # Experiment shortcuts
 run-sample:
 	@echo "🧪 Running sample experiment..."
-	$(PYTHON) -m ml_agents.cli.main run --approach ChainOfThought --samples 5
+	$(ML_AGENTS) run --approach ChainOfThought --samples 5
 
 # Debug and troubleshooting
 debug-imports:

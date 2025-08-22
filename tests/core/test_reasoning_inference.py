@@ -43,7 +43,7 @@ class TestReasoningInference:
     def config(self):
         """Create test configuration."""
         return ExperimentConfig(
-            provider="test_provider", model="test-model", temperature=0.3
+            provider="anthropic", model="claude-sonnet-4-20250514", temperature=0.3
         )
 
     @pytest.fixture

@@ -78,9 +78,7 @@ class TestBBEHDatasetLoader:
 
             assert result == sample_dataset
             assert loader._dataset == sample_dataset
-            mock_load_dataset.assert_called_once_with(
-                "test/dataset", split="test", trust_remote_code=True
-            )
+            mock_load_dataset.assert_called_once_with("test/dataset", split="train")
 
     @patch("ml_agents.core.dataset_loader.load_dataset")
     def test_load_dataset_from_cache(self, mock_load_dataset, loader, sample_dataset):
@@ -265,9 +263,7 @@ class TestBBEHDatasetLoader:
         ):
             loader.load_dataset(split="train")
 
-            mock_load_dataset.assert_called_once_with(
-                "test/dataset", split="train", trust_remote_code=True
-            )
+            mock_load_dataset.assert_called_once_with("test/dataset", split="train")
 
     def test_config_integration(self, config):
         """Test that loader uses config parameters correctly."""

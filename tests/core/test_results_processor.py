@@ -120,7 +120,7 @@ class TestResultsProcessor:
                 total_tokens=15,
                 generation_time=1.5 + (i * 0.1),
                 parameters={},
-                extracted_answer=str(i),
+                extracted_answer=str(i) if is_correct else "wrong_answer",
                 metadata={
                     "experiment_id": experiment_id,
                     "approach": approach,
