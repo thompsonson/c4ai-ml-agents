@@ -12,6 +12,7 @@ help:
 	@echo "  make setup          Complete project setup (install + pre-commit)"
 	@echo "  make install        Install package and dependencies"
 	@echo "  make install-dev    Install with development dependencies"
+	@echo "  make configure-mcp  Configure SQLite MCP server for Claude Code"
 	@echo ""
 	@echo "Development Commands:"
 	@echo "  make test           Run test suite"
@@ -57,6 +58,10 @@ install: venv
 install-dev: venv
 	@echo "📦 Installing package with development dependencies..."
 	$(UV) pip install -e ".[dev]"
+
+configure-mcp:
+	@echo "🔧 Configuring SQLite MCP server for Claude Code..."
+	./scripts/install-sqlite-mcp-server.sh
 
 # Testing
 test:

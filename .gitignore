@@ -61,3 +61,12 @@ models/
 *.pt
 *.h5
 *.ckpt
+
+# Database files
+*.db
+*.db-wal
+*.db-shm
+ml_agents_results.db
+
+# MCP configuration (project-specific)
+.mcp.json

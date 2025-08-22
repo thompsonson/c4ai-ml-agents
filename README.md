@@ -10,7 +10,6 @@
 
 - **[Discord Community](https://discord.gg/ckaQnUakYx)** - Join the #ml-agents channel for discussions, meetings, and collaboration with the community
 
-
 ## Overview
 
 This project investigates how different reasoning approaches impact AI model performance across various tasks. It provides a comprehensive framework for comparing multiple reasoning techniques with various language models.
@@ -52,6 +51,7 @@ The platform currently supports **8 production-ready reasoning approaches**:
 ### Installation
 
 1. **Clone and setup the project:**
+
    ```bash
    git clone <repository-url>
    cd ml-agents
@@ -59,12 +59,14 @@ The platform currently supports **8 production-ready reasoning approaches**:
    ```
 
 2. **Configure API keys:**
+
    ```bash
    cp .env.example .env
    # Edit .env with your actual API keys
    ```
 
 3. **Activate the environment:**
+
    ```bash
    source .venv/bin/activate
    ```
@@ -90,6 +92,7 @@ ml-agents compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --sampl
 ### Jupyter Notebook (Original Interface)
 
 To use the original Jupyter notebook interface:
+
 ```bash
 jupyter notebook Reasoning_LLM.ipynb
 ```
@@ -109,12 +112,40 @@ jupyter notebook Reasoning_LLM.ipynb
 - **Max Tokens**: 64 - 4096 (output length limit)
 - **Top P**: 0.0 - 1.0 (nucleus sampling parameter)
 
+## MCP Integration (Phase 7)
+
+The platform includes **SQLite database persistence** for all experiment results and supports **Claude Code MCP server integration** for direct database access during conversations.
+
+### Database Features
+
+- **Real-time persistence**: All experiment results are automatically saved to `ml_agents_results.db`
+- **Read-only MCP access**: Query the database directly from Claude Code conversations
+- **Rich export formats**: CSV, JSON, and Excel with advanced formatting
+- **Advanced analytics**: Approach comparisons, failure analysis, and cost tracking
+
+### Database CLI Commands
+
+```bash
+# Database management
+ml-agents db-init --db-path ./results.db          # Initialize database
+ml-agents db-backup --source ./results.db         # Create backup
+ml-agents db-stats --db-path ./results.db         # Show statistics
+
+# Export and analysis
+ml-agents export EXPERIMENT_ID --format excel     # Export to Excel
+ml-agents compare-experiments "exp1,exp2,exp3"    # Compare experiments
+ml-agents analyze EXPERIMENT_ID --type accuracy   # Generate reports
+ml-agents list-experiments --status completed     # List experiments
+```
+
 ## CLI Usage Guide
 
 ### Basic Commands
 
 #### Single Experiment
+
 Run one reasoning approach on a dataset:
+
 ```bash
 # Basic usage
 ml-agents run --approach ChainOfThought --samples 50
@@ -127,7 +158,9 @@ ml-agents run --approach ChainOfVerification --multi-step-verification --max-rea
 ```
 
 #### Comparison Experiments
+
 Compare multiple approaches side-by-side:
+
 ```bash
 # Basic comparison
 ml-agents compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --samples 100
@@ -152,6 +185,7 @@ ml-agents run --config examples/configs/comparison_study.yaml --samples 200 --pa
 ```
 
 **Example configuration** (`config.yaml`):
+
 ```yaml
 experiment:
   name: "reasoning_comparison_study"
@@ -181,6 +215,7 @@ execution:
 ### Checkpoint Management
 
 Resume interrupted experiments:
+
 ```bash
 # List available checkpoints
 ml-agents list-checkpoints
@@ -192,6 +227,7 @@ ml-agents resume checkpoint_exp_20250818_123456.json
 ### Advanced Features
 
 #### Cost Control
+
 ```bash
 # Set reasoning limits to control costs
 ml-agents run --approach ChainOfVerification --max-reasoning-calls 3 --samples 50
@@ -201,6 +237,7 @@ ml-agents compare --approaches "ChainOfThought,TreeOfThought" --samples 100 --ve
 ```
 
 #### Multi-step Reasoning
+
 ```bash
 # Enable multi-step reflection
 ml-agents run --approach Reflection --multi-step-reflection --max-reflection-iterations 3
@@ -210,6 +247,7 @@ ml-agents run --approach ChainOfVerification --multi-step-verification --max-rea
 ```
 
 #### Parallel Processing
+
 ```bash
 # Parallel execution with custom worker count
 ml-agents compare --approaches "ChainOfThought,AsPlanning,TreeOfThought,Reflection" --parallel --max-workers 2
@@ -221,6 +259,7 @@ ml-agents compare --approaches "None,ChainOfThought" --samples 500 --parallel --
 ### Output and Results
 
 Results are automatically saved with timestamps:
+
 ```
 ./outputs/
 ├── exp_20250818_143256/
@@ -231,6 +270,7 @@ Results are automatically saved with timestamps:
 ```
 
 Each result file contains:
+
 - Input prompts and model responses
 - Complete reasoning traces
 - Performance metrics (accuracy, time, cost)
@@ -240,12 +280,14 @@ Each result file contains:
 ### Example Workflows
 
 #### 1. Quick Testing
+
 ```bash
 # Test with small sample size
 ml-agents run --approach ChainOfThought --samples 5 --verbose
 ```
 
 #### 2. Research Study
+
 ```bash
 # Comprehensive comparison study
 ml-agents compare \
@@ -258,6 +300,7 @@ ml-agents compare \
 ```
 
 #### 3. Batch Processing
+
 ```bash
 # Use the provided batch script
 ./examples/scripts/batch_experiments.sh
@@ -276,6 +319,7 @@ ml-agents compare \
 | `ml-agents version` | Show version information |
 
 For detailed help on any command:
+
 ```bash
 ml-agents run --help
 ml-agents compare --help
@@ -294,6 +338,7 @@ For users who prefer the notebook interface:
 ## Dataset Requirements
 
 Your dataset should include:
+
 - **input** column: The question/problem to solve
 - **answer** column (optional): Expected output for evaluation
 - **task** column (optional): Task category for analysis
@@ -301,6 +346,7 @@ Your dataset should include:
 ## Output Files
 
 The notebook generates CSV files containing:
+
 - Input prompts
 - Model outputs
 - Full reasoning traces
@@ -349,6 +395,7 @@ ml-agents/
 ## Best Practices
 
 ### For Researchers
+
 1. **Start Small**: Begin with `--samples 10` to test approaches quickly
 2. **Use Baselines**: Always include `None` approach for comparison
 3. **Cost Control**: Monitor costs with `--verbose` and set `--max-reasoning-calls`
@@ -356,6 +403,7 @@ ml-agents/
 5. **Reproducibility**: Save configuration files and use checkpoints
 
 ### For Cost Management
+
 1. **Temperature Settings**: Lower values (0.1-0.3) for consistent, cost-effective results
 2. **Token Limits**: Set appropriate `--max-tokens` based on your task complexity
 3. **Sample Sizing**: Use smaller samples for initial exploration
@@ -363,6 +411,7 @@ ml-agents/
 5. **Multi-step Limits**: Control `--max-reasoning-calls` for approaches like Chain-of-Verification
 
 ### For Performance
+
 1. **Parallel Execution**: Use `--parallel --max-workers N` for comparison studies
 2. **Checkpoint Usage**: Enable checkpoints for long-running experiments
 3. **Rate Limiting**: Adjust `--max-workers` based on provider rate limits
@@ -373,6 +422,7 @@ ml-agents/
 ### Common Issues
 
 #### Environment Setup
+
 ```bash
 # Check environment
 ml-agents validate-env
@@ -385,6 +435,7 @@ make debug-imports
 ```
 
 #### API Key Problems
+
 ```bash
 # Check .env file exists and has keys
 cat .env
@@ -394,13 +445,16 @@ ml-agents validate-env
 ```
 
 Error messages will guide you to set missing keys:
+
 ```bash
 export OPENROUTER_API_KEY="your_key_here"
 export ANTHROPIC_API_KEY="your_key_here"
 ```
 
 #### Rate Limiting
+
 If you encounter rate limits:
+
 ```bash
 # Reduce parallel workers
 ml-agents compare --approaches "ChainOfThought,AsPlanning" --max-workers 1
@@ -410,7 +464,9 @@ ml-agents run --approach ChainOfThought --samples 50 --parallel false
 ```
 
 #### Memory Issues
+
 For large experiments:
+
 ```bash
 # Reduce sample size
 ml-agents compare --approaches "ChainOfThought,TreeOfThought" --samples 50
@@ -420,15 +476,19 @@ ml-agents compare --approaches "..." --parallel false
 ```
 
 #### NumPy Compatibility Warning
+
 The warning about NumPy 1.x vs 2.x is cosmetic and doesn't affect functionality:
+
 ```
 A module that was compiled using NumPy 1.x cannot be run in NumPy 2.3.2...
 ```
+
 This is a known PyTorch compatibility issue and can be ignored.
 
 ### CLI Issues
 
 #### Command Not Found
+
 ```bash
 # Reinstall the package
 make install-dev
@@ -438,6 +498,7 @@ which ml-agents
 ```
 
 #### Import Errors
+
 ```bash
 # Activate virtual environment
 source .venv/bin/activate
@@ -447,7 +508,9 @@ make debug-imports
 ```
 
 #### Configuration Validation
+
 For configuration errors, check:
+
 1. YAML/JSON syntax is valid
 2. All required fields are present
 3. Approach names match available options (`ml-agents list-approaches`)
@@ -456,6 +519,7 @@ For configuration errors, check:
 ### Getting Help
 
 1. **Command Help**: Use `--help` with any command
+
    ```bash
    ml-agents --help
    ml-agents run --help
@@ -463,11 +527,13 @@ For configuration errors, check:
    ```
 
 2. **Verbose Output**: Add `--verbose` to see detailed execution logs
+
    ```bash
    ml-agents run --approach ChainOfThought --samples 5 --verbose
    ```
 
 3. **Check Status**: Validate your setup
+
    ```bash
    ml-agents validate-env
    ml-agents list-approaches
@@ -479,6 +545,7 @@ For configuration errors, check:
 ### Development Issues
 
 For developers working on the codebase:
+
 ```bash
 # Run test suite
 make test
@@ -493,9 +560,32 @@ make type-check
 make check
 ```
 
+## Development Tools
+
+### Claude Code MCP Server Setup
+
+For developers using Claude Code, enable direct database queries in conversations:
+
+```bash
+# Configure MCP server (one-time setup)
+make configure-mcp
+
+# Or run the script directly
+./scripts/install-sqlite-mcp-server.sh
+```
+
+**Available MCP Tools**:
+
+- `read_query`: Execute validated SELECT queries
+- `list_tables`: Show all database tables
+- `describe_table`: Show table schemas
+
+**⚠️ Note**: Project-scoped MCP servers don't appear in `claude mcp list` due to a [known bug](https://github.com/anthropics/claude-code/issues/5963). Use `claude mcp get sqlite-read-only` to verify installation.
+
 ## Contributing
 
 Feel free to extend the notebook with:
+
 - Additional reasoning approaches
 - New evaluation metrics
 - Support for more models/providers
@@ -512,6 +602,7 @@ This project is licensed under the Creative Commons Attribution 4.0 Internationa
 - ✅ **Attribution** - You must give appropriate credit, provide a link to the license, and indicate if changes were made
 
 This license is chosen because:
+
 1. **Open Science**: Aligns with Cohere Labs' open science mission
 2. **Maximum Impact**: Allows both academic and commercial use, accelerating AI research
 3. **Community Growth**: Enables derivatives while ensuring original work is credited
@@ -521,7 +612,7 @@ This license is chosen because:
 
 <a rel="license" href="http://creativecommons.org/licenses/by/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a>
 
-### Alternative Options Considered:
+### Alternative Options Considered
 
 - **CC BY-SA 4.0**: Adds "ShareAlike" requirement - derivatives must use same license (more restrictive but ensures openness)
 - **CC BY-NC 4.0**: Adds "NonCommercial" restriction - prevents commercial use (limits industry collaboration)

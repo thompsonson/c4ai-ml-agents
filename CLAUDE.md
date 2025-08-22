@@ -256,6 +256,55 @@ ml-agents/
 - Support for custom reasoning approaches
 - Integration with MLflow for experiment tracking
 
+## MCP Integration (Development Tool)
+
+The project includes **SQLite database persistence** for all experiment results and supports **Claude Code MCP server integration** for direct database queries during development and analysis.
+
+### Database Features
+- **Real-time persistence**: All experiment results are automatically saved to `ml_agents_results.db`
+- **Read-only MCP access**: Query the database directly from Claude Code conversations
+- **Development workflow**: Enhanced debugging and analysis capabilities
+
+### MCP Server Setup (Development)
+
+For developers using Claude Code, enable direct database queries:
+
+```bash
+# Configure MCP server (one-time setup)
+make configure-mcp
+
+# Or run the script directly
+./scripts/install-sqlite-mcp-server.sh
+```
+
+**Available MCP Tools**:
+- `read_query`: Execute validated SELECT queries
+- `list_tables`: Show all database tables
+- `describe_table`: Show table schemas
+
+**Development Workflow**:
+1. Run experiments using CLI or Jupyter notebook
+2. Results are automatically persisted to SQLite database
+3. Use Claude Code with MCP server to query and analyze results
+4. Export data in multiple formats (CSV, JSON, Excel)
+
+**⚠️ Note**: Project-scoped MCP servers don't appear in `claude mcp list` due to a [known bug](https://github.com/anthropics/claude-code/issues/5963). Use `claude mcp get sqlite-read-only` to verify installation.
+
+### Database CLI Commands
+
+```bash
+# Database management
+ml-agents db-init --db-path ./results.db          # Initialize database
+ml-agents db-backup --source ./results.db         # Create backup
+ml-agents db-stats --db-path ./results.db         # Show statistics
+
+# Export and analysis
+ml-agents export EXPERIMENT_ID --format excel     # Export to Excel
+ml-agents compare-experiments "exp1,exp2,exp3"    # Compare experiments
+ml-agents analyze EXPERIMENT_ID --type accuracy   # Generate reports
+ml-agents list-experiments --status completed     # List experiments
+```
+
 ## Community Collaboration
 
 - Share results in documentation/Tasks - Benchmarks.csv
