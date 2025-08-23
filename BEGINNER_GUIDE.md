@@ -6,14 +6,29 @@ ML Agents is a research platform that compares different reasoning approaches (l
 
 ## Prerequisites
 
-- **Python 3.9+** with pip or [uv](https://github.com/astral-sh/uv)
+- **Python 3.9+** with pip or [uv](https://github.com/astral-sh/uv) (uv is recommended)
 - **API keys** for at least one provider:
   - [OpenRouter](https://openrouter.ai/keys) (recommended - has free models)
-  - [Anthropic](https://console.anthropic.com/) or [Cohere](https://dashboard.cohere.ai/)
+  - [Anthropic](https://console.anthropic.com/)
+  - [Cohere](https://dashboard.cohere.ai/)
 
 ## Installation
 
-### Option 1: Quick Install (Recommended)
+### Option 1: Modern Python (uv) Recommended
+
+```bash
+# Install with uv
+uv tool install ml-agents-reasoning
+
+# Verify installation
+ml-agents --version
+
+# Or try without installing
+uvx --from ml-agents-reasoning ml-agents --version
+```
+
+### Option 2: Old Skool Pip Install
+
 ```bash
 # Install from PyPI
 pip install ml-agents-reasoning
@@ -22,16 +37,8 @@ pip install ml-agents-reasoning
 ml-agents --version
 ```
 
-### Option 2: Modern Python (uv)
-```bash
-# Install with uv
-uv tool install ml-agents-reasoning
-
-# Or try without installing
-uvx ml-agents-reasoning setup validate-env
-```
-
 ### Option 3: Development Install
+
 ```bash
 # Clone repository
 git clone https://github.com/thompsonson/c4ai-ml-agents
@@ -42,18 +49,19 @@ pip install -e .[dev]
 ## Setup
 
 ### 1. Configure API Keys
-```bash
-# Create environment file
-cat > .env << EOF
-OPENROUTER_API_KEY=sk-or-v1-your-key-here
-ANTHROPIC_API_KEY=sk-ant-api-your-key-here
-EOF
 
-# Or export directly
+```bash
+# export the api keys and tokens
+# add random keys even if you will not use the service
+export ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxxxxxxxxxx
+export COHERE_API_KEY=xxxxxxxxxxxxxxxxxxxx
 export OPENROUTER_API_KEY="your-key-here"
+# needed to access and upload the datasets
+export HF_TOKEN="your-token-here"
 ```
 
 ### 2. Validate Setup
+
 ```bash
 # Check environment (✅ Stable)
 ml-agents setup validate-env
@@ -68,6 +76,7 @@ ml-agents setup version
 ## First Steps
 
 ### Initialize Database
+
 ```bash
 # Create experiment database (✅ Stable)
 ml-agents db init
@@ -77,6 +86,7 @@ ml-agents db stats
 ```
 
 ### Quick Test
+
 ```bash
 # Run a small experiment (⚠️ Experimental)
 ml-agents eval run --approach ChainOfThought --samples 5 --verbose
@@ -86,28 +96,8 @@ ml-agents eval run --approach ChainOfThought --samples 5 --verbose
 
 ## Common Usage Patterns
 
-### 1. Single Reasoning Experiment
-```bash
-# Basic experiment (⚠️ Experimental)
-ml-agents eval run --approach ChainOfThought --samples 50
+### 1. Dataset Preprocessing
 
-# With specific model (⚠️ Experimental)
-ml-agents eval run --approach TreeOfThought --samples 100 --provider openrouter --model "openai/gpt-oss-120b"
-
-# Cost-controlled experiment (⚠️ Experimental)
-ml-agents eval run --approach ChainOfVerification --samples 50 --max-reasoning-calls 3
-```
-
-### 2. Compare Multiple Approaches
-```bash
-# Basic comparison (⚠️ Experimental)
-ml-agents eval compare --approaches "None,ChainOfThought,TreeOfThought" --samples 100
-
-# Parallel execution for speed (⚠️ Experimental)
-ml-agents eval compare --approaches "ChainOfThought,AsPlanning,Reflection" --samples 200 --parallel --max-workers 4
-```
-
-### 3. Dataset Preprocessing
 ```bash
 # List available datasets for preprocessing (✅ Stable)
 ml-agents preprocess list
@@ -119,7 +109,31 @@ ml-agents preprocess inspect MilaWang/SpatialEval --samples 100
 ml-agents preprocess batch --max 5
 ```
 
+### 2. Single Reasoning Experiment
+
+```bash
+# Basic experiment (⚠️ Experimental)
+ml-agents eval run --approach ChainOfThought --samples 50
+
+# With specific model (⚠️ Experimental)
+ml-agents eval run --approach TreeOfThought --samples 100 --provider openrouter --model "openai/gpt-oss-120b"
+
+# Cost-controlled experiment (⚠️ Experimental)
+ml-agents eval run --approach ChainOfVerification --samples 50 --max-reasoning-calls 3
+```
+
+### 3. Compare Multiple Approaches
+
+```bash
+# Basic comparison (⚠️ Experimental)
+ml-agents eval compare --approaches "None,ChainOfThought,TreeOfThought" --samples 100
+
+# Parallel execution for speed (⚠️ Experimental)
+ml-agents eval compare --approaches "ChainOfThought,AsPlanning,Reflection" --samples 200 --parallel --max-workers 4
+```
+
 ### 4. Database Management
+
 ```bash
 # View experiment results (⚠️ Experimental)
 ml-agents results list --status completed
@@ -134,7 +148,9 @@ ml-agents db backup --source ./ml_agents_results.db
 ## Understanding Results
 
 ### Output Files
+
 Results are saved in timestamped directories:
+
 ```
 ./outputs/
 ├── exp_20250823_143256/
@@ -144,7 +160,9 @@ Results are saved in timestamped directories:
 ```
 
 ### Result Columns
+
 Each CSV contains:
+
 - **input**: Original question/prompt
 - **output**: Model's final answer
 - **reasoning_trace**: Full reasoning process
@@ -153,6 +171,7 @@ Each CSV contains:
 - **approach**: Reasoning method used
 
 ### Quick Analysis
+
 ```bash
 # View experiment summary (⚠️ Experimental)
 ml-agents results analyze EXPERIMENT_ID --type accuracy
@@ -183,6 +202,7 @@ ml-agents results list
 ## Troubleshooting
 
 ### API Key Issues
+
 ```bash
 # Error: "API key not found"
 ml-agents setup validate-env  # Shows which keys are missing
@@ -192,6 +212,7 @@ export OPENROUTER_API_KEY="your-key-here"
 ```
 
 ### Rate Limiting
+
 ```bash
 # Error: "Rate limit exceeded"
 # Solution: Reduce parallel workers or use free models
@@ -199,6 +220,7 @@ ml-agents eval run --approach ChainOfThought --samples 50 --parallel false
 ```
 
 ### Memory/Performance Issues
+
 ```bash
 # Error: High memory usage
 # Solution: Reduce samples or disable parallel processing
@@ -206,6 +228,7 @@ ml-agents eval compare --approaches "ChainOfThought,TreeOfThought" --samples 50 
 ```
 
 ### Command Not Found
+
 ```bash
 # Error: "ml-agents: command not found"
 # Solution: Reinstall or check PATH
@@ -216,25 +239,24 @@ which ml-agents  # Should show installation path
 ## Understanding Command Types
 
 **✅ Stable Commands** (Production Ready):
+
 - `setup`, `db`, `preprocess` - Well-tested, stable API
 
 **⚠️ Experimental Commands** (Pre-Alpha):
+
 - `eval`, `results` - May have breaking changes, use `--skip-warnings` to suppress warnings
 
 ## Cost Management
 
 ### Free Models (No Cost)
+
 ```bash
 # Use OpenRouter's free models
 ml-agents eval run --approach ChainOfThought --provider openrouter --model "openai/gpt-3.5-turbo"
 ```
 
-### Cost Estimation
-- **5 samples**: ~$0.01-0.05 (testing)
-- **100 samples**: ~$0.50-2.00 (typical study)
-- **1000 samples**: ~$5-20 (full research study)
-
 ### Cost Control Tips
+
 - Start with `--samples 5-10` for testing
 - Use `--max-reasoning-calls 3` to limit multi-step approaches
 - Set `--max-tokens 256` for shorter responses

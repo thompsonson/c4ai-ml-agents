@@ -199,8 +199,10 @@ def preprocess_inspect(
             output_file = str(output_dir / f"{dataset_name}_analysis.json")
 
         # Save detailed results
+        from ml_agents.core.dataset_preprocessor import NumpyJSONEncoder
+
         with open(output_file, "w") as f:
-            json.dump(schema_info, f, indent=2)
+            json.dump(schema_info, f, indent=2, cls=NumpyJSONEncoder)
         display_success(f"Detailed inspection results saved to: {output_file}")
 
         display_success("Dataset inspection completed")
@@ -254,8 +256,10 @@ def preprocess_generate_rules(
             output = str(output_dir / f"{dataset_name}_rules.json")
 
         # Save rules
+        from ml_agents.core.dataset_preprocessor import NumpyJSONEncoder
+
         with open(output, "w") as f:
-            json.dump(rules, f, indent=2)
+            json.dump(rules, f, indent=2, cls=NumpyJSONEncoder)
 
         # Display summary
         console.print(f"\n🔧 [bold blue]Transformation Rules Generated[/bold blue]")
@@ -538,8 +542,10 @@ def preprocess_batch(
 
                 # Save rules alongside
                 rules_path = output_path / f"{safe_name}_rules.json"
+                from ml_agents.core.dataset_preprocessor import NumpyJSONEncoder
+
                 with open(rules_path, "w") as f:
-                    json.dump(rules, f, indent=2)
+                    json.dump(rules, f, indent=2, cls=NumpyJSONEncoder)
 
                 display_success(f"✅ Processed: {dataset_name}")
                 successful += 1

@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
+import numpy as np
 import pytest
 from typer.testing import CliRunner
 
@@ -167,8 +168,17 @@ class TestPreprocessInspectCommand:
     @patch("ml_agents.cli.commands.preprocess.ensure_preprocessing_output_dir")
     def test_preprocess_inspect_saves_output(self, mock_ensure_dir, mock_preprocessor):
         """Test that inspection results are saved to file."""
-        mock_output_dir = Path("/tmp/test_output")
+        import tempfile
+
+        # Use a real temporary file instead of mocking
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            output_file = f.name
+
+        mock_output_dir = Path(output_file).parent
         mock_ensure_dir.return_value = mock_output_dir
+
+        # Include numpy data in the mock schema info to test serialization
+        import numpy as np
 
         mock_schema_info = {
             "dataset_name": "test-dataset",
@@ -177,6 +187,13 @@ class TestPreprocessInspectCommand:
             "columns": ["question", "answer"],
             "column_types": {"question": "string", "answer": "string"},
             "detected_patterns": {"recommended_pattern": {"type": "qa"}},
+            "sample_data": [
+                {
+                    "question": "What is 2+2?",
+                    "answer": np.int64(4),  # Numpy type that caused original error
+                    "metadata": np.array([1, 2, 3]),  # Numpy array
+                }
+            ],
         }
 
         mock_preprocessor_instance = Mock()
@@ -185,18 +202,33 @@ class TestPreprocessInspectCommand:
         )
         mock_preprocessor.return_value = mock_preprocessor_instance
 
-        with patch("builtins.open", create=True) as mock_open:
-            with patch("json.dump") as mock_json_dump:
+        try:
+            # Mock the output file path generation to use our temp file
+            with patch.object(Path, "__truediv__", return_value=Path(output_file)):
                 result = self.runner.invoke(
                     app, ["preprocess", "inspect", "test-dataset"]
                 )
 
                 assert result.exit_code == 0
-                mock_json_dump.assert_called_once_with(
-                    mock_schema_info,
-                    mock_open.return_value.__enter__.return_value,
-                    indent=2,
-                )
+
+                # Verify the file was created and contains valid JSON
+                # (this tests that NumpyJSONEncoder works correctly)
+                with open(output_file, "r") as f:
+                    saved_data = json.load(f)
+
+                assert saved_data["dataset_name"] == "test-dataset"
+                assert saved_data["total_samples"] == 500
+                # Verify numpy data was properly serialized
+                assert saved_data["sample_data"][0]["answer"] == 4  # np.int64 -> int
+                assert saved_data["sample_data"][0]["metadata"] == [
+                    1,
+                    2,
+                    3,
+                ]  # np.array -> list
+
+        finally:
+            # Clean up temp file
+            Path(output_file).unlink(missing_ok=True)
 
     @patch("ml_agents.core.dataset_preprocessor.DatasetPreprocessor")
     def test_preprocess_inspect_with_config(self, mock_preprocessor):
@@ -265,12 +297,25 @@ class TestPreprocessGenerateRulesCommand:
     @patch("ml_agents.cli.commands.preprocess.ensure_preprocessing_output_dir")
     def test_preprocess_generate_rules(self, mock_ensure_dir, mock_preprocessor):
         """Test transformation rule generation."""
-        mock_output_dir = Path("/tmp/test_output")
+        import tempfile
+
+        # Use a real temporary file instead of mocking
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            output_file = f.name
+
+        mock_output_dir = Path(output_file).parent
         mock_ensure_dir.return_value = mock_output_dir
 
         mock_schema_info = {
             "dataset_name": "test-dataset",
             "columns": ["input", "output"],
+            "sample_data": [
+                {
+                    "input": "test question",
+                    "output": np.int64(1),  # Include numpy data to test serialization
+                    "scores": np.array([0.8, 0.9]),  # Numpy array
+                }
+            ],
         }
 
         mock_rules = {
@@ -279,6 +324,7 @@ class TestPreprocessGenerateRulesCommand:
             "confidence": 0.9,
             "input_format": "question_answer",
             "rules": {"input_field": "input", "output_field": "output"},
+            "numpy_metadata": np.array([1, 2, 3]),  # Include numpy in rules too
         }
 
         mock_preprocessor_instance = Mock()
@@ -290,8 +336,9 @@ class TestPreprocessGenerateRulesCommand:
         )
         mock_preprocessor.return_value = mock_preprocessor_instance
 
-        with patch("builtins.open", create=True) as mock_open:
-            with patch("json.dump") as mock_json_dump:
+        try:
+            # Mock the output file path generation to use our temp file
+            with patch.object(Path, "__truediv__", return_value=Path(output_file)):
                 result = self.runner.invoke(
                     app, ["preprocess", "generate-rules", "test-dataset"]
                 )
@@ -302,7 +349,20 @@ class TestPreprocessGenerateRulesCommand:
                 assert "input_output_mapping" in result.stdout
                 assert "Confidence: 0.90" in result.stdout
                 assert "Transformation rules generated successfully" in result.stdout
-                mock_json_dump.assert_called_once()
+
+                # Verify the file was created and contains valid JSON
+                # (this tests that NumpyJSONEncoder works correctly)
+                with open(output_file, "r") as f:
+                    saved_rules = json.load(f)
+
+                assert saved_rules["dataset_name"] == "test-dataset"
+                assert saved_rules["confidence"] == 0.9
+                # Verify numpy data was properly serialized
+                assert saved_rules["numpy_metadata"] == [1, 2, 3]  # np.array -> list
+
+        finally:
+            # Clean up temp file
+            Path(output_file).unlink(missing_ok=True)
 
 
 class TestPreprocessTransformCommand:

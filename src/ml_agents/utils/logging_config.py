@@ -106,7 +106,7 @@ def setup_logging(
         Configured logger
     """
     # Get configuration from environment if not provided
-    level = level or os.getenv("LOG_LEVEL", "INFO").upper()
+    level = level or os.getenv("LOG_LEVEL", "ERROR").upper()
     format_type = format_type or os.getenv("LOG_FORMAT", "human").lower()
     log_to_file = (
         log_to_file

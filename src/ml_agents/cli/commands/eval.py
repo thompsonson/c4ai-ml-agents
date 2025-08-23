@@ -36,7 +36,7 @@ from ml_agents.core.experiment_runner import ExperimentRunner
 console = Console()
 
 
-def display_pre_alpha_warning():
+def display_pre_alpha_warning() -> None:
     """Display pre-alpha warning for evaluation commands."""
     console.print("\n⚠️  [bold yellow]PRE-ALPHA WARNING[/bold yellow]")
     console.print(
@@ -45,9 +45,7 @@ def display_pre_alpha_warning():
     console.print(
         "[yellow]Features may be incomplete, unstable, or subject to breaking changes.[/yellow]"
     )
-    console.print(
-        "[yellow]For production use, consider using the stable preprocessing and database commands.[/yellow]"
-    )
+    console.print("[yellow]Preprocessing and database commands are stable.[/yellow]")
     console.print("[dim]Use --skip-warnings to suppress this message.[/dim]\n")
 
 

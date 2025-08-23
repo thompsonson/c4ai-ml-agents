@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 from datasets import Dataset, load_dataset
 
@@ -14,6 +15,24 @@ from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
 from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+class NumpyJSONEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles numpy arrays and other numpy types."""
+
+    def default(self, obj):
+        """Convert numpy objects to JSON serializable types."""
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.bool_):
+            return bool(obj)
+        elif pd.isna(obj):
+            return None
+        return super().default(obj)
 
 
 class DatasetPreprocessor:
@@ -824,8 +843,8 @@ class DatasetPreprocessor:
                             and validation_results.get("validation_passed")
                             else "failed"
                         ),
-                        json.dumps(schema_info),
-                        json.dumps(rules),
+                        json.dumps(schema_info, cls=NumpyJSONEncoder),
+                        json.dumps(rules, cls=NumpyJSONEncoder),
                         rules.get("confidence", 0.0),
                         schema_info.get("total_samples", 0),
                         (
@@ -833,7 +852,11 @@ class DatasetPreprocessor:
                             if validation_results
                             else 0
                         ),
-                        json.dumps(validation_results) if validation_results else None,
+                        (
+                            json.dumps(validation_results, cls=NumpyJSONEncoder)
+                            if validation_results
+                            else None
+                        ),
                         output_path,
                         datetime.utcnow().isoformat(),
                         datetime.utcnow().isoformat(),
