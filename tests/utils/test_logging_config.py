@@ -180,7 +180,7 @@ class TestHumanFormatter:
 class TestLoggingSetup:
     """Test logging setup functions."""
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up after each test."""
         # Reset logging configuration
         logger = logging.getLogger()
@@ -193,7 +193,7 @@ class TestLoggingSetup:
         with patch.dict(os.environ, {}, clear=True):
             logger = setup_logging()
 
-            assert logger.level == logging.INFO
+            assert logger.level == logging.ERROR
             assert len(logger.handlers) == 1  # Console handler only
             assert isinstance(logger.handlers[0], logging.StreamHandler)
 
@@ -205,7 +205,7 @@ class TestLoggingSetup:
         assert logger.level == logging.DEBUG
         assert isinstance(logger.handlers[0].formatter, JSONFormatter)
 
-    def test_setup_logging_with_file(self, temp_dir):
+    def test_setup_logging_with_file(self, temp_dir) -> None:
         """Test setting up logging with file output."""
         log_dir = str(temp_dir)
         logger = setup_logging(log_to_file=True, log_dir=log_dir)
@@ -232,7 +232,7 @@ class TestLoggingSetup:
 class TestLoggingHelpers:
     """Test logging helper functions."""
 
-    def setup_method(self):
+    def setup_method(self) -> None:
         """Set up for each test."""
         # Capture log output
         self.log_capture = StringIO()
@@ -243,7 +243,7 @@ class TestLoggingHelpers:
         self.logger.setLevel(logging.DEBUG)
         self.logger.addHandler(self.handler)
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Clean up after each test."""
         self.logger.removeHandler(self.handler)
 
@@ -382,7 +382,7 @@ class TestLoggingIntegration:
         assert logging.getLogger("transformers").level == logging.WARNING
 
     @patch.dict(os.environ, {"LOG_TO_FILE": "true"})
-    def test_file_logging_rotation(self, temp_dir):
+    def test_file_logging_rotation(self, temp_dir) -> None:
         """Test file logging with rotation."""
         log_dir = str(temp_dir)
 

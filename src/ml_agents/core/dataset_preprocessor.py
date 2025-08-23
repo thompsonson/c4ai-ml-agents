@@ -100,6 +100,7 @@ class DatasetPreprocessor:
             "premise_hypothesis": ["premise", "hypothesis"],
             "context_question": ["context", "question"],
             "passage_question": ["passage", "question"],
+            "story_question_choices": ["story", "question", "candidate_answers"],
             "conversation": ["conversation", "response"],
             "code_description": ["code", "description"],
             "instruction_input": ["instruction", "input"],
@@ -543,6 +544,28 @@ class DatasetPreprocessor:
 
         return recommendation
 
+    def _format_multiple_choice_options(self, candidates: List[str]) -> str:
+        """Format candidate answers as multiple choice options.
+
+        Args:
+            candidates: List of candidate answer strings
+
+        Returns:
+            Formatted string with options labeled A), B), C), etc.
+        """
+        if not candidates:
+            return ""
+
+        formatted_options = []
+        for i, candidate in enumerate(candidates):
+            # Convert index to letter (A, B, C, ...)
+            option_letter = chr(65 + i)  # 65 is ASCII for 'A'
+            # Clean up the candidate text
+            clean_candidate = str(candidate).strip()
+            formatted_options.append(f"{option_letter}) {clean_candidate}")
+
+        return "\n".join(formatted_options)
+
     def generate_transformation_rules(self, schema: Dict[str, Any]) -> Dict[str, Any]:
         """Generate transformation rules based on detected patterns.
 
@@ -588,6 +611,14 @@ class DatasetPreprocessor:
                     rules["input_fields"][0]: "CONTEXT:",
                     rules["input_fields"][1]: "QUESTION:",
                 }
+            elif pattern_name == "story_question_choices":
+                rules["field_labels"] = {
+                    "story": "STORY:",
+                    "question": "QUESTION:",
+                    "candidate_answers": "OPTIONS:",
+                }
+                # Add preprocessing step for answer resolution
+                rules["preprocessing_steps"] = ["resolve_answer_index"]
 
         logger.info(
             f"Generated transformation rules for {schema['dataset_name']} with confidence {rules['confidence']:.2f}"
@@ -656,7 +687,17 @@ class DatasetPreprocessor:
                             label = rules["field_labels"].get(
                                 field, f"{field.upper()}:"
                             )
-                            input_parts.append(f"{label}\n\n{example[field]}")
+
+                            # Special formatting for candidate_answers field
+                            if field == "candidate_answers" and isinstance(
+                                example[field], list
+                            ):
+                                options_text = self._format_multiple_choice_options(
+                                    example[field]
+                                )
+                                input_parts.append(f"{label}\n\n{options_text}")
+                            else:
+                                input_parts.append(f"{label}\n\n{example[field]}")
                         else:
                             logger.warning(f"Field {field} not found in example")
 
@@ -677,7 +718,28 @@ class DatasetPreprocessor:
                 # Build OUTPUT field
                 output_field = rules["output_field"]
                 if output_field and output_field in example:
-                    output_text = str(example[output_field])
+                    output_value = example[output_field]
+
+                    # Check if we need to resolve answer index to text
+                    if "resolve_answer_index" in rules.get("preprocessing_steps", []):
+                        if (
+                            isinstance(output_value, (int, np.integer))
+                            and "candidate_answers" in example
+                        ):
+                            candidates = example["candidate_answers"]
+                            if isinstance(candidates, list) and 0 <= output_value < len(
+                                candidates
+                            ):
+                                output_text = str(candidates[output_value]).strip()
+                            else:
+                                logger.warning(
+                                    f"Could not resolve answer index {output_value}"
+                                )
+                                output_text = str(output_value)
+                        else:
+                            output_text = str(output_value)
+                    else:
+                        output_text = str(output_value)
                 else:
                     logger.warning(f"Output field {output_field} not found in example")
                     output_text = ""
@@ -722,7 +784,7 @@ class DatasetPreprocessor:
                     {"INPUT": dataset[i]["INPUT"], "OUTPUT": dataset[i]["OUTPUT"]}
                 )
             with open(output_path, "w") as f:
-                json.dump(records, f, indent=2)
+                json.dump(records, f, indent=2, cls=NumpyJSONEncoder)
 
         # Default to arrow format for efficient loading
         else:

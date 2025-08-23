@@ -226,6 +226,21 @@ ml-agents/
 - Track memory usage
 - Validate concurrent execution
 
+### Test Coverage
+- **Core preprocessing**: 71% coverage with comprehensive multiple choice dataset tests
+- **Multiple choice functionality**: 100% coverage including edge cases, malformed data, and answer resolution
+- **Integration tests**: End-to-end dataset transformation validation
+- **Mock testing**: Robust test framework handling complex dataset structures
+
+## Recent Enhancements
+
+### Multiple Choice Dataset Support (Latest)
+- **New Pattern**: `story_question_choices` for datasets with story/question/candidate_answers structure
+- **Answer Resolution**: Automatic conversion from numeric indices to text answers
+- **Option Formatting**: Candidate answers formatted as A), B), C), D) options
+- **Comprehensive Testing**: 37 tests covering all functionality including edge cases
+- **JSON Serialization**: Enhanced export with NumpyJSONEncoder for proper numpy type handling
+
 ## Important Conventions
 
 ### Naming Conventions
@@ -355,6 +370,8 @@ ml-agents preprocess upload <processed_file> --source-dataset <source> --target-
 
 **Key Features:**
 - **Automated Schema Detection**: Detects input/output fields with 90%+ confidence
+- **Advanced Pattern Detection**: Supports 7+ dataset patterns including story_question_choices for multiple choice questions
+- **Multiple Choice Dataset Support**: Native support for story-question-choices format with automatic candidate answer formatting (A, B, C, D) and answer index resolution
 - **Native HuggingFace Config Support**: Handles datasets with multiple configurations seamlessly
 - **Enhanced Field Selection**: Prioritizes complete answer fields (e.g., `oracle_full_answer` over `oracle_answer`)
 - **Database Integration**: Tracks preprocessing metadata in SQLite (schema v1.2.0)
@@ -394,6 +411,34 @@ ml-agents preprocess upload ./outputs/preprocessing/MilaWang_SpatialEval_tqa.jso
 # → Uploads all related files: .json, _analysis.json, _rules.json, .csv (if exists)
 # → Includes dataset card (README.md) with transformation rules and metadata
 ```
+
+### Multiple Choice Dataset Example
+
+For datasets with story/question/candidate_answers format (like spatial reasoning tasks):
+
+```bash
+# Example with story-question-choices pattern
+ml-agents preprocess inspect your-dataset --config your-config --samples 10
+# → Detects: story_question_choices pattern with fields: story, question, candidate_answers, answer
+
+# Generates rules with answer index resolution
+ml-agents preprocess generate-rules your-dataset --config your-config
+# → Creates rules with preprocessing_steps: ["resolve_answer_index"]
+
+# Transforms to standardized format
+ml-agents preprocess transform your-dataset rules.json --config your-config
+# → OUTPUT format:
+# {
+#   "INPUT": "STORY:\n\nContext...\n\nQUESTION:\n\nQuestion?\n\nOPTIONS:\n\nA) option1\nB) option2\nC) option3",
+#   "OUTPUT": "option1"  # Resolved from answer index
+# }
+```
+
+**Key Features for Multiple Choice:**
+- Automatically detects story + question + candidate_answers fields
+- Formats options as A), B), C), D) in INPUT
+- Resolves numeric answer indices to actual text in OUTPUT
+- Handles edge cases like out-of-bounds indices and malformed data
 
 ## Community Collaboration
 

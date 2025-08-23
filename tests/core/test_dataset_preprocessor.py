@@ -334,7 +334,7 @@ class TestDatasetPreprocessorCore:
         assert rules["output_field"] == "answer"
 
     @patch("ml_agents.core.dataset_preprocessor.load_dataset")
-    @patch("ml_agents.core.dataset_preprocessor.get_dataset_config_info")
+    @patch("datasets.get_dataset_config_info")
     def test_json_serialization_integration(self, mock_config_info, mock_load_dataset):
         """Test that schema inspection can be JSON serialized without errors."""
         # Mock dataset with numpy data
@@ -348,7 +348,7 @@ class TestDatasetPreprocessorCore:
 
         mock_dataset = Mock()
         mock_dataset.select.return_value.to_pandas.return_value = mock_df
-        mock_dataset.__len__.return_value = 100
+        mock_dataset.__len__ = Mock(return_value=100)
         mock_load_dataset.return_value = mock_dataset
 
         mock_info = Mock()
@@ -372,11 +372,16 @@ class TestDatasetPreprocessorCore:
         """Test exporting datasets with numpy data to JSON format."""
         # Create mock dataset with numpy types
         mock_dataset = Mock()
-        mock_dataset.__len__.return_value = 2
-        mock_dataset.__getitem__.side_effect = [
-            {"INPUT": "What is 2+2?", "OUTPUT": np.int64(4)},
-            {"INPUT": "What is 3+3?", "OUTPUT": np.int64(6)},
-        ]
+        mock_dataset.__len__ = Mock(return_value=2)
+
+        def getitem_func(i):
+            items = [
+                {"INPUT": "What is 2+2?", "OUTPUT": np.int64(4)},
+                {"INPUT": "What is 3+3?", "OUTPUT": np.int64(6)},
+            ]
+            return items[i] if 0 <= i < len(items) else None
+
+        mock_dataset.__getitem__ = Mock(side_effect=getitem_func)
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_path = f.name
