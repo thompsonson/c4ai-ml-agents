@@ -175,10 +175,8 @@ class TestSetupVersion:
         assert result.exit_code == 0
         assert "version information" in result.stdout.lower()
 
-    @patch("ml_agents.__version__", "0.1.0")
-    def test_version_command_format(
-        self,
-    ):
+    @patch("importlib.metadata.version", return_value="0.1.0")
+    def test_version_command_format(self, mock_version):
         """Test version command output format."""
         result = self.runner.invoke(app, ["setup", "version"])
 
