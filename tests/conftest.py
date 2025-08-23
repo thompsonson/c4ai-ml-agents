@@ -43,7 +43,6 @@ def mock_api_keys() -> Dict[str, str]:
         "anthropic": "test-anthropic-key",
         "cohere": "test-cohere-key",
         "openrouter": "test-openrouter-key",
-        "huggingface": "test-hf-key",
     }
 
 
@@ -54,7 +53,6 @@ def mock_env_vars(mock_api_keys: Dict[str, str]) -> Generator[None, None, None]:
         "ANTHROPIC_API_KEY": mock_api_keys["anthropic"],
         "COHERE_API_KEY": mock_api_keys["cohere"],
         "OPENROUTER_API_KEY": mock_api_keys["openrouter"],
-        "HUGGINGFACE_API_KEY": mock_api_keys["huggingface"],
         "LOG_LEVEL": "DEBUG",
         "LOG_FORMAT": "human",
         "LOG_TO_FILE": "false",
@@ -94,22 +92,6 @@ def mock_openai_client() -> Mock:
     mock_response.choices = [mock_choice]
     mock_client.chat.completions.create.return_value = mock_response
     return mock_client
-
-
-@pytest.fixture
-def mock_hf_tokenizer() -> Mock:
-    """Mock HuggingFace tokenizer."""
-    mock_tokenizer = Mock()
-    mock_tokenizer.decode.return_value = "This is a test response."
-    return mock_tokenizer
-
-
-@pytest.fixture
-def mock_hf_model() -> Mock:
-    """Mock HuggingFace model."""
-    mock_model = Mock()
-    mock_model.generate.return_value = [[1, 2, 3, 4]]  # Mock token IDs
-    return mock_model
 
 
 @pytest.fixture
@@ -222,7 +204,6 @@ def skip_if_no_api_key(provider: str) -> bool:
         "anthropic": "ANTHROPIC_API_KEY",
         "cohere": "COHERE_API_KEY",
         "openrouter": "OPENROUTER_API_KEY",
-        "huggingface": "HUGGINGFACE_API_KEY",
     }
 
     env_var = key_env_vars.get(provider.lower())

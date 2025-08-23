@@ -59,13 +59,6 @@ PROVIDER_RATE_LIMITS: Dict[str, RateLimitConfig] = {
         base_backoff=1.5,
         max_backoff=45.0,
     ),
-    "huggingface": RateLimitConfig(
-        tokens_per_second=1.0,  # Very conservative for HF inference
-        max_tokens=5,
-        max_retries=2,
-        base_backoff=3.0,
-        max_backoff=60.0,
-    ),
 }
 
 

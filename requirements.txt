@@ -1,7 +1,4 @@
 numpy<2.0.0
-transformers
-accelerate
-bitsandbytes
 openai
 cohere
 anthropic
@@ -13,7 +10,6 @@ datasets
 python-dotenv
 jupyter
 ipykernel
-torch<=2.2.2
 typer
 rich
 pydantic

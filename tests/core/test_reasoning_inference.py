@@ -294,7 +294,7 @@ class TestReasoningInference:
         """Test cost estimation for free providers."""
         response = StandardResponse(
             text="Test",
-            provider="huggingface",
+            provider="openrouter",
             model="test",
             prompt_tokens=1000,
             completion_tokens=500,
@@ -306,7 +306,7 @@ class TestReasoningInference:
         )
 
         cost = inference_engine._estimate_cost(response)
-        assert cost == 0.0  # HuggingFace should be free
+        assert cost > 0  # OpenRouter should have cost
 
     def test_cleanup(self, inference_engine):
         """Test cleanup functionality."""

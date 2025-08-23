@@ -212,7 +212,5 @@ def check_environment_ready(provider: str) -> None:
             console.print("   ANTHROPIC_API_KEY=your_key_here")
         elif provider == "cohere":
             console.print("   COHERE_API_KEY=your_key_here")
-        elif provider == "huggingface":
-            console.print("   HUGGINGFACE_API_KEY=your_key_here")
 
         raise typer.Exit(1)

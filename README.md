@@ -46,7 +46,7 @@ The platform currently supports **8 production-ready reasoning approaches**:
 
 - Python 3.9+
 - uv (for virtual environment management)
-- API keys for at least one provider (Anthropic, Cohere, OpenRouter, or Hugging Face)
+- API keys for at least one provider (Anthropic, Cohere, or OpenRouter)
 
 ### Installation
 
@@ -148,7 +148,6 @@ jupyter notebook Reasoning_LLM.ipynb
 
 ### Supported Providers and Models
 
-- **Hugging Face**: Gemma-2, Mistral-7B, Llama-3-8B
 - **Anthropic**: Claude Opus 4, Claude Sonnet 4, Claude 3.5 Haiku
 - **Cohere**: Command R+, Command R, Command Light
 - **OpenRouter**: GPT-5, GPT-5 Mini, GPT OSS-120B, Gemini 2.5 Flash Lite

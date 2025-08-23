@@ -47,7 +47,13 @@ def list_approaches() -> None:
 
 def version() -> None:
     """Show version information."""
-    from ml_agents import __version__
+    try:
+        from importlib.metadata import version as get_version
 
-    console.print(f"\n🧠 [bold blue]ML Agents CLI[/bold blue] v{__version__}")
+        version_str = get_version("ml-agents-reasoning")
+    except Exception:
+        # Fallback for development installations
+        version_str = "dev"
+
+    console.print(f"\n🧠 [bold blue]ML Agents CLI[/bold blue] v{version_str}")
     console.print("🔬 [dim]Cohere Labs Open Science Initiative[/dim]")

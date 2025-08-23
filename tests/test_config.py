@@ -42,7 +42,6 @@ class TestAPIKeyFunctions:
             "anthropic": "",  # Empty string should be invalid
             "cohere": "valid-key",
             "openrouter": "valid-key",
-            "huggingface": "valid-key",
         }
         with patch("ml_agents.config.API_KEYS", mock_keys):
             result = validate_api_keys()
@@ -56,7 +55,6 @@ class TestAPIKeyFunctions:
             "anthropic": "your_key_here",  # Default placeholder should be invalid
             "cohere": "valid-key",
             "openrouter": "valid-key",
-            "huggingface": "valid-key",
         }
         with patch("ml_agents.config.API_KEYS", mock_keys):
             result = validate_api_keys()
@@ -241,7 +239,6 @@ class TestConfigurationValidation:
         assert "anthropic" in SUPPORTED_MODELS
         assert "cohere" in SUPPORTED_MODELS
         assert "openrouter" in SUPPORTED_MODELS
-        assert "huggingface" in SUPPORTED_MODELS
 
         for provider, models in SUPPORTED_MODELS.items():
             assert isinstance(models, list)

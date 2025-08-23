@@ -9,8 +9,6 @@ from typing import Any, Dict, List, Optional, Union
 import anthropic
 import cohere
 import openai
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from ml_agents.config import ExperimentConfig, get_api_key
 from ml_agents.utils.logging_config import get_logger
@@ -173,164 +171,6 @@ class APIClient(ABC):
             raise ModelNotFoundError(f"Model not found: {error_msg}") from error
         else:
             raise APIClientError(f"API request failed: {error_msg}") from error
-
-
-class HuggingFaceClient(APIClient):
-    """HuggingFace Transformers client for local inference."""
-
-    def __init__(self, config: ExperimentConfig) -> None:
-        """Initialize HuggingFace client."""
-        super().__init__(config)
-        self.tokenizer: Optional[Any] = None
-        self.model_instance: Optional[Any] = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-
-        # Load model and tokenizer lazily
-        self._model_loaded = False
-
-    def _load_model(self) -> None:
-        """Load model and tokenizer."""
-        if self._model_loaded:
-            return
-
-        try:
-            logger.info(f"Loading HuggingFace model: {self.model}")
-
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model, trust_remote_code=True, token=get_api_key("huggingface")
-            )
-
-            self.model_instance = AutoModelForCausalLM.from_pretrained(
-                self.model,
-                trust_remote_code=True,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                device_map="auto" if self.device == "cuda" else None,
-                token=get_api_key("huggingface"),
-            )
-
-            # Add pad token if missing
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-
-            self._model_loaded = True
-            logger.info(f"Successfully loaded model on {self.device}")
-
-        except Exception as e:
-            self.handle_api_error(e)
-
-    def generate(self, prompt: str, **kwargs) -> Dict[str, Any]:
-        """Generate response using HuggingFace model.
-
-        Args:
-            prompt: Input prompt
-            **kwargs: Additional generation parameters
-
-        Returns:
-            Dictionary with generated text and metadata
-        """
-        self._load_model()
-
-        # Apply rate limiting
-        self.rate_limiter.acquire()
-
-        start_time = time.time()
-
-        try:
-            # Tokenize input
-            inputs = self.tokenizer(
-                prompt,
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=2048,
-            )
-
-            if self.device == "cuda":
-                inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
-            # Generate parameters
-            gen_params = self.get_generation_params(**kwargs)
-
-            # Generate response
-            with torch.no_grad():
-                outputs = self.model_instance.generate(
-                    **inputs,
-                    max_new_tokens=gen_params["max_tokens"],
-                    temperature=gen_params["temperature"],
-                    top_p=gen_params["top_p"],
-                    do_sample=True,
-                    pad_token_id=self.tokenizer.pad_token_id,
-                    eos_token_id=self.tokenizer.eos_token_id,
-                )
-
-            # Decode response
-            input_length = inputs["input_ids"].shape[1]
-            generated_tokens = outputs[0][input_length:]
-            response_text = self.tokenizer.decode(
-                generated_tokens, skip_special_tokens=True
-            )
-
-            end_time = time.time()
-
-            return StandardResponse(
-                text=response_text.strip(),
-                provider=self.provider,
-                model=self.model,
-                prompt_tokens=input_length,
-                completion_tokens=len(generated_tokens),
-                total_tokens=input_length + len(generated_tokens),
-                generation_time=end_time - start_time,
-                parameters=gen_params,
-            )
-
-        except Exception as e:
-            self.handle_api_error(e)
-
-    def cleanup_model(self) -> None:
-        """Clean up model resources and free GPU memory."""
-        if self._model_loaded:
-            logger.info("Cleaning up HuggingFace model resources")
-
-            # Delete model and tokenizer
-            if self.model_instance is not None:
-                del self.model_instance
-                self.model_instance = None
-
-            if self.tokenizer is not None:
-                del self.tokenizer
-                self.tokenizer = None
-
-            # Clear GPU cache if using CUDA
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                logger.debug("Cleared CUDA cache")
-
-            self._model_loaded = False
-            logger.info("Model cleanup completed")
-
-    def __del__(self) -> None:
-        """Destructor to ensure proper cleanup."""
-        try:
-            self.cleanup_model()
-        except Exception:
-            pass  # Ignore errors during cleanup  # nosec B110
-
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit - cleanup model."""
-        self.cleanup_model()
-
-    def validate_connection(self) -> bool:
-        """Validate HuggingFace model access."""
-        try:
-            self._load_model()
-            return True
-        except Exception as e:
-            logger.error(f"HuggingFace validation failed: {e}")
-            raise
 
 
 class AnthropicClient(APIClient):
@@ -576,7 +416,6 @@ def create_api_client(config: ExperimentConfig) -> APIClient:
         ValueError: If provider is not supported
     """
     client_map = {
-        "huggingface": HuggingFaceClient,
         "anthropic": AnthropicClient,
         "cohere": CohereClient,
         "openrouter": OpenRouterClient,

@@ -75,7 +75,7 @@ dataset:
   name: "MrLight/bbeh-eval"
 
 model:
-  provider: "openrouter"  # openrouter, anthropic, cohere, huggingface
+  provider: "openrouter"  # openrouter, anthropic, cohere
   name: "openai/gpt-oss-120b"
   temperature: 0.3
   max_tokens: 512

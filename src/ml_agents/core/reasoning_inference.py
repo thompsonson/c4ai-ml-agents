@@ -380,7 +380,6 @@ class ReasoningInference:
             "anthropic": 0.008,  # Example rate
             "cohere": 0.002,  # Example rate
             "openrouter": 0.0002,  # Example rate for free models
-            "huggingface": 0.0,  # Local models
         }
 
         provider = response.provider.lower()

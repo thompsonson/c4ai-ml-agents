@@ -472,7 +472,7 @@ class TestProviderRateLimits:
 
     def test_all_providers_have_config(self):
         """Test that all expected providers have configurations."""
-        expected_providers = ["anthropic", "cohere", "openrouter", "huggingface"]
+        expected_providers = ["anthropic", "cohere", "openrouter"]
 
         for provider in expected_providers:
             assert provider in PROVIDER_RATE_LIMITS
@@ -502,14 +502,6 @@ class TestProviderRateLimits:
         assert config.tokens_per_second == 2.0
         assert config.max_tokens == 10
         assert config.base_backoff == 1.5
-
-    def test_huggingface_config(self):
-        """Test HuggingFace-specific configuration."""
-        config = PROVIDER_RATE_LIMITS["huggingface"]
-
-        assert config.tokens_per_second == 1.0
-        assert config.max_tokens == 5
-        assert config.base_backoff == 3.0
 
 
 class TestGlobalRateLimiterManager:

@@ -542,13 +542,3 @@ class TestEnvironmentValidation:
 
         with pytest.raises(typer.Exit):
             check_environment_ready("cohere")
-
-    @patch("ml_agents.cli.validators.validate_api_key_available")
-    def test_check_environment_ready_huggingface_instructions(
-        self, mock_validate_api_key
-    ):
-        """Test environment check shows HuggingFace API key instructions."""
-        mock_validate_api_key.return_value = False
-
-        with pytest.raises(typer.Exit):
-            check_environment_ready("huggingface")

@@ -16,16 +16,10 @@ API_KEYS = {
     "anthropic": os.getenv("ANTHROPIC_API_KEY"),
     "cohere": os.getenv("COHERE_API_KEY"),
     "openrouter": os.getenv("OPENROUTER_API_KEY"),
-    "huggingface": os.getenv("HUGGINGFACE_API_KEY"),
 }
 
 # Supported providers and their models
 SUPPORTED_MODELS = {
-    "huggingface": [
-        "google/gemma-2-2b-it",
-        "mistralai/Mistral-7B-Instruct-v0.2",
-        "meta-llama/Meta-Llama-3-8B-Instruct",
-    ],
     "anthropic": [
         "claude-opus-4-1-20250805",
         "claude-sonnet-4-20250514",
@@ -60,7 +54,7 @@ def get_api_key(provider: str) -> Optional[str]:
     """Get API key for a specific provider.
 
     Args:
-        provider: The provider name (anthropic, cohere, openrouter, huggingface)
+        provider: The provider name (anthropic, cohere, openrouter)
 
     Returns:
         The API key string or None if not found

@@ -5,7 +5,6 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-import torch
 
 from ml_agents.config import ExperimentConfig
 from ml_agents.utils.api_clients import (
@@ -14,7 +13,6 @@ from ml_agents.utils.api_clients import (
     APIClientError,
     AuthenticationError,
     CohereClient,
-    HuggingFaceClient,
     ModelNotFoundError,
     OpenRouterClient,
     RateLimitError,
@@ -106,106 +104,6 @@ class TestAPIClient:
 
         with pytest.raises(APIClientError, match="API request failed"):
             client.handle_api_error(error)
-
-
-class TestHuggingFaceClient:
-    """Test HuggingFace client."""
-
-    @pytest.fixture
-    def config(self):
-        """Create test configuration."""
-        return ExperimentConfig(
-            provider="huggingface",
-            model="google/gemma-2-2b-it",
-            temperature=0.5,
-            max_tokens=50,
-        )
-
-    @pytest.fixture
-    def client(self, config):
-        """Create HuggingFace client."""
-        return HuggingFaceClient(config)
-
-    def test_init(self, config):
-        """Test HuggingFace client initialization."""
-        client = HuggingFaceClient(config)
-
-        assert client.provider == "huggingface"
-        assert client.model == "google/gemma-2-2b-it"
-        assert client.tokenizer is None
-        assert client.model_instance is None
-        assert not client._model_loaded
-
-    @patch("ml_agents.utils.api_clients.AutoTokenizer")
-    @patch("ml_agents.utils.api_clients.AutoModelForCausalLM")
-    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
-    def test_load_model_success(self, mock_get_key, mock_model, mock_tokenizer, client):
-        """Test successful model loading."""
-        mock_tokenizer.from_pretrained.return_value = Mock()
-        mock_tokenizer.from_pretrained.return_value.pad_token = None
-        mock_tokenizer.from_pretrained.return_value.eos_token = "<eos>"  # nosec B105
-
-        mock_model.from_pretrained.return_value = Mock()
-
-        client._load_model()
-
-        assert client._model_loaded
-        assert client.tokenizer is not None
-        assert client.model_instance is not None
-
-    @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
-    def test_load_model_failure(self, mock_get_key, client):
-        """Test model loading failure."""
-        with patch("ml_agents.utils.api_clients.AutoTokenizer") as mock_tokenizer:
-            mock_tokenizer.from_pretrained.side_effect = Exception("Model not found")
-
-            with pytest.raises(ModelNotFoundError):
-                client._load_model()
-
-    @patch.object(HuggingFaceClient, "_load_model")
-    @patch("ml_agents.utils.api_clients.torch")
-    def test_generate_success(self, mock_torch, mock_load_model, client):
-        """Test successful text generation."""
-        # Mock tokenizer and model
-        mock_tokenizer = Mock()
-        mock_tokenizer.return_value = {
-            "input_ids": torch.tensor([[1, 2, 3]]),
-            "attention_mask": torch.tensor([[1, 1, 1]]),
-        }
-        mock_tokenizer.pad_token_id = 0
-        mock_tokenizer.eos_token_id = 2
-        mock_tokenizer.decode.return_value = "Generated response"
-
-        mock_model = Mock()
-        mock_model.generate.return_value = torch.tensor([[1, 2, 3, 4, 5, 6]])
-
-        client.tokenizer = mock_tokenizer
-        client.model_instance = mock_model
-        client.device = "cpu"
-
-        mock_torch.no_grad.return_value.__enter__ = Mock()
-        mock_torch.no_grad.return_value.__exit__ = Mock()
-
-        result = client.generate("Test prompt")
-
-        assert result.text == "Generated response"
-        assert result.provider == "huggingface"
-        assert result.model == "google/gemma-2-2b-it"
-        assert result.generation_time is not None
-
-    @patch.object(HuggingFaceClient, "_load_model")
-    def test_validate_connection_success(self, mock_load_model, client):
-        """Test successful connection validation."""
-        result = client.validate_connection()
-        assert result is True
-
-    @patch.object(HuggingFaceClient, "_load_model")
-    def test_validate_connection_failure(self, mock_load_model, client):
-        """Test failed connection validation."""
-        mock_load_model.side_effect = Exception("Connection failed")
-
-        with pytest.raises(Exception):
-            client.validate_connection()
 
 
 class TestAnthropicClient:
@@ -420,12 +318,6 @@ class TestOpenRouterClient:
 
 class TestCreateAPIClient:
     """Test API client factory function."""
-
-    def test_create_huggingface_client(self):
-        """Test creating HuggingFace client."""
-        config = ExperimentConfig(provider="huggingface", model="google/gemma-2-2b-it")
-        client = create_api_client(config)
-        assert isinstance(client, HuggingFaceClient)
 
     @patch("ml_agents.utils.api_clients.get_api_key", return_value="test_key")
     def test_create_anthropic_client(self, mock_get_key):
