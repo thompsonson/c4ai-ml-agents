@@ -57,22 +57,18 @@ class TestCLIExperimentConfig:
 
     def test_config_validation_invalid_temperature(self):
         """Test validation fails for invalid temperature."""
-        with pytest.raises(
-            ValueError, match="ensure this value is less than or equal to 2"
-        ):
+        with pytest.raises(ValueError, match="Input should be less than or equal to 2"):
             CLIExperimentConfig(temperature=3.0)
 
     def test_config_validation_invalid_top_p(self):
         """Test validation fails for invalid top_p."""
-        with pytest.raises(
-            ValueError, match="ensure this value is less than or equal to 1"
-        ):
+        with pytest.raises(ValueError, match="Input should be less than or equal to 1"):
             CLIExperimentConfig(top_p=1.5)
 
     def test_config_validation_invalid_sample_count(self):
         """Test validation fails for invalid sample count."""
         with pytest.raises(
-            ValueError, match="ensure this value is greater than or equal to 1"
+            ValueError, match="Input should be greater than or equal to 1"
         ):
             CLIExperimentConfig(sample_count=0)
 
@@ -376,7 +372,12 @@ class TestFullConfigLoading:
 
     def test_load_and_validate_cli_overrides(self):
         """Test CLI arguments override config file."""
-        config_data = {"sample_count": 25, "provider": "anthropic", "temperature": 0.2}
+        config_data = {
+            "sample_count": 25,
+            "provider": "anthropic",
+            "model": "claude-sonnet-4-20250514",
+            "temperature": 0.2,
+        }
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(config_data, f)

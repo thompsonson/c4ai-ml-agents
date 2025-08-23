@@ -37,18 +37,28 @@ class TestAPIKeyFunctions:
 
     def test_validate_api_keys_some_missing(self):
         """Test validation when some API keys are missing."""
-        # Clear just the anthropic key, keep others
-        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""}, clear=False):
+        # Mock API_KEYS with some missing
+        mock_keys = {
+            "anthropic": "",  # Empty string should be invalid
+            "cohere": "valid-key",
+            "openrouter": "valid-key",
+            "huggingface": "valid-key",
+        }
+        with patch("ml_agents.config.API_KEYS", mock_keys):
             result = validate_api_keys()
             assert not result["anthropic"]
-            # Other keys may or may not be set depending on environment
+            assert result["cohere"]
 
     def test_validate_api_keys_default_value(self):
         """Test validation rejects default placeholder values."""
-        # Set anthropic key to default placeholder
-        with patch.dict(
-            os.environ, {"ANTHROPIC_API_KEY": "your_key_here"}, clear=False
-        ):
+        # Mock API_KEYS with default placeholder
+        mock_keys = {
+            "anthropic": "your_key_here",  # Default placeholder should be invalid
+            "cohere": "valid-key",
+            "openrouter": "valid-key",
+            "huggingface": "valid-key",
+        }
+        with patch("ml_agents.config.API_KEYS", mock_keys):
             result = validate_api_keys()
             assert not result["anthropic"]  # Should be False for placeholder value
 

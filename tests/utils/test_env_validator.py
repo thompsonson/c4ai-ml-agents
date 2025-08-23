@@ -161,8 +161,8 @@ class TestEnvironmentValidator:
 
         # Check that success messages were printed
         print_calls = " ".join(str(call) for call in mock_print.call_args_list)
-        assert " PASSED" in print_calls
-        assert " READY" in print_calls
+        assert " PASSED" in print_calls
+        assert " READY" in print_calls
 
     @patch.object(EnvironmentValidator, "validate_env_vars")
     @patch.object(EnvironmentValidator, "validate_dependencies")
@@ -180,8 +180,8 @@ class TestEnvironmentValidator:
 
         # Check that failure messages were printed
         print_calls = " ".join(str(call) for call in mock_print.call_args_list)
-        assert "L FAILED" in print_calls
-        assert "L NOT READY" in print_calls
+        assert "FAILED" in print_calls
+        assert "NOT READY" in print_calls
         assert "ANTHROPIC_API_KEY: Not set" in print_calls
         assert "anthropic: Not installed" in print_calls
         assert "Permission denied" in print_calls

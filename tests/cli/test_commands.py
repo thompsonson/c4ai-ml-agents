@@ -369,7 +369,35 @@ class TestCompareCommand:
         try:
             mock_runner_instance = Mock()
             mock_result = Mock()
-            mock_result.results_summary = {}
+            # Provide proper mock data structure for display functions
+            mock_result.experiment_id = "exp_config_test"
+            mock_result.duration = 45.0
+            mock_result.results_summary = {
+                "ChainOfThought": {
+                    "total_samples": 15,
+                    "accuracy": 0.85,
+                    "avg_time": 2.5,
+                    "total_cost": 1.25,
+                    "completed": True,
+                    "error_count": 0,
+                },
+                "Reflection": {
+                    "total_samples": 15,
+                    "accuracy": 0.80,
+                    "avg_time": 3.2,
+                    "total_cost": 1.50,
+                    "completed": True,
+                    "error_count": 0,
+                },
+                "TreeOfThought": {
+                    "total_samples": 15,
+                    "accuracy": 0.82,
+                    "avg_time": 4.1,
+                    "total_cost": 2.00,
+                    "completed": True,
+                    "error_count": 0,
+                },
+            }
             mock_runner_instance.run_comparison.return_value = mock_result
             mock_experiment_runner.return_value = mock_runner_instance
 

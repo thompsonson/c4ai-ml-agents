@@ -92,38 +92,44 @@ class TestReasoningApproachValidation:
 class TestProviderModelValidation:
     """Test provider and model validation functions."""
 
-    @patch("ml_agents.cli.validators.SUPPORTED_MODELS")
-    def test_validate_valid_provider_model(self, mock_supported_models):
-        """Test validation of valid provider/model combination."""
-        mock_supported_models.return_value = {
+    @patch(
+        "ml_agents.cli.validators.SUPPORTED_MODELS",
+        {
             "openrouter": ["gpt-3.5-turbo", "gpt-4"],
             "anthropic": ["claude-sonnet-4-20250514"],
-        }
+        },
+    )
+    def test_validate_valid_provider_model(self):
+        """Test validation of valid provider/model combination."""
 
         provider, model = validate_provider_model("openrouter", "gpt-3.5-turbo")
         assert provider == "openrouter"
         assert model == "gpt-3.5-turbo"
 
-    @patch("ml_agents.cli.validators.SUPPORTED_MODELS")
-    def test_validate_invalid_provider(self, mock_supported_models):
-        """Test validation fails for invalid provider."""
-        mock_supported_models.return_value = {
+    @patch(
+        "ml_agents.cli.validators.SUPPORTED_MODELS",
+        {
             "openrouter": ["gpt-3.5-turbo"],
             "anthropic": ["claude-sonnet-4-20250514"],
-        }
+        },
+    )
+    def test_validate_invalid_provider(self):
+        """Test validation fails for invalid provider."""
 
         with pytest.raises(
             typer.BadParameter, match="Invalid provider: invalid_provider"
         ):
             validate_provider_model("invalid_provider", "gpt-3.5-turbo")
 
-    @patch("ml_agents.cli.validators.SUPPORTED_MODELS")
-    def test_validate_invalid_model_for_provider(self, mock_supported_models):
-        """Test validation fails for invalid model for provider."""
-        mock_supported_models.return_value = {
+    @patch(
+        "ml_agents.cli.validators.SUPPORTED_MODELS",
+        {
             "openrouter": ["gpt-3.5-turbo"],
             "anthropic": ["claude-sonnet-4-20250514"],
-        }
+        },
+    )
+    def test_validate_invalid_model_for_provider(self):
+        """Test validation fails for invalid model for provider."""
 
         with pytest.raises(
             typer.BadParameter,
@@ -452,20 +458,21 @@ class TestParameterValidation:
         assert validate_max_tokens(1) == 1
         assert validate_max_tokens(512) == 512
         assert validate_max_tokens(4096) == 4096
+        assert validate_max_tokens(128000) == 128000
 
     def test_validate_max_tokens_invalid_low(self):
         """Test max_tokens validation fails for values below 1."""
         with pytest.raises(
-            typer.BadParameter, match="max_tokens must be between 1 and 4096"
+            typer.BadParameter, match="max_tokens must be between 1 and 128,000"
         ):
             validate_max_tokens(0)
 
     def test_validate_max_tokens_invalid_high(self):
-        """Test max_tokens validation fails for values above 4096."""
+        """Test max_tokens validation fails for values above 128,000."""
         with pytest.raises(
-            typer.BadParameter, match="max_tokens must be between 1 and 4096"
+            typer.BadParameter, match="max_tokens must be between 1 and 128,000"
         ):
-            validate_max_tokens(5000)
+            validate_max_tokens(150000)
 
     def test_validate_max_workers_valid(self):
         """Test valid max_workers validation."""

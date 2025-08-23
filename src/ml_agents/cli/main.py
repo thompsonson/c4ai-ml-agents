@@ -111,7 +111,7 @@ def version() -> None:
     console.print("🔬 [dim]Cohere Labs Open Science Initiative[/dim]")
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(
     ctx: typer.Context,
     version_flag: Optional[bool] = typer.Option(

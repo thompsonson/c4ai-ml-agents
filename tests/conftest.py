@@ -159,7 +159,7 @@ def experiment_config_data() -> Dict[str, Any]:
         "temperature": 0.5,
         "max_tokens": 256,
         "top_p": 0.9,
-        "reasoning_approaches": ["None", "Chain-of-Thought (CoT)"],
+        "reasoning_approaches": ["None", "ChainOfThought"],
         "output_dir": "./test_outputs",
     }
 

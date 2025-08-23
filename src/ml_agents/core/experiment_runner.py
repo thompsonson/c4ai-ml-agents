@@ -551,6 +551,10 @@ class ExperimentRunner:
                     }
                     results.append(result_data)
 
+                    # Save to database if enabled
+                    if self.results_processor:
+                        self._save_result_to_database(result, approach, i, sample)
+
                 except Exception as e:
                     logger.warning(f"Error in {approach} sample {i}: {e}")
                     error_data = {

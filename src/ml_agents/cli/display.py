@@ -60,9 +60,37 @@ def create_experiment_table(results: List[Dict[str, Any]]) -> Table:
         # Extract key metrics
         approach = result.get("approach", "Unknown")
         samples = str(result.get("total_samples", 0))
-        accuracy = result.get("accuracy", "N/A")
-        avg_time = result.get("avg_time", "N/A")
-        total_cost = result.get("total_cost", "$0.00")
+
+        # Format numeric values as strings
+        accuracy_val = result.get("accuracy")
+        if accuracy_val is not None:
+            accuracy = (
+                f"{accuracy_val:.2%}"
+                if isinstance(accuracy_val, (int, float))
+                else str(accuracy_val)
+            )
+        else:
+            accuracy = "N/A"
+
+        avg_time_val = result.get("avg_time")
+        if avg_time_val is not None:
+            avg_time = (
+                f"{avg_time_val:.2f}s"
+                if isinstance(avg_time_val, (int, float))
+                else str(avg_time_val)
+            )
+        else:
+            avg_time = "N/A"
+
+        total_cost_val = result.get("total_cost")
+        if total_cost_val is not None:
+            total_cost = (
+                f"${total_cost_val:.2f}"
+                if isinstance(total_cost_val, (int, float))
+                else str(total_cost_val)
+            )
+        else:
+            total_cost = "$0.00"
 
         # Status with color coding
         if result.get("error_count", 0) > 0:

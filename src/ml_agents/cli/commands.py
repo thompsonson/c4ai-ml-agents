@@ -312,7 +312,7 @@ def run_comparison_experiment(
         4,
         "--max-workers",
         help="Maximum parallel workers",
-        callback=lambda x: validate_max_workers(x) if x else 4,
+        callback=lambda x: validate_max_workers(x),
     ),
     output_dir: Optional[str] = typer.Option(
         None,

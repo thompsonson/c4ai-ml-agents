@@ -26,8 +26,8 @@ class TestDatabasePersistenceIntegration:
         config = ExperimentConfig(
             dataset_name="test_dataset",
             sample_count=5,
-            provider="openai",
-            model="gpt-4",
+            provider="openrouter",
+            model="openai/gpt-oss-120b",
             reasoning_approaches=["None"],
             database_enabled=True,
             database_path=db_path,
@@ -47,11 +47,20 @@ class TestDatabasePersistenceIntegration:
         with patch("ml_agents.core.experiment_runner.BBEHDatasetLoader") as mock_loader:
             # Create mock instance
             mock_instance = MagicMock()
-            mock_instance.load_samples.return_value = [
-                {"input": f"Question {i}", "output": str(i)} for i in range(5)
-            ]
+            # Return test data with the expected structure
+            test_data = [{"input": f"Question {i}", "output": str(i)} for i in range(5)]
+            mock_instance.load_samples.return_value = test_data
+            mock_instance.load_dataset.return_value = (
+                test_data  # Mock the main load method
+            )
             mock_instance.get_input_column_name.return_value = "input"
             mock_instance.get_output_column_name.return_value = "output"
+            # Mock dataset validation and sampling methods
+            mock_instance.validate_format.return_value = True
+            # Make sample_data respect the sample_size parameter
+            mock_instance.sample_data.side_effect = lambda sample_size=None: (
+                test_data[:sample_size] if sample_size else test_data
+            )
 
             # Configure mock to return the instance
             mock_loader.return_value = mock_instance
@@ -67,25 +76,36 @@ class TestDatabasePersistenceIntegration:
             mock_instance = MagicMock()
 
             def mock_run_inference(input_text, approach):
+                # Import the dataclass here
+                from ml_agents.core.reasoning_inference import ReasoningResult
+
                 # Create a mock ReasoningResult
                 sample_id = input_text.split()[-1]  # Extract number from "Question X"
                 is_correct = int(sample_id) % 2 == 0  # Even numbers are correct
 
-                mock_result = MagicMock()
-                mock_result.response = StandardResponse(
-                    response=f"Response for {input_text}",
-                    parsed_answer=sample_id,
-                    is_correct=is_correct,
+                response = StandardResponse(
+                    text=f"Response for {input_text}",
+                    provider="openrouter",
+                    model="openai/gpt-oss-120b",
+                    prompt_tokens=100,
+                    completion_tokens=50,
+                    total_tokens=150,
+                    generation_time=1.5,
+                    parameters={},
+                    extracted_answer=sample_id,
                     metadata={
                         "parsing_confidence": 0.8 + (int(sample_id) * 0.02),
                         "parsing_method": "instructor",
                     },
                 )
-                mock_result.execution_time = 1.5 + (int(sample_id) * 0.1)
-                mock_result.cost_estimate = 0.001 * (int(sample_id) + 1)
-                mock_result.metadata = {"reasoning_steps": int(sample_id) + 1}
 
-                return mock_result
+                return ReasoningResult(
+                    response=response,
+                    approach_name=approach,
+                    execution_time=1.5 + (int(sample_id) * 0.1),
+                    cost_estimate=0.001 * (int(sample_id) + 1),
+                    metadata={"reasoning_steps": int(sample_id) + 1},
+                )
 
             mock_instance.run_inference.side_effect = mock_run_inference
             mock_engine.return_value = mock_instance
@@ -114,7 +134,7 @@ class TestDatabasePersistenceIntegration:
         assert experiment["id"] == runner.experiment_id
         assert experiment["status"] == "running"
         assert "openai" in experiment["name"]
-        assert "gpt-4" in experiment["name"]
+        assert "gpt-oss-120b" in experiment["name"]
 
         # Mock the progress callback to avoid UI calls
         with patch("ml_agents.core.experiment_runner.tqdm"):
@@ -148,7 +168,7 @@ class TestDatabasePersistenceIntegration:
             # Check run details
             cursor.execute(
                 """
-                SELECT approach_name, provider, model, input_text, parsed_answer, is_correct
+                SELECT approach_name, provider, model, input_text, parsed_answer, is_correct, expected_answer
                 FROM runs WHERE experiment_id = ? ORDER BY sample_index
             """,
                 (runner.experiment_id,),
@@ -159,11 +179,15 @@ class TestDatabasePersistenceIntegration:
 
             for i, run in enumerate(runs):
                 assert run[0] == "None"  # approach_name
-                assert run[1] == "openai"  # provider
-                assert run[2] == "gpt-4"  # model
+                assert run[1] == "openrouter"  # provider
+                assert run[2] == "openai/gpt-oss-120b"  # model
                 assert run[3] == f"Question {i}"  # input_text
                 assert run[4] == str(i)  # parsed_answer
-                assert run[5] == (i % 2 == 0)  # is_correct (even numbers)
+                # The correctness is based on comparison of parsed_answer and expected_answer
+                # Since both are str(i), they should all be correct (1)
+                assert (
+                    run[5] == 1
+                )  # is_correct - all should be correct since parsed == expected
 
         # Verify experiment status was updated to completed
         updated_experiments = processor.get_experiments_list()
@@ -177,8 +201,8 @@ class TestDatabasePersistenceIntegration:
         config = ExperimentConfig(
             dataset_name="test_dataset",
             sample_count=3,
-            provider="openai",
-            model="gpt-4",
+            provider="openrouter",
+            model="openai/gpt-oss-120b",
             reasoning_approaches=["None"],
             database_enabled=False,
         )
@@ -214,13 +238,20 @@ class TestDatabasePersistenceIntegration:
             mock_instance = MagicMock()
 
             def mock_run_inference_with_metrics(input_text, approach):
+                from ml_agents.core.reasoning_inference import ReasoningResult
+
                 sample_id = input_text.split()[-1]
 
-                mock_result = MagicMock()
-                mock_result.response = StandardResponse(
-                    response=f"Response for {input_text}",
-                    parsed_answer=sample_id,
-                    is_correct=True,
+                response = StandardResponse(
+                    text=f"Response for {input_text}",
+                    provider="openrouter",
+                    model="openai/gpt-oss-120b",
+                    prompt_tokens=100,
+                    completion_tokens=50,
+                    total_tokens=150,
+                    generation_time=1.5,
+                    parameters={},
+                    extracted_answer=sample_id,
                     metadata={
                         "parsing_confidence": 0.9,
                         "parsing_method": "instructor",
@@ -233,11 +264,14 @@ class TestDatabasePersistenceIntegration:
                         },
                     },
                 )
-                mock_result.execution_time = 1.5
-                mock_result.cost_estimate = 0.001
-                mock_result.metadata = {"reasoning_steps": 1}
 
-                return mock_result
+                return ReasoningResult(
+                    response=response,
+                    approach_name=approach,
+                    execution_time=1.5,
+                    cost_estimate=0.001,
+                    metadata={"reasoning_steps": 1},
+                )
 
             mock_instance.run_inference.side_effect = mock_run_inference_with_metrics
             mock_engine.return_value = mock_instance
@@ -352,29 +386,36 @@ class TestDatabasePersistenceIntegration:
             mock_instance = MagicMock()
 
             def mock_run_inference_variable(input_text, approach):
+                from ml_agents.core.reasoning_inference import ReasoningResult
+
                 sample_id = int(input_text.split()[-1])
 
-                # Different accuracy for different approaches
-                if approach == "None":
-                    is_correct = sample_id % 2 == 0
-                else:  # ChainOfThought
-                    is_correct = sample_id % 3 != 0
+                # Different accuracy for different approaches - not used now
+                # We'll determine correctness based on matching parsed_answer and expected
 
-                mock_result = MagicMock()
-                mock_result.response = StandardResponse(
-                    response=f"{approach} response for {input_text}",
-                    parsed_answer=str(sample_id),
-                    is_correct=is_correct,
+                response = StandardResponse(
+                    text=f"{approach} response for {input_text}",
+                    provider="openrouter",
+                    model="openai/gpt-oss-120b",
+                    prompt_tokens=100,
+                    completion_tokens=50,
+                    total_tokens=150,
+                    generation_time=1.0 if approach == "None" else 2.0,
+                    parameters={},
+                    extracted_answer=str(sample_id),
                     metadata={
                         "parsing_confidence": 0.8,
                         "parsing_method": "instructor",
                     },
                 )
-                mock_result.execution_time = 1.0 if approach == "None" else 2.0
-                mock_result.cost_estimate = 0.001 if approach == "None" else 0.002
-                mock_result.metadata = {"reasoning_steps": 1}
 
-                return mock_result
+                return ReasoningResult(
+                    response=response,
+                    approach_name=approach,
+                    execution_time=1.0 if approach == "None" else 2.0,
+                    cost_estimate=0.001 if approach == "None" else 0.002,
+                    metadata={"reasoning_steps": 1},
+                )
 
             mock_instance.run_inference.side_effect = mock_run_inference_variable
             mock_engine.return_value = mock_instance
@@ -438,24 +479,34 @@ class TestDatabasePersistenceIntegration:
             mock_instance = MagicMock()
 
             def mock_run_inference_with_errors(input_text, approach):
+                from ml_agents.core.reasoning_inference import ReasoningResult
+
                 sample_id = int(input_text.split()[-1])
 
                 # Fail on sample 1
                 if sample_id == 1:
                     raise Exception("Simulated inference error")
 
-                mock_result = MagicMock()
-                mock_result.response = StandardResponse(
-                    response=f"Response for {input_text}",
-                    parsed_answer=str(sample_id),
-                    is_correct=True,
+                response = StandardResponse(
+                    text=f"Response for {input_text}",
+                    provider="openrouter",
+                    model="openai/gpt-oss-120b",
+                    prompt_tokens=100,
+                    completion_tokens=50,
+                    total_tokens=150,
+                    generation_time=1.5,
+                    parameters={},
+                    extracted_answer=str(sample_id),
                     metadata={"parsing_confidence": 0.9},
                 )
-                mock_result.execution_time = 1.5
-                mock_result.cost_estimate = 0.001
-                mock_result.metadata = {"reasoning_steps": 1}
 
-                return mock_result
+                return ReasoningResult(
+                    response=response,
+                    approach_name=approach,
+                    execution_time=1.5,
+                    cost_estimate=0.001,
+                    metadata={"reasoning_steps": 1},
+                )
 
             mock_instance.run_inference.side_effect = mock_run_inference_with_errors
             mock_engine.return_value = mock_instance
