@@ -2,6 +2,8 @@
 
 ## Community Resources
 
+**👉 New to ML Agents? Check out the [BEGINNER_GUIDE.md](./BEGINNER_GUIDE.md) for a step-by-step walkthrough!**
+
 - **[ML Agents Community Program](https://sites.google.com/cohere.com/coherelabs-community/community-programs/ml-agents)** - Main hub for Cohere Labs' community-driven initiative on open-source agent research, focusing on agentic frameworks, applications, evaluations, and benchmarks
 
 - **[Project Documentation](https://docs.google.com/document/d/1fLnwUzTvO3XuvViBwLz-QuSe_y87a1p4j8Uw2R4eBiI/edit?pli=1&tab=t.0#heading=h.d0279byf6lhr)** - Detailed specifications and roadmap for the ZeroHPO (Zero-shot Hyperparameter Optimization) project for agentic tasks

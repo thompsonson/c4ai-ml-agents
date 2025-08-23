@@ -98,15 +98,64 @@ ml-agents eval run --approach ChainOfThought --samples 5 --verbose
 
 ### 1. Dataset Preprocessing
 
+Transform any HuggingFace dataset to standardized `{INPUT, OUTPUT}` format for reasoning evaluation:
+
 ```bash
 # List available datasets for preprocessing (✅ Stable)
 ml-agents preprocess list
 
-# Inspect a dataset structure (✅ Stable)
-ml-agents preprocess inspect MilaWang/SpatialEval --samples 100
+# Step 1: Inspect dataset schema and confirm INPUT/OUTPUT fields (✅ Stable)
+ml-agents preprocess inspect MilaWang/SpatialEval --samples 1 --config tqa
 
-# Process multiple datasets (✅ Stable)
+# Step 2: Generate transformation rules file (✅ Stable)
+ml-agents preprocess generate-rules MilaWang/SpatialEval --config tqa \
+  --output ./outputs/preprocessing/milawang_spatialeval_rules.json
+
+# Step 3: Apply transformation to create standardized dataset (✅ Stable)
+ml-agents preprocess transform MilaWang/SpatialEval \
+  ./outputs/preprocessing/milawang_spatialeval_rules.json --config tqa
+
+# Step 4: Upload to HuggingFace Hub (✅ Stable)
+ml-agents preprocess upload ./outputs/preprocessing/milawang_spatialeval.json
+
+# Process multiple datasets automatically (✅ Stable)
 ml-agents preprocess batch --max 5
+```
+
+#### Understanding the Rules File
+
+The `generate-rules` command creates a JSON file that defines how to transform your dataset:
+
+```json
+{
+  "dataset_name": "MilaWang/SpatialEval",
+  "transformation_type": "multi_field",
+  "confidence": 1.0,
+  "input_format": "multi_field",
+  "input_fields": ["story", "question", "candidate_answers"],
+  "output_field": "answer",
+  "field_separator": "\n\n",
+  "field_labels": {
+    "story": "STORY:",
+    "question": "QUESTION:",
+    "candidate_answers": "OPTIONS:"
+  },
+  "preprocessing_steps": ["resolve_answer_index"]
+}
+```
+
+- **input_fields**: Dataset columns combined into INPUT field
+- **output_field**: Dataset column used for OUTPUT field
+- **preprocessing_steps**: Special transformations (e.g., convert answer indices to text)
+- **field_labels**: Headers added to INPUT sections
+
+#### Get Help for Preprocessing Commands
+
+```bash
+ml-agents preprocess --help
+ml-agents preprocess generate-rules --help
+ml-agents preprocess transform --help
+ml-agents preprocess upload --help
 ```
 
 ### 2. Single Reasoning Experiment
@@ -293,4 +342,5 @@ ml-agents setup --help
 
 # Community support
 # Discord: https://discord.gg/ckaQnUakYx (#ml-agents channel)
+# Author's Discord ID: _mattthompson
 ```
