@@ -22,7 +22,7 @@ class TestRunCommand:
 
     def test_run_command_help(self):
         """Test run command help display."""
-        result = self.runner.invoke(app, ["run", "--help"])
+        result = self.runner.invoke(app, ["eval", "run", "--help"])
 
         assert result.exit_code == 0
         assert "single reasoning experiment" in result.stdout.lower()
@@ -30,10 +30,10 @@ class TestRunCommand:
         assert "--samples" in result.stdout
         assert "--config" in result.stdout
 
-    @patch("ml_agents.cli.commands.ExperimentRunner")
-    @patch("ml_agents.cli.commands.check_environment_ready")
-    @patch("ml_agents.cli.commands.display_experiment_complete")
-    @patch("ml_agents.cli.commands.create_experiment_table")
+    @patch("ml_agents.cli.commands.eval.ExperimentRunner")
+    @patch("ml_agents.cli.commands.eval.check_environment_ready")
+    @patch("ml_agents.cli.commands.eval.display_experiment_complete")
+    @patch("ml_agents.cli.commands.eval.create_experiment_table")
     def test_run_command_with_basic_args(
         self,
         mock_create_table,
@@ -76,6 +76,7 @@ class TestRunCommand:
         result = self.runner.invoke(
             app,
             [
+                "eval",
                 "run",
                 "--approach",
                 "ChainOfThought",
@@ -98,10 +99,10 @@ class TestRunCommand:
         # Verify environment was checked
         mock_check_env.assert_called_once()
 
-    @patch("ml_agents.cli.commands.ExperimentRunner")
-    @patch("ml_agents.cli.commands.check_environment_ready")
-    @patch("ml_agents.cli.commands.display_experiment_complete")
-    @patch("ml_agents.cli.commands.create_experiment_table")
+    @patch("ml_agents.cli.commands.eval.ExperimentRunner")
+    @patch("ml_agents.cli.commands.eval.check_environment_ready")
+    @patch("ml_agents.cli.commands.eval.display_experiment_complete")
+    @patch("ml_agents.cli.commands.eval.create_experiment_table")
     def test_run_command_with_config_file(
         self,
         mock_create_table,
@@ -157,6 +158,7 @@ class TestRunCommand:
             result = self.runner.invoke(
                 app,
                 [
+                    "eval",
                     "run",
                     "--config",
                     config_path,
@@ -180,14 +182,16 @@ class TestRunCommand:
             "Invalid reasoning approach: InvalidApproach"
         )
 
-        result = self.runner.invoke(app, ["run", "--approach", "InvalidApproach"])
+        result = self.runner.invoke(
+            app, ["eval", "run", "--approach", "InvalidApproach"]
+        )
 
         assert result.exit_code != 0
 
     def test_run_command_invalid_samples(self):
         """Test run command with invalid sample count."""
         result = self.runner.invoke(
-            app, ["run", "--samples", "-5"]  # Invalid: must be positive
+            app, ["eval", "run", "--samples", "-5"]  # Invalid: must be positive
         )
 
         assert result.exit_code != 0
@@ -198,7 +202,7 @@ class TestRunCommand:
     def test_run_command_invalid_temperature(self):
         """Test run command with invalid temperature."""
         result = self.runner.invoke(
-            app, ["run", "--temperature", "3.0"]  # Invalid: must be <= 2.0
+            app, ["eval", "run", "--temperature", "3.0"]  # Invalid: must be <= 2.0
         )
 
         assert result.exit_code != 0
@@ -206,7 +210,7 @@ class TestRunCommand:
         assert "Temperature must be" in result.output
         assert "between 0.0 and 2.0" in result.output
 
-    @patch("ml_agents.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.eval.ExperimentRunner")
     def test_run_command_experiment_failure(self, mock_experiment_runner):
         """Test run command when experiment fails."""
         mock_runner_instance = Mock()
@@ -214,19 +218,21 @@ class TestRunCommand:
         mock_experiment_runner.return_value = mock_runner_instance
 
         result = self.runner.invoke(
-            app, ["run", "--approach", "ChainOfThought", "--samples", "5"]
+            app, ["eval", "run", "--approach", "ChainOfThought", "--samples", "5"]
         )
 
         assert result.exit_code == 1
 
     def test_run_command_keyboard_interrupt(self):
         """Test run command handling of keyboard interrupt."""
-        with patch("ml_agents.cli.commands.ExperimentRunner") as mock_runner:
+        with patch("ml_agents.cli.commands.eval.ExperimentRunner") as mock_runner:
             mock_runner_instance = Mock()
             mock_runner_instance.run_single_experiment.side_effect = KeyboardInterrupt()
             mock_runner.return_value = mock_runner_instance
 
-            result = self.runner.invoke(app, ["run", "--approach", "ChainOfThought"])
+            result = self.runner.invoke(
+                app, ["eval", "run", "--approach", "ChainOfThought"]
+            )
 
             assert result.exit_code == 130  # Standard interrupt exit code
 
@@ -240,7 +246,7 @@ class TestCompareCommand:
 
     def test_compare_command_help(self):
         """Test compare command help display."""
-        result = self.runner.invoke(app, ["compare", "--help"])
+        result = self.runner.invoke(app, ["eval", "compare", "--help"])
 
         assert result.exit_code == 0
         assert "comparison experiment" in result.stdout.lower()
@@ -248,8 +254,8 @@ class TestCompareCommand:
         assert "--parallel" in result.stdout
         assert "--max-workers" in result.stdout
 
-    @patch("ml_agents.cli.commands.ExperimentRunner")
-    @patch("ml_agents.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.eval.ExperimentRunner")
+    @patch("ml_agents.cli.commands.eval.check_environment_ready")
     def test_compare_command_sequential(self, mock_check_env, mock_experiment_runner):
         """Test compare command with sequential execution."""
         # Mock the runner and result
@@ -276,7 +282,14 @@ class TestCompareCommand:
 
         result = self.runner.invoke(
             app,
-            ["compare", "--approaches", "ChainOfThought,AsPlanning", "--samples", "20"],
+            [
+                "eval",
+                "compare",
+                "--approaches",
+                "ChainOfThought,AsPlanning",
+                "--samples",
+                "20",
+            ],
         )
 
         assert result.exit_code == 0
@@ -286,8 +299,8 @@ class TestCompareCommand:
         call_args = mock_runner_instance.run_comparison.call_args
         assert call_args[1]["parallel"] is False
 
-    @patch("ml_agents.cli.commands.ExperimentRunner")
-    @patch("ml_agents.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.eval.ExperimentRunner")
+    @patch("ml_agents.cli.commands.eval.check_environment_ready")
     def test_compare_command_parallel(self, mock_check_env, mock_experiment_runner):
         """Test compare command with parallel execution."""
         mock_runner_instance = Mock()
@@ -305,6 +318,7 @@ class TestCompareCommand:
         result = self.runner.invoke(
             app,
             [
+                "eval",
                 "compare",
                 "--approaches",
                 "ChainOfThought,TreeOfThought,AsPlanning",
@@ -327,7 +341,12 @@ class TestCompareCommand:
         """Test compare command with invalid approaches list."""
         result = self.runner.invoke(
             app,
-            ["compare", "--approaches", "ChainOfThought,InvalidApproach,AsPlanning"],
+            [
+                "eval",
+                "compare",
+                "--approaches",
+                "ChainOfThought,InvalidApproach,AsPlanning",
+            ],
         )
 
         assert result.exit_code != 0
@@ -337,6 +356,7 @@ class TestCompareCommand:
         result = self.runner.invoke(
             app,
             [
+                "eval",
                 "compare",
                 "--approaches",
                 "ChainOfThought,AsPlanning",
@@ -348,8 +368,8 @@ class TestCompareCommand:
 
         assert result.exit_code != 0
 
-    @patch("ml_agents.cli.commands.ExperimentRunner")
-    @patch("ml_agents.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.eval.ExperimentRunner")
+    @patch("ml_agents.cli.commands.eval.check_environment_ready")
     def test_compare_command_with_config_file(
         self, mock_check_env, mock_experiment_runner
     ):
@@ -401,7 +421,9 @@ class TestCompareCommand:
             mock_runner_instance.run_comparison.return_value = mock_result
             mock_experiment_runner.return_value = mock_runner_instance
 
-            result = self.runner.invoke(app, ["compare", "--config", config_path])
+            result = self.runner.invoke(
+                app, ["eval", "compare", "--config", config_path]
+            )
 
             assert result.exit_code == 0
 
@@ -418,14 +440,14 @@ class TestResumeCommand:
 
     def test_resume_command_help(self):
         """Test resume command help display."""
-        result = self.runner.invoke(app, ["resume", "--help"])
+        result = self.runner.invoke(app, ["eval", "resume", "--help"])
 
         assert result.exit_code == 0
         assert "checkpoint" in result.stdout.lower()
         assert "resume" in result.stdout.lower()
 
-    @patch("ml_agents.cli.commands.ExperimentRunner")
-    @patch("ml_agents.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.eval.ExperimentRunner")
+    @patch("ml_agents.cli.commands.eval.check_environment_ready")
     def test_resume_command_valid_checkpoint(
         self, mock_check_env, mock_experiment_runner
     ):
@@ -457,7 +479,7 @@ class TestResumeCommand:
             mock_runner_instance.resume_from_checkpoint.return_value = mock_result
             mock_experiment_runner.return_value = mock_runner_instance
 
-            result = self.runner.invoke(app, ["resume", checkpoint_path])
+            result = self.runner.invoke(app, ["eval", "resume", checkpoint_path])
 
             assert result.exit_code == 0
             mock_runner_instance.resume_from_checkpoint.assert_called_once_with(
@@ -469,7 +491,9 @@ class TestResumeCommand:
 
     def test_resume_command_invalid_checkpoint_path(self):
         """Test resume command with non-existent checkpoint file."""
-        result = self.runner.invoke(app, ["resume", "/nonexistent/checkpoint.json"])
+        result = self.runner.invoke(
+            app, ["eval", "resume", "/nonexistent/checkpoint.json"]
+        )
 
         assert result.exit_code != 0
         assert "Checkpoint file not found" in result.output
@@ -481,7 +505,7 @@ class TestResumeCommand:
             checkpoint_path = f.name
 
         try:
-            result = self.runner.invoke(app, ["resume", checkpoint_path])
+            result = self.runner.invoke(app, ["eval", "resume", checkpoint_path])
 
             assert result.exit_code != 0
             assert "Invalid checkpoint file format" in result.output
@@ -502,7 +526,7 @@ class TestResumeCommand:
             checkpoint_path = f.name
 
         try:
-            result = self.runner.invoke(app, ["resume", checkpoint_path])
+            result = self.runner.invoke(app, ["eval", "resume", checkpoint_path])
 
             assert result.exit_code != 0
             assert "Invalid checkpoint file" in result.output
@@ -510,7 +534,7 @@ class TestResumeCommand:
         finally:
             Path(checkpoint_path).unlink()
 
-    @patch("ml_agents.cli.commands.ExperimentRunner")
+    @patch("ml_agents.cli.commands.eval.ExperimentRunner")
     def test_resume_command_experiment_failure(self, mock_experiment_runner):
         """Test resume command when resumed experiment fails."""
         checkpoint_data = {
@@ -528,7 +552,7 @@ class TestResumeCommand:
             mock_runner_instance.resume_from_checkpoint.return_value = None  # Failure
             mock_experiment_runner.return_value = mock_runner_instance
 
-            result = self.runner.invoke(app, ["resume", checkpoint_path])
+            result = self.runner.invoke(app, ["eval", "resume", checkpoint_path])
 
             assert result.exit_code == 1
 
@@ -545,7 +569,7 @@ class TestListCheckpointsCommand:
 
     def test_list_checkpoints_command_help(self):
         """Test list-checkpoints command help display."""
-        result = self.runner.invoke(app, ["list-checkpoints", "--help"])
+        result = self.runner.invoke(app, ["eval", "checkpoints", "--help"])
 
         assert result.exit_code == 0
         assert "checkpoint" in result.stdout.lower()
@@ -554,7 +578,7 @@ class TestListCheckpointsCommand:
     def test_list_checkpoints_no_directory(self):
         """Test list-checkpoints with non-existent directory."""
         result = self.runner.invoke(
-            app, ["list-checkpoints", "--output-dir", "/nonexistent/directory"]
+            app, ["eval", "checkpoints", "--output-dir", "/nonexistent/directory"]
         )
 
         assert result.exit_code == 0  # Should not fail, just show warning
@@ -564,7 +588,7 @@ class TestListCheckpointsCommand:
         """Test list-checkpoints with empty directory."""
         with tempfile.TemporaryDirectory() as temp_dir:
             result = self.runner.invoke(
-                app, ["list-checkpoints", "--output-dir", temp_dir]
+                app, ["eval", "checkpoints", "--output-dir", temp_dir]
             )
 
             assert result.exit_code == 0
@@ -596,7 +620,7 @@ class TestListCheckpointsCommand:
                 json.dump(checkpoint2, f)
 
             result = self.runner.invoke(
-                app, ["list-checkpoints", "--output-dir", temp_dir]
+                app, ["eval", "checkpoints", "--output-dir", temp_dir]
             )
 
             assert result.exit_code == 0
@@ -628,7 +652,7 @@ class TestListCheckpointsCommand:
                 f.write('{"invalid": json content}')
 
             result = self.runner.invoke(
-                app, ["list-checkpoints", "--output-dir", temp_dir]
+                app, ["eval", "checkpoints", "--output-dir", temp_dir]
             )
 
             assert result.exit_code == 0
@@ -644,7 +668,7 @@ class TestEnvironmentValidation:
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch("ml_agents.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.eval.check_environment_ready")
     def test_commands_check_environment(self, mock_check_env):
         """Test that commands check environment readiness."""
         # Mock environment check to fail
@@ -653,12 +677,14 @@ class TestEnvironmentValidation:
         mock_check_env.side_effect = Exit(1)
 
         # Test run command
-        result = self.runner.invoke(app, ["run", "--approach", "ChainOfThought"])
+        result = self.runner.invoke(
+            app, ["eval", "run", "--approach", "ChainOfThought"]
+        )
         assert result.exit_code == 1
 
         # Test compare command
         result = self.runner.invoke(
-            app, ["compare", "--approaches", "ChainOfThought,AsPlanning"]
+            app, ["eval", "compare", "--approaches", "ChainOfThought,AsPlanning"]
         )
         assert result.exit_code == 1
 
@@ -671,8 +697,8 @@ class TestConfigurationPrecedence:
         self.runner = CliRunner()
 
     @patch("pathlib.Path.glob")
-    @patch("ml_agents.cli.commands.ExperimentRunner")
-    @patch("ml_agents.cli.commands.check_environment_ready")
+    @patch("ml_agents.cli.commands.eval.ExperimentRunner")
+    @patch("ml_agents.cli.commands.eval.check_environment_ready")
     def test_cli_args_override_config_file(
         self, mock_check_env, mock_experiment_runner, mock_glob
     ):
@@ -711,6 +737,7 @@ class TestConfigurationPrecedence:
             result = self.runner.invoke(
                 app,
                 [
+                    "eval",
                     "run",
                     "--config",
                     config_path,

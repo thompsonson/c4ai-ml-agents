@@ -13,6 +13,7 @@ from ml_agents.cli.commands import (
     db_migrate,
     db_stats,
     export_experiment,
+    list_approaches,
     list_checkpoints,
     list_experiments,
     preprocess_batch,
@@ -24,9 +25,10 @@ from ml_agents.cli.commands import (
     resume_experiment,
     run_comparison_experiment,
     run_single_experiment,
+    validate_env,
+    version,
 )
 from ml_agents.cli.display import display_banner, display_error
-from ml_agents.config import validate_environment
 
 app = typer.Typer(
     name="ml-agents",
@@ -36,79 +38,76 @@ app = typer.Typer(
 )
 console = Console()
 
-# Add experiment commands
-app.command("run")(run_single_experiment)
-app.command("compare")(run_comparison_experiment)
-app.command("resume")(resume_experiment)
-app.command("list-checkpoints")(list_checkpoints)
+# Create sub-apps for grouped commands
+setup_app = typer.Typer(
+    name="setup",
+    help="🔧 Environment setup and system validation commands",
+    rich_markup_mode="rich",
+)
 
-# Add database management commands
-app.command("db-init")(db_init)
-app.command("db-backup")(db_backup)
-app.command("db-migrate")(db_migrate)
-app.command("db-stats")(db_stats)
+preprocess_app = typer.Typer(
+    name="preprocess",
+    help="🔄 Dataset preprocessing and transformation commands",
+    rich_markup_mode="rich",
+)
 
-# Add export and analysis commands
-app.command("export")(export_experiment)
-app.command("compare-experiments")(compare_experiments)
-app.command("analyze")(analyze_experiment)
-app.command("list-experiments")(list_experiments)
+eval_app = typer.Typer(
+    name="eval",
+    help="🧪 Reasoning evaluation and experiment execution commands",
+    rich_markup_mode="rich",
+)
 
-# Add preprocessing commands
-app.command("preprocess-list")(preprocess_list_unprocessed)
-app.command("preprocess-inspect")(preprocess_inspect)
-app.command("preprocess-generate-rules")(preprocess_generate_rules)
-app.command("preprocess-transform")(preprocess_transform)
-app.command("preprocess-batch")(preprocess_batch)
-app.command("preprocess-upload")(preprocess_upload)
+results_app = typer.Typer(
+    name="results",
+    help="📊 Results analysis and export commands",
+    rich_markup_mode="rich",
+)
 
+db_app = typer.Typer(
+    name="db",
+    help="🗄️ Database management and maintenance commands",
+    rich_markup_mode="rich",
+)
 
-@app.command()
-def validate_env() -> None:
-    """Validate environment configuration and API keys."""
-    console.print("\n🔍 [bold blue]Validating Environment...[/bold blue]")
+# Add sub-apps to main app
+app.add_typer(setup_app, name="setup")
+app.add_typer(preprocess_app, name="preprocess")
+app.add_typer(eval_app, name="eval")
+app.add_typer(results_app, name="results")
+app.add_typer(db_app, name="db")
 
-    validation_results = validate_environment()
+# Add commands to respective sub-apps
 
-    if all(validation_results.values()):
-        console.print("✅ [bold green]Environment validation passed![/bold green]")
-        console.print("🚀 [green]Ready to run experiments![/green]")
-    else:
-        console.print("❌ [bold red]Environment validation failed![/bold red]")
+# Setup commands
+setup_app.command("validate-env")(validate_env)
+setup_app.command("list-approaches")(list_approaches)
+setup_app.command("version")(version)
 
-        if not validation_results["api_keys"]:
-            console.print("   • Missing API keys. Check your .env file.")
-        if not validation_results["output_dir_writable"]:
-            console.print("   • Cannot write to output directory.")
-        if not validation_results["dependencies_available"]:
-            console.print("   • Missing required dependencies.")
+# Preprocess commands
+preprocess_app.command("list")(preprocess_list_unprocessed)
+preprocess_app.command("inspect")(preprocess_inspect)
+preprocess_app.command("generate-rules")(preprocess_generate_rules)
+preprocess_app.command("transform")(preprocess_transform)
+preprocess_app.command("batch")(preprocess_batch)
+preprocess_app.command("upload")(preprocess_upload)
 
-        console.print("\n📖 See documentation for setup instructions.")
-        raise typer.Exit(1)
+# Eval commands
+eval_app.command("run")(run_single_experiment)
+eval_app.command("compare")(run_comparison_experiment)
+eval_app.command("resume")(resume_experiment)
+eval_app.command("checkpoints")(list_checkpoints)
 
+# Results commands
+results_app.command("export")(export_experiment)
+results_app.command("analyze")(analyze_experiment)
+results_app.command("compare")(compare_experiments)
+results_app.command("list")(list_experiments)
 
-@app.command()
-def list_approaches() -> None:
-    """List all available reasoning approaches."""
-    from ml_agents.reasoning import get_available_approaches
-
-    approaches = get_available_approaches()
-
-    console.print("\n🧠 [bold blue]Available Reasoning Approaches:[/bold blue]\n")
-
-    for i, approach in enumerate(approaches, 1):
-        console.print(f"  {i:2d}. [cyan]{approach}[/cyan]")
-
-    console.print(f"\n📊 Total: [bold]{len(approaches)}[/bold] approaches available")
-
-
-@app.command()
-def version() -> None:
-    """Show version information."""
-    from ml_agents import __version__
-
-    console.print(f"\n🧠 [bold blue]ML Agents CLI[/bold blue] v{__version__}")
-    console.print("🔬 [dim]Cohere Labs Open Science Initiative[/dim]")
+# Database commands
+db_app.command("init")(db_init)
+db_app.command("backup")(db_backup)
+db_app.command("migrate")(db_migrate)
+db_app.command("stats")(db_stats)
 
 
 @app.callback(invoke_without_command=True)

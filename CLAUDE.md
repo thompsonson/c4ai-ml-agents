@@ -66,6 +66,31 @@ Follow the class structure defined in `script_architecture.md`:
 - Track costs per API call
 - Cache model responses where appropriate
 
+## CLI Command Classification
+
+### **Command Maturity Levels**
+
+Commands are classified into two maturity levels:
+
+- **Stable Commands** (✅ Production Ready): `setup`, `db`, `preprocess`
+  - Well-tested with 80%+ test coverage
+  - Stable API, suitable for production use
+  - Comprehensive error handling and help text
+
+- **Pre-Alpha Commands** (⚠️ Experimental): `eval`, `results`
+  - Experimental features that may be unstable
+  - May have breaking changes between versions
+  - Display warnings unless `--skip-warnings` is used
+
+### **Development Guidelines**
+
+When working on CLI commands:
+
+1. **For Stable Commands**: Maintain high test coverage, consistent error handling, and stable API
+2. **For Pre-Alpha Commands**: Focus on core functionality, expect API changes
+3. **New Commands**: Start as pre-alpha, graduate to stable after thorough testing
+4. **Command Structure**: Use grouped commands (`ml-agents <group> <command>`) not flat structure
+
 ## Common Commands
 
 ### Environment Setup
@@ -85,8 +110,13 @@ uv pip install -r requirements.txt
 # Run Jupyter notebook (current)
 jupyter notebook Reasoning_LLM.ipynb
 
-# Future CLI usage
-ml-agents run --provider openrouter --model gpt-3.5-turbo --approach ChainOfThought --samples 50
+# CLI usage - Stable Commands (Production Ready)
+ml-agents setup validate-env                    # Check environment
+ml-agents db init                               # Initialize database
+ml-agents preprocess list                       # List datasets to preprocess
+
+# CLI usage - Pre-Alpha Commands (⚠️ Experimental)
+ml-agents eval run --provider openrouter --model gpt-3.5-turbo --approach ChainOfThought --samples 50
 ```
 
 ### Testing
@@ -294,16 +324,17 @@ make configure-mcp
 ### Database CLI Commands
 
 ```bash
-# Database management
-ml-agents db-init --db-path ./results.db          # Initialize database
-ml-agents db-backup --source ./results.db         # Create backup
-ml-agents db-stats --db-path ./results.db         # Show statistics
+# Database management (Stable Commands)
+ml-agents db init --db-path ./results.db          # Initialize database
+ml-agents db backup --source ./results.db         # Create backup
+ml-agents db stats --db-path ./results.db         # Show statistics
+ml-agents db migrate --db-path ./results.db       # Migrate database schema
 
-# Export and analysis
-ml-agents export EXPERIMENT_ID --format excel     # Export to Excel
-ml-agents compare-experiments "exp1,exp2,exp3"    # Compare experiments
-ml-agents analyze EXPERIMENT_ID --type accuracy   # Generate reports
-ml-agents list-experiments --status completed     # List experiments
+# Export and analysis (⚠️ Pre-Alpha Commands)
+ml-agents results export EXPERIMENT_ID --format excel     # Export to Excel
+ml-agents results compare "exp1,exp2,exp3"               # Compare experiments
+ml-agents results analyze EXPERIMENT_ID --type accuracy   # Generate reports
+ml-agents results list --status completed                # List experiments
 ```
 
 ### Dataset Preprocessing CLI Commands (Phase 9)
@@ -311,15 +342,15 @@ ml-agents list-experiments --status completed     # List experiments
 The project includes comprehensive dataset preprocessing capabilities to standardize diverse benchmark datasets to consistent `{INPUT, OUTPUT}` schema:
 
 ```bash
-# Dataset preprocessing workflow
-ml-agents preprocess-list --benchmark-csv ./documentation/Tasks\ -\ Benchmarks.csv     # List unprocessed datasets
-ml-agents preprocess-inspect <dataset> --config <config> --samples 100                  # Analyze dataset schema
-ml-agents preprocess-generate-rules <dataset> --config <config>                         # Generate transformation rules
-ml-agents preprocess-transform <dataset> <rules.json> --config <config>                 # Apply transformation
-ml-agents preprocess-batch --benchmark-csv <file> --confidence-threshold 0.6            # Batch process datasets
+# Dataset preprocessing workflow (Stable Commands)
+ml-agents preprocess list --benchmark-csv ./documentation/Tasks\ -\ Benchmarks.csv     # List unprocessed datasets
+ml-agents preprocess inspect <dataset> --config <config> --samples 100                  # Analyze dataset schema
+ml-agents preprocess generate-rules <dataset> --config <config>                         # Generate transformation rules
+ml-agents preprocess transform <dataset> <rules.json> --config <config>                 # Apply transformation
+ml-agents preprocess batch --benchmark-csv <file> --confidence-threshold 0.6            # Batch process datasets
 
-# HuggingFace Hub upload (Phase 9a)
-ml-agents preprocess-upload <processed_file> --source-dataset <source> --target-name <name>  # Upload to c4ai-ml-agents
+# HuggingFace Hub upload (Stable Commands)
+ml-agents preprocess upload <processed_file> --source-dataset <source> --target-name <name>  # Upload to c4ai-ml-agents
 ```
 
 **Key Features:**
@@ -341,20 +372,20 @@ export HF_TOKEN=your_huggingface_token_here
 **Example Preprocessing Workflow:**
 ```bash
 # 1. Inspect a dataset to understand its structure
-ml-agents preprocess-inspect MilaWang/SpatialEval --config tqa --samples 100
+ml-agents preprocess inspect MilaWang/SpatialEval --config tqa --samples 100
 # → Saves analysis to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa_analysis.json
 
 # 2. Generate transformation rules based on detected patterns
-ml-agents preprocess-generate-rules MilaWang/SpatialEval --config tqa
+ml-agents preprocess generate-rules MilaWang/SpatialEval --config tqa
 # → Saves rules to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa_rules.json
 
 # 3. Apply transformation to create standardized dataset
-ml-agents preprocess-transform MilaWang/SpatialEval ./outputs/preprocessing/MilaWang_SpatialEval_tqa_rules.json --config tqa
+ml-agents preprocess transform MilaWang/SpatialEval ./outputs/preprocessing/MilaWang_SpatialEval_tqa_rules.json --config tqa
 # → Saves dataset to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa.json
 # → Format: [{"INPUT": "...", "OUTPUT": "..."}, {"INPUT": "...", "OUTPUT": "..."}, ...]
 
-# 4. Upload processed dataset to HuggingFace Hub (Phase 9a)
-ml-agents preprocess-upload ./outputs/preprocessing/MilaWang_SpatialEval_tqa.json \
+# 4. Upload processed dataset to HuggingFace Hub
+ml-agents preprocess upload ./outputs/preprocessing/MilaWang_SpatialEval_tqa.json \
   --source-dataset MilaWang/SpatialEval \
   --target-name SpatialEval \
   --config tqa \

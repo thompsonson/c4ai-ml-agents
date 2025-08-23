@@ -14,7 +14,7 @@
 
 This project investigates how different reasoning approaches impact AI model performance across various tasks. It provides a comprehensive framework for comparing multiple reasoning techniques with various language models.
 
-**🎉 Phase 5 Complete**: The platform now includes a powerful CLI interface for easy experimentation alongside the original Jupyter notebook!
+**🎉 Phase 11 Complete**: The platform now includes a stable CLI interface with production-ready commands for environment setup, database management, and dataset preprocessing, plus experimental evaluation features!
 
 ## Research Questions
 
@@ -109,22 +109,31 @@ export ANTHROPIC_API_KEY="your-key-here"
 export OPENROUTER_API_KEY="your-key-here"
 ```
 
+### ⚠️ Important: CLI Command Classification
+
+The ML Agents CLI includes two types of commands:
+
+- **Stable Commands** (✅ Production Ready): `setup`, `db`, `preprocess` - Well-tested, stable API, suitable for production use
+- **Pre-Alpha Commands** (⚠️ Experimental): `eval`, `results` - Experimental features that may be unstable or have breaking changes
+
+**For production use or getting started, we recommend using only the stable commands first.**
+
 ### CLI Quick Start
 
 Once installed, you can use the ML Agents CLI:
 
 ```bash
 # Validate your environment
-ml-agents validate-env
+ml-agents setup validate-env
 
 # List available reasoning approaches
-ml-agents list-approaches
+ml-agents setup list-approaches
 
-# Run a simple experiment
-ml-agents run --approach ChainOfThought --samples 10
+# Run a simple experiment (⚠️ PRE-ALPHA)
+ml-agents eval run --approach ChainOfThought --samples 10
 
-# Compare multiple approaches
-ml-agents compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --samples 50 --parallel
+# Compare multiple approaches (⚠️ PRE-ALPHA)
+ml-agents eval compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --samples 50 --parallel
 ```
 
 ### Jupyter Notebook (Original Interface)
@@ -164,50 +173,51 @@ The platform includes **SQLite database persistence** for all experiment results
 ### Database CLI Commands
 
 ```bash
-# Database management
-ml-agents db-init --db-path ./results.db          # Initialize database
-ml-agents db-backup --source ./results.db         # Create backup
-ml-agents db-stats --db-path ./results.db         # Show statistics
+# Database management (Stable Commands)
+ml-agents db init --db-path ./results.db          # Initialize database
+ml-agents db backup --source ./results.db         # Create backup
+ml-agents db stats --db-path ./results.db         # Show statistics
+ml-agents db migrate --db-path ./results.db       # Migrate database schema
 
-# Export and analysis
-ml-agents export EXPERIMENT_ID --format excel     # Export to Excel
-ml-agents compare-experiments "exp1,exp2,exp3"    # Compare experiments
-ml-agents analyze EXPERIMENT_ID --type accuracy   # Generate reports
-ml-agents list-experiments --status completed     # List experiments
+# Export and analysis (⚠️ PRE-ALPHA)
+ml-agents results export EXPERIMENT_ID --format excel     # Export to Excel
+ml-agents results compare "exp1,exp2,exp3"               # Compare experiments
+ml-agents results analyze EXPERIMENT_ID --type accuracy   # Generate reports
+ml-agents results list --status completed                # List experiments
 ```
 
 ## CLI Usage Guide
 
 ### Basic Commands
 
-#### Single Experiment
+#### Single Experiment (⚠️ PRE-ALPHA)
 
 Run one reasoning approach on a dataset:
 
 ```bash
 # Basic usage
-ml-agents run --approach ChainOfThought --samples 50
+ml-agents eval run --approach ChainOfThought --samples 50
 
 # With specific model
-ml-agents run --approach TreeOfThought --samples 100 --provider openrouter --model "openai/gpt-oss-120b"
+ml-agents eval run --approach TreeOfThought --samples 100 --provider openrouter --model "openai/gpt-oss-120b"
 
 # With advanced settings
-ml-agents run --approach ChainOfVerification --multi-step-verification --max-reasoning-calls 5
+ml-agents eval run --approach ChainOfVerification --multi-step-verification --max-reasoning-calls 5
 ```
 
-#### Comparison Experiments
+#### Comparison Experiments (⚠️ PRE-ALPHA)
 
 Compare multiple approaches side-by-side:
 
 ```bash
 # Basic comparison
-ml-agents compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --samples 100
+ml-agents eval compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --samples 100
 
 # Parallel execution for faster results
-ml-agents compare --approaches "None,ChainOfThought,Reflection" --samples 200 --parallel --max-workers 4
+ml-agents eval compare --approaches "None,ChainOfThought,Reflection" --samples 200 --parallel --max-workers 4
 
 # Advanced reasoning comparison
-ml-agents compare --approaches "ChainOfVerification,Reflection,SkeletonOfThought" --multi-step-verification --parallel
+ml-agents eval compare --approaches "ChainOfVerification,Reflection,SkeletonOfThought" --multi-step-verification --parallel
 ```
 
 ### Configuration Files
@@ -215,11 +225,11 @@ ml-agents compare --approaches "ChainOfVerification,Reflection,SkeletonOfThought
 For complex experiments, use YAML configuration files:
 
 ```bash
-# Run with configuration file
-ml-agents run --config examples/configs/single_experiment.yaml
+# Run with configuration file (⚠️ PRE-ALPHA)
+ml-agents eval run --config examples/configs/single_experiment.yaml
 
-# Override specific parameters
-ml-agents run --config examples/configs/comparison_study.yaml --samples 200 --parallel
+# Override specific parameters (⚠️ PRE-ALPHA)
+ml-agents eval run --config examples/configs/comparison_study.yaml --samples 200 --parallel
 ```
 
 **Example configuration** (`config.yaml`):
@@ -250,48 +260,48 @@ execution:
   save_checkpoints: true
 ```
 
-### Checkpoint Management
+### Checkpoint Management (⚠️ PRE-ALPHA)
 
 Resume interrupted experiments:
 
 ```bash
 # List available checkpoints
-ml-agents list-checkpoints
+ml-agents eval checkpoints
 
 # Resume from specific checkpoint
-ml-agents resume checkpoint_exp_20250818_123456.json
+ml-agents eval resume checkpoint_exp_20250818_123456.json
 ```
 
-### Advanced Features
+### Advanced Features (⚠️ PRE-ALPHA)
 
 #### Cost Control
 
 ```bash
 # Set reasoning limits to control costs
-ml-agents run --approach ChainOfVerification --max-reasoning-calls 3 --samples 50
+ml-agents eval run --approach ChainOfVerification --max-reasoning-calls 3 --samples 50
 
 # Monitor costs with verbose output
-ml-agents compare --approaches "ChainOfThought,TreeOfThought" --samples 100 --verbose
+ml-agents eval compare --approaches "ChainOfThought,TreeOfThought" --samples 100 --verbose
 ```
 
 #### Multi-step Reasoning
 
 ```bash
 # Enable multi-step reflection
-ml-agents run --approach Reflection --multi-step-reflection --max-reflection-iterations 3
+ml-agents eval run --approach Reflection --multi-step-reflection --max-reflection-iterations 3
 
 # Enable multi-step verification
-ml-agents run --approach ChainOfVerification --multi-step-verification --max-reasoning-calls 5
+ml-agents eval run --approach ChainOfVerification --multi-step-verification --max-reasoning-calls 5
 ```
 
 #### Parallel Processing
 
 ```bash
 # Parallel execution with custom worker count
-ml-agents compare --approaches "ChainOfThought,AsPlanning,TreeOfThought,Reflection" --parallel --max-workers 2
+ml-agents eval compare --approaches "ChainOfThought,AsPlanning,TreeOfThought,Reflection" --parallel --max-workers 2
 
 # Balance speed vs rate limits
-ml-agents compare --approaches "None,ChainOfThought" --samples 500 --parallel --max-workers 8
+ml-agents eval compare --approaches "None,ChainOfThought" --samples 500 --parallel --max-workers 8
 ```
 
 ### Output and Results
@@ -317,18 +327,45 @@ Each result file contains:
 
 ### Example Workflows
 
-#### 1. Quick Testing
+#### 1. Environment Setup (Stable)
+
+```bash
+# Validate your setup first
+ml-agents setup validate-env
+ml-agents setup list-approaches
+ml-agents setup version
+```
+
+#### 2. Database Management (Stable)
+
+```bash
+# Initialize and manage experiment database
+ml-agents db init
+ml-agents db stats
+ml-agents db backup --source ./ml_agents_results.db
+```
+
+#### 3. Dataset Preprocessing (Stable)
+
+```bash
+# Preprocess datasets for evaluation
+ml-agents preprocess list
+ml-agents preprocess inspect MilaWang/SpatialEval --samples 100
+ml-agents preprocess batch --max 5
+```
+
+#### 4. Quick Testing (⚠️ PRE-ALPHA)
 
 ```bash
 # Test with small sample size
-ml-agents run --approach ChainOfThought --samples 5 --verbose
+ml-agents eval run --approach ChainOfThought --samples 5 --verbose
 ```
 
-#### 2. Research Study
+#### 5. Research Study (⚠️ PRE-ALPHA)
 
 ```bash
 # Comprehensive comparison study
-ml-agents compare \
+ml-agents eval compare \
   --approaches "None,ChainOfThought,AsPlanning,TreeOfThought,Reflection" \
   --samples 200 \
   --parallel \
@@ -337,30 +374,39 @@ ml-agents compare \
   --output "./studies/comprehensive_study"
 ```
 
-#### 3. Batch Processing
-
-```bash
-# Use the provided batch script
-./examples/scripts/batch_experiments.sh
-```
-
 ### Command Reference
 
+#### Stable Commands (Production Ready)
 | Command | Description |
 |---------|-------------|
-| `ml-agents run` | Single reasoning experiment |
-| `ml-agents compare` | Multi-approach comparison |
-| `ml-agents resume` | Resume from checkpoint |
-| `ml-agents list-checkpoints` | Show available checkpoints |
-| `ml-agents list-approaches` | Show available reasoning methods |
-| `ml-agents validate-env` | Check environment setup |
-| `ml-agents version` | Show version information |
+| `ml-agents setup validate-env` | Check environment setup |
+| `ml-agents setup list-approaches` | Show available reasoning methods |
+| `ml-agents setup version` | Show version information |
+| `ml-agents db init` | Initialize experiment database |
+| `ml-agents db backup` | Create database backup |
+| `ml-agents db stats` | Show database statistics |
+| `ml-agents db migrate` | Migrate database schema |
+| `ml-agents preprocess list` | List unprocessed datasets |
+| `ml-agents preprocess inspect` | Inspect dataset schema |
+| `ml-agents preprocess batch` | Batch process datasets |
+
+#### Pre-Alpha Commands (⚠️ Experimental)
+| Command | Description |
+|---------|-------------|
+| `ml-agents eval run` | Single reasoning experiment |
+| `ml-agents eval compare` | Multi-approach comparison |
+| `ml-agents eval resume` | Resume from checkpoint |
+| `ml-agents eval checkpoints` | Show available checkpoints |
+| `ml-agents results export` | Export experiment results |
+| `ml-agents results compare` | Compare experiments |
+| `ml-agents results analyze` | Analyze experiment patterns |
 
 For detailed help on any command:
 
 ```bash
-ml-agents run --help
-ml-agents compare --help
+ml-agents setup --help
+ml-agents eval run --help
+ml-agents db --help
 ```
 
 ## Jupyter Notebook Usage (Original Interface)
@@ -463,7 +509,7 @@ ml-agents/
 
 ```bash
 # Check environment
-ml-agents validate-env
+ml-agents setup validate-env
 
 # Fix dependency issues
 make clean && make install-dev
@@ -479,7 +525,7 @@ make debug-imports
 cat .env
 
 # Validate specific provider
-ml-agents validate-env
+ml-agents setup validate-env
 ```
 
 Error messages will guide you to set missing keys:
@@ -495,10 +541,10 @@ If you encounter rate limits:
 
 ```bash
 # Reduce parallel workers
-ml-agents compare --approaches "ChainOfThought,AsPlanning" --max-workers 1
+ml-agents eval compare --approaches "ChainOfThought,AsPlanning" --max-workers 1
 
 # Add delays between requests
-ml-agents run --approach ChainOfThought --samples 50 --parallel false
+ml-agents eval run --approach ChainOfThought --samples 50 --parallel false
 ```
 
 #### Memory Issues
@@ -507,10 +553,10 @@ For large experiments:
 
 ```bash
 # Reduce sample size
-ml-agents compare --approaches "ChainOfThought,TreeOfThought" --samples 50
+ml-agents eval compare --approaches "ChainOfThought,TreeOfThought" --samples 50
 
 # Disable parallel processing
-ml-agents compare --approaches "..." --parallel false
+ml-agents eval compare --approaches "..." --parallel false
 ```
 
 #### NumPy Compatibility Warning
@@ -560,21 +606,21 @@ For configuration errors, check:
 
    ```bash
    ml-agents --help
-   ml-agents run --help
-   ml-agents compare --help
+   ml-agents eval run --help
+   ml-agents eval compare --help
    ```
 
 2. **Verbose Output**: Add `--verbose` to see detailed execution logs
 
    ```bash
-   ml-agents run --approach ChainOfThought --samples 5 --verbose
+   ml-agents eval run --approach ChainOfThought --samples 5 --verbose
    ```
 
 3. **Check Status**: Validate your setup
 
    ```bash
-   ml-agents validate-env
-   ml-agents list-approaches
+   ml-agents setup validate-env
+   ml-agents setup list-approaches
    make validate-env
    ```
 
