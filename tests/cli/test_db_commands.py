@@ -51,7 +51,7 @@ class TestDbInitCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_init_existing_database_without_force(
         self, mock_path, mock_config, mock_manager
     ):
@@ -71,7 +71,7 @@ class TestDbInitCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_init_existing_database_with_force(
         self, mock_path, mock_config, mock_manager
     ):
@@ -98,8 +98,13 @@ class TestDbInitCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    def test_db_init_default_path(self, mock_config, mock_manager):
+    @patch("ml_agents.cli.commands.db.Path")
+    def test_db_init_default_path(self, mock_path, mock_config, mock_manager):
         """Test db init with default database path."""
+        mock_path_instance = Mock()
+        mock_path_instance.exists.return_value = False
+        mock_path.return_value = mock_path_instance
+
         mock_manager_instance = Mock()
         mock_manager_instance.get_database_stats.return_value = {
             "schema_version": "1.2.0",
@@ -142,35 +147,35 @@ class TestDbBackupCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_backup_success(self, mock_path, mock_config, mock_manager):
         """Test successful database backup."""
-        # Mock source database exists
-        mock_source_path = Mock()
-        mock_source_path.exists.return_value = True
-        mock_path.return_value = mock_source_path
 
-        # Mock backup file stats
-        mock_backup_path = Mock()
-        mock_backup_path.stat.return_value.st_size = 2048
+        # Mock source database exists and backup file stats
+        def path_side_effect(path_str):
+            mock_path_instance = Mock()
+            if "source.db" == str(path_str) and "backup" not in str(path_str):
+                mock_path_instance.exists.return_value = True
+            else:
+                # This is the backup file path - mock stat method
+                mock_stat = Mock()
+                mock_stat.st_size = 2048
+                mock_path_instance.stat.return_value = mock_stat
+            return mock_path_instance
 
-        with patch(
-            "ml_agents.cli.commands.db.Path",
-            side_effect=lambda x: (
-                mock_source_path if "source" in str(x) else mock_backup_path
-            ),
-        ):
-            mock_manager_instance = Mock()
-            mock_manager.return_value = mock_manager_instance
+        mock_path.side_effect = path_side_effect
 
-            result = self.runner.invoke(app, ["db", "backup", "--source", "source.db"])
+        mock_manager_instance = Mock()
+        mock_manager.return_value = mock_manager_instance
 
-            assert result.exit_code == 0
-            assert "Database backup created successfully" in result.stdout
-            assert "Source: source.db" in result.stdout
-            assert "Size: 2048 bytes" in result.stdout
+        result = self.runner.invoke(app, ["db", "backup", "--source", "source.db"])
 
-    @patch("pathlib.Path")
+        assert result.exit_code == 0
+        assert "Database backup created successfully" in result.stdout
+        assert "Source: source.db" in result.stdout
+        assert "Size: 2048 bytes" in result.stdout
+
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_backup_source_not_exists(self, mock_path):
         """Test backup when source database doesn't exist."""
         mock_path_instance = Mock()
@@ -184,47 +189,60 @@ class TestDbBackupCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_backup_custom_path(self, mock_path, mock_config, mock_manager):
         """Test backup with custom backup path."""
-        mock_source_path = Mock()
-        mock_source_path.exists.return_value = True
-        mock_backup_path = Mock()
-        mock_backup_path.stat.return_value.st_size = 1500
 
         def path_side_effect(path):
+            mock_path_instance = Mock()
             if "custom_backup" in str(path):
-                return mock_backup_path
-            return mock_source_path
+                mock_stat = Mock()
+                mock_stat.st_size = 1500
+                mock_path_instance.stat.return_value = mock_stat
+            else:
+                mock_path_instance.exists.return_value = True
+            return mock_path_instance
 
-        with patch("ml_agents.cli.commands.db.Path", side_effect=path_side_effect):
-            mock_manager_instance = Mock()
-            mock_manager.return_value = mock_manager_instance
+        mock_path.side_effect = path_side_effect
 
-            result = self.runner.invoke(
-                app,
-                [
-                    "db",
-                    "backup",
-                    "--source",
-                    "source.db",
-                    "--backup-path",
-                    "custom_backup.db",
-                ],
-            )
+        mock_manager_instance = Mock()
+        mock_manager.return_value = mock_manager_instance
 
-            assert result.exit_code == 0
-            assert "Backup: custom_backup.db" in result.stdout
+        result = self.runner.invoke(
+            app,
+            [
+                "db",
+                "backup",
+                "--source",
+                "source.db",
+                "--backup-path",
+                "custom_backup.db",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "Backup: custom_backup.db" in result.stdout
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_backup_default_source(self, mock_path, mock_config, mock_manager):
         """Test backup with default source path."""
-        mock_path_instance = Mock()
-        mock_path_instance.exists.return_value = True
-        mock_path_instance.stat.return_value.st_size = 1024
-        mock_path.return_value = mock_path_instance
+
+        def path_side_effect(path_str):
+            mock_path_instance = Mock()
+            if "ml_agents_results.db" in str(path_str) and "backup" not in str(
+                path_str
+            ):
+                mock_path_instance.exists.return_value = True
+            else:
+                # This is the backup file
+                mock_stat = Mock()
+                mock_stat.st_size = 1024
+                mock_path_instance.stat.return_value = mock_stat
+            return mock_path_instance
+
+        mock_path.side_effect = path_side_effect
 
         mock_manager_instance = Mock()
         mock_manager.return_value = mock_manager_instance
@@ -251,7 +269,7 @@ class TestDbStatsCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_stats_display(self, mock_path, mock_config, mock_manager):
         """Test database statistics display."""
         mock_path_instance = Mock()
@@ -282,7 +300,7 @@ class TestDbStatsCommand:
         assert "5,120 bytes" in result.stdout
         assert "Database integrity check passed" in result.stdout
 
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_stats_database_not_found(self, mock_path):
         """Test stats when database doesn't exist."""
         mock_path_instance = Mock()
@@ -296,7 +314,7 @@ class TestDbStatsCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_stats_integrity_failed(self, mock_path, mock_config, mock_manager):
         """Test stats with failed integrity check."""
         mock_path_instance = Mock()
@@ -337,7 +355,7 @@ class TestDbMigrateCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_migrate_schema_update(self, mock_path, mock_config, mock_manager):
         """Test schema migration process."""
         mock_path_instance = Mock()
@@ -370,7 +388,7 @@ class TestDbMigrateCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_migrate_already_up_to_date(self, mock_path, mock_config, mock_manager):
         """Test migration when schema is already up to date."""
         mock_path_instance = Mock()
@@ -395,7 +413,7 @@ class TestDbMigrateCommand:
         assert result.exit_code == 0
         assert "Database schema is already up to date" in result.stdout
 
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_migrate_database_not_found(self, mock_path):
         """Test migration when database doesn't exist."""
         mock_path_instance = Mock()
@@ -411,7 +429,7 @@ class TestDbMigrateCommand:
 
     @patch("ml_agents.core.database_manager.DatabaseManager")
     @patch("ml_agents.core.database_manager.DatabaseConfig")
-    @patch("pathlib.Path")
+    @patch("ml_agents.cli.commands.db.Path")
     def test_db_migrate_user_cancellation(self, mock_path, mock_config, mock_manager):
         """Test migration cancellation by user."""
         mock_path_instance = Mock()

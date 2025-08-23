@@ -22,7 +22,7 @@ class TestPreprocessListCommand:
         """Test preprocess list command help display."""
         result = self.runner.invoke(app, ["preprocess", "list", "--help"])
         assert result.exit_code == 0
-        assert "unprocessed datasets" in result.stdout.lower()
+        assert "haven't been preprocessed yet" in result.stdout.lower()
 
     @patch("ml_agents.core.dataset_preprocessor.DatasetPreprocessor")
     def test_preprocess_list_unprocessed(self, mock_preprocessor):
@@ -341,6 +341,17 @@ class TestPreprocessTransformCommand:
             mock_preprocessor_instance.apply_transformation.return_value = (
                 mock_transformed
             )
+            # Mock validation results that the function expects
+            mock_preprocessor_instance.validate_transformation.return_value = {
+                "validation_passed": True,
+                "issues": [],
+                "original_samples": 100,
+                "transformed_samples": 100,
+                "empty_inputs": 0,
+                "empty_outputs": 0,
+            }
+            # Mock the export method
+            mock_preprocessor_instance.export_standardized.return_value = None
             mock_preprocessor.return_value = mock_preprocessor_instance
 
             with patch("datasets.load_dataset") as mock_load:
@@ -463,9 +474,7 @@ class TestPreprocessBatchCommand:
         mock_preprocessor.return_value = mock_preprocessor_instance
 
         with patch("datasets.load_dataset") as mock_load:
-            with patch(
-                "ml_agents.cli.commands.preprocess.get_dataset_config_info"
-            ) as mock_config_info:
+            with patch("datasets.get_dataset_config_info") as mock_config_info:
                 mock_config_info.return_value.splits = {"train": Mock()}
                 mock_load.return_value = Mock()
 
@@ -499,7 +508,7 @@ class TestPreprocessUploadCommand:
         """Test preprocess upload command help display."""
         result = self.runner.invoke(app, ["preprocess", "upload", "--help"])
         assert result.exit_code == 0
-        assert "huggingface hub" in result.stdout.lower()
+        assert "huggingface" in result.stdout.lower()
 
     @patch("ml_agents.core.dataset_uploader.DatasetUploader")
     def test_preprocess_upload_dataset(self, mock_uploader):

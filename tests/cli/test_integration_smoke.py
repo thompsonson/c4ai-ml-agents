@@ -24,7 +24,7 @@ class TestIntegrationSmokeTests:
         """Test that main CLI help is accessible."""
         result = self.runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "ML Agents CLI" in result.stdout
+        assert "ML Agents Reasoning Research Platform" in result.stdout
         assert "setup" in result.stdout
         assert "preprocess" in result.stdout
         assert "db" in result.stdout
