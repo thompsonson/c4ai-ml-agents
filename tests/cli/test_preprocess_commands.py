@@ -531,6 +531,218 @@ class TestPreprocessTransformCommand:
                 shutil.rmtree(temp_dir_holder[0], ignore_errors=True)
 
 
+class TestPreprocessFixRulesCommand:
+    """Test the preprocess fix-rules command."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_preprocess_fix_rules_command_help(self):
+        """Test fix-rules command help."""
+        result = self.runner.invoke(app, ["preprocess", "fix-rules", "--help"])
+        assert result.exit_code == 0
+        assert "Fix transformation rules" in result.stdout
+        assert "interactive mode" in result.stdout
+
+    def test_preprocess_fix_rules_noninteractive(self):
+        """Test non-interactive rules fixing."""
+        # Create a temporary rules file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            rules = {
+                "dataset_name": "test-dataset",
+                "transformation_type": "multi_field",
+                "confidence": 0.6,
+                "input_fields": ["story", "question"],  # Wrong fields
+                "output_field": "candidate_answers",  # Wrong output field
+                "field_labels": {},
+                "preprocessing_steps": [],
+            }
+            json.dump(rules, f)
+            rules_file = f.name
+
+        try:
+            with patch(
+                "ml_agents.core.dataset_preprocessor.DatasetPreprocessor"
+            ) as mock_preprocessor:
+                # Mock the schema inspection
+                mock_preprocessor_instance = Mock()
+                mock_schema = {
+                    "dataset_name": "test-dataset",
+                    "columns": {
+                        "story": {"type": "object"},
+                        "question": {"type": "object"},
+                        "candidate_answers": {"type": "object"},
+                        "answer": {"type": "int64"},
+                    },
+                }
+                mock_preprocessor_instance.inspect_dataset_schema.return_value = (
+                    mock_schema
+                )
+                mock_preprocessor.return_value = mock_preprocessor_instance
+
+                # Test non-interactive correction
+                result = self.runner.invoke(
+                    app,
+                    [
+                        "preprocess",
+                        "fix-rules",
+                        rules_file,
+                        "--no-interactive",
+                        "--input-fields",
+                        "story,question,candidate_answers",
+                        "--output-field",
+                        "answer",
+                        "--preprocessing-steps",
+                        "resolve_answer_index",
+                        "--dry-run",
+                    ],
+                )
+
+                assert result.exit_code == 0
+                assert "Updated Rules" in result.stdout
+                assert "'story', 'question', 'candidate_answers'" in result.stdout
+                assert "Output field: answer" in result.stdout
+                assert "'resolve_answer_index'" in result.stdout
+                assert "Dry run mode" in result.stdout
+
+        finally:
+            Path(rules_file).unlink()
+
+    def test_preprocess_fix_rules_missing_file(self):
+        """Test fix-rules with non-existent file."""
+        result = self.runner.invoke(
+            app, ["preprocess", "fix-rules", "nonexistent.json", "--no-interactive"]
+        )
+        assert result.exit_code == 1
+        assert "Rules file not found" in result.stdout
+
+    def test_preprocess_fix_rules_invalid_json(self):
+        """Test fix-rules with invalid JSON file."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            f.write("invalid json content")
+            rules_file = f.name
+
+        try:
+            result = self.runner.invoke(
+                app, ["preprocess", "fix-rules", rules_file, "--no-interactive"]
+            )
+            assert result.exit_code == 1
+            assert "Invalid JSON" in result.stdout
+        finally:
+            Path(rules_file).unlink()
+
+    def test_preprocess_fix_rules_validation_errors(self):
+        """Test fix-rules with field validation errors."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            rules = {
+                "dataset_name": "test-dataset",
+                "transformation_type": "multi_field",
+                "input_fields": ["old_field"],
+                "output_field": "old_output",
+                "preprocessing_steps": [],
+            }
+            json.dump(rules, f)
+            rules_file = f.name
+
+        try:
+            with patch(
+                "ml_agents.core.dataset_preprocessor.DatasetPreprocessor"
+            ) as mock_preprocessor:
+                mock_preprocessor_instance = Mock()
+                mock_schema = {
+                    "dataset_name": "test-dataset",
+                    "columns": {
+                        "story": {"type": "object"},
+                        "question": {"type": "object"},
+                        "answer": {"type": "int64"},
+                    },
+                }
+                mock_preprocessor_instance.inspect_dataset_schema.return_value = (
+                    mock_schema
+                )
+                mock_preprocessor.return_value = mock_preprocessor_instance
+
+                result = self.runner.invoke(
+                    app,
+                    [
+                        "preprocess",
+                        "fix-rules",
+                        rules_file,
+                        "--no-interactive",
+                        "--input-fields",
+                        "invalid_field",
+                        "--output-field",
+                        "answer",
+                    ],
+                )
+
+                assert result.exit_code == 1
+                assert "Invalid input fields" in result.stdout
+
+        finally:
+            Path(rules_file).unlink()
+
+    def test_preprocess_fix_rules_saves_metadata(self):
+        """Test that fix-rules saves correction metadata."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            rules = {
+                "dataset_name": "test-dataset",
+                "transformation_type": "multi_field",
+                "input_fields": ["old"],
+                "output_field": "old_out",
+                "preprocessing_steps": [],
+            }
+            json.dump(rules, f)
+            rules_file = f.name
+
+        try:
+            with patch(
+                "ml_agents.core.dataset_preprocessor.DatasetPreprocessor"
+            ) as mock_preprocessor:
+                mock_preprocessor_instance = Mock()
+                mock_schema = {
+                    "dataset_name": "test-dataset",
+                    "columns": {
+                        "story": {"type": "object"},
+                        "answer": {"type": "int64"},
+                    },
+                }
+                mock_preprocessor_instance.inspect_dataset_schema.return_value = (
+                    mock_schema
+                )
+                mock_preprocessor.return_value = mock_preprocessor_instance
+
+                result = self.runner.invoke(
+                    app,
+                    [
+                        "preprocess",
+                        "fix-rules",
+                        rules_file,
+                        "--no-interactive",
+                        "--input-fields",
+                        "story",
+                        "--output-field",
+                        "answer",
+                    ],
+                )
+
+                assert result.exit_code == 0
+
+                # Check that metadata was added
+                with open(rules_file, "r") as f:
+                    updated_rules = json.load(f)
+
+                assert updated_rules["manually_corrected"] is True
+                assert "correction_timestamp" in updated_rules
+                assert updated_rules["confidence"] == 1.0
+                assert updated_rules["input_fields"] == ["story"]
+                assert updated_rules["output_field"] == "answer"
+
+        finally:
+            Path(rules_file).unlink()
+
+
 class TestPreprocessBatchCommand:
     """Test the preprocess batch command."""
 

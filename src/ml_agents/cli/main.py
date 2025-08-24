@@ -17,6 +17,7 @@ from ml_agents.cli.commands import (
     list_checkpoints,
     list_experiments,
     preprocess_batch,
+    preprocess_fix_rules,
     preprocess_generate_rules,
     preprocess_inspect,
     preprocess_list_unprocessed,
@@ -87,6 +88,7 @@ setup_app.command("version")(version)
 preprocess_app.command("list")(preprocess_list_unprocessed)
 preprocess_app.command("inspect")(preprocess_inspect)
 preprocess_app.command("generate-rules")(preprocess_generate_rules)
+preprocess_app.command("fix-rules")(preprocess_fix_rules)
 preprocess_app.command("transform")(preprocess_transform)
 preprocess_app.command("batch")(preprocess_batch)
 preprocess_app.command("upload")(preprocess_upload)

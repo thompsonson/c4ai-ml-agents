@@ -2,7 +2,7 @@
 
 ## Community Resources
 
-**👉 New to ML Agents? Check out the [BEGINNER_GUIDE.md](./BEGINNER_GUIDE.md) for a step-by-step walkthrough!**
+**👉 New to ML Agents? Check out the [BEGINNER_GUIDE.md](https://github.com/thompsonson/c4ai-ml-agents/blob/main/BEGINNER_GUIDE.md) for a step-by-step walkthrough!**
 
 - **[ML Agents Community Program](https://sites.google.com/cohere.com/coherelabs-community/community-programs/ml-agents)** - Main hub for Cohere Labs' community-driven initiative on open-source agent research, focusing on agentic frameworks, applications, evaluations, and benchmarks
 

@@ -9,6 +9,7 @@ from .eval import (
 )
 from .preprocess import (
     preprocess_batch,
+    preprocess_fix_rules,
     preprocess_generate_rules,
     preprocess_inspect,
     preprocess_list_unprocessed,
@@ -36,6 +37,7 @@ __all__ = [
     "run_single_experiment",
     # Preprocessing commands
     "preprocess_batch",
+    "preprocess_fix_rules",
     "preprocess_generate_rules",
     "preprocess_inspect",
     "preprocess_list_unprocessed",

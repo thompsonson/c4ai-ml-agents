@@ -814,3 +814,272 @@ def preprocess_upload(
         display_error(f"Failed to upload dataset: {e}")
         logger.error(f"Dataset upload failed: {e}")
         raise typer.Exit(1)
+
+
+def preprocess_fix_rules(
+    rules_file: str = typer.Argument(..., help="Path to rules JSON file to fix"),
+    input_fields: Optional[str] = typer.Option(
+        None,
+        "--input-fields",
+        help="Comma-separated list of input field names (e.g., 'story,question,candidate_answers')",
+    ),
+    output_field: Optional[str] = typer.Option(
+        None, "--output-field", help="Name of the output field (e.g., 'answer')"
+    ),
+    preprocessing_steps: Optional[str] = typer.Option(
+        None,
+        "--preprocessing-steps",
+        help="Comma-separated list of preprocessing steps (e.g., 'resolve_answer_index')",
+    ),
+    interactive: bool = typer.Option(
+        True,
+        "--interactive/--no-interactive",
+        help="Enable interactive mode for field selection",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Preview changes without saving"
+    ),
+) -> None:
+    """Fix transformation rules when automatic detection gets it wrong.
+
+    This command allows you to manually correct the field mappings and preprocessing
+    steps in a rules file when the automatic pattern detection is incorrect.
+
+    Examples:
+        # Interactive mode (default)
+        ml-agents preprocess fix-rules rules.json
+
+        # Non-interactive mode
+        ml-agents preprocess fix-rules rules.json \\
+            --input-fields story,question,candidate_answers \\
+            --output-field answer \\
+            --preprocessing-steps resolve_answer_index
+    """
+    from ml_agents.core.dataset_preprocessor import DatasetPreprocessor
+
+    try:
+        # Load existing rules
+        with open(rules_file, "r") as f:
+            rules = json.load(f)
+
+        display_info(f"Loading rules from: {rules_file}")
+
+        # Initialize preprocessor
+        preprocessor = DatasetPreprocessor()
+
+        # Get dataset schema for validation
+        dataset_name = rules.get("dataset_name")
+        config = rules.get("dataset_config")
+
+        if not dataset_name:
+            display_error("Rules file is missing dataset_name field")
+            raise typer.Exit(1)
+
+        display_info(f"Validating against dataset: {dataset_name}")
+
+        # Load dataset schema for validation
+        try:
+            schema_info = preprocessor.inspect_dataset_schema(
+                dataset_name, sample_size=10, config=config
+            )
+            available_fields = list(schema_info["columns"].keys())
+        except Exception as e:
+            display_warning(f"Could not load dataset schema for validation: {e}")
+            available_fields = []
+
+        # Display current rules
+        console.print("\n📋 [bold blue]Current Rules:[/bold blue]")
+        console.print(f"Dataset: [cyan]{dataset_name}[/cyan]")
+        console.print(f"Input fields: [yellow]{rules.get('input_fields', [])}[/yellow]")
+        console.print(
+            f"Output field: [yellow]{rules.get('output_field', 'None')}[/yellow]"
+        )
+        console.print(
+            f"Preprocessing steps: [yellow]{rules.get('preprocessing_steps', [])}[/yellow]"
+        )
+        console.print(f"Confidence: [red]{rules.get('confidence', 0.0):.2f}[/red]")
+
+        if available_fields:
+            console.print(f"\n🏷️  [bold blue]Available Fields:[/bold blue]")
+            console.print(f"[dim]{', '.join(available_fields)}[/dim]")
+
+        # Handle interactive vs non-interactive modes
+        new_input_fields = []
+        new_output_field = None
+        new_preprocessing_steps = []
+
+        if interactive and (not input_fields or not output_field):
+            console.print("\n🔧 [bold blue]Manual Correction Mode[/bold blue]")
+
+            # Interactive input fields selection
+            if not input_fields:
+                console.print("\n[bold yellow]Select Input Fields:[/bold yellow]")
+                if available_fields:
+                    console.print(
+                        "[dim]Available fields: "
+                        + ", ".join(available_fields)
+                        + "[/dim]"
+                    )
+
+                while True:
+                    field_input = typer.prompt("Enter input fields (comma-separated)")
+                    new_input_fields = [
+                        f.strip() for f in field_input.split(",") if f.strip()
+                    ]
+
+                    # Validate fields if schema is available
+                    if available_fields:
+                        invalid_fields = [
+                            f for f in new_input_fields if f not in available_fields
+                        ]
+                        if invalid_fields:
+                            display_error(f"Invalid fields: {invalid_fields}")
+                            console.print(
+                                f"[dim]Available fields: {', '.join(available_fields)}[/dim]"
+                            )
+                            continue
+
+                    break
+            else:
+                new_input_fields = [f.strip() for f in input_fields.split(",")]
+
+            # Interactive output field selection
+            if not output_field:
+                console.print(f"\n[bold yellow]Select Output Field:[/bold yellow]")
+                if available_fields:
+                    console.print(
+                        "[dim]Available fields: "
+                        + ", ".join(available_fields)
+                        + "[/dim]"
+                    )
+
+                while True:
+                    new_output_field = typer.prompt("Enter output field name")
+
+                    # Validate field if schema is available
+                    if available_fields and new_output_field not in available_fields:
+                        display_error(f"Invalid field: {new_output_field}")
+                        console.print(
+                            f"[dim]Available fields: {', '.join(available_fields)}[/dim]"
+                        )
+                        continue
+
+                    break
+            else:
+                new_output_field = output_field
+
+            # Interactive preprocessing steps
+            if not preprocessing_steps:
+                console.print(
+                    f"\n[bold yellow]Preprocessing Steps (optional):[/bold yellow]"
+                )
+                console.print(
+                    "[dim]Common steps: resolve_answer_index, format_multiple_choice[/dim]"
+                )
+                steps_input = typer.prompt(
+                    "Enter preprocessing steps (comma-separated, or press Enter for none)",
+                    default="",
+                )
+                if steps_input.strip():
+                    new_preprocessing_steps = [
+                        s.strip() for s in steps_input.split(",") if s.strip()
+                    ]
+            else:
+                new_preprocessing_steps = [
+                    s.strip() for s in preprocessing_steps.split(",") if s.strip()
+                ]
+
+        else:
+            # Non-interactive mode
+            if not input_fields or not output_field:
+                display_error(
+                    "In non-interactive mode, --input-fields and --output-field are required"
+                )
+                raise typer.Exit(1)
+
+            new_input_fields = [f.strip() for f in input_fields.split(",")]
+            new_output_field = output_field
+            if preprocessing_steps:
+                new_preprocessing_steps = [
+                    s.strip() for s in preprocessing_steps.split(",") if s.strip()
+                ]
+
+        # Validate the corrections
+        if available_fields:
+            invalid_inputs = [f for f in new_input_fields if f not in available_fields]
+            if invalid_inputs:
+                display_error(f"Invalid input fields: {invalid_inputs}")
+                display_error(f"Available fields: {available_fields}")
+                raise typer.Exit(1)
+
+            if new_output_field not in available_fields:
+                display_error(f"Invalid output field: {new_output_field}")
+                display_error(f"Available fields: {available_fields}")
+                raise typer.Exit(1)
+
+        # Update rules
+        rules["input_fields"] = new_input_fields
+        rules["output_field"] = new_output_field
+        rules["preprocessing_steps"] = new_preprocessing_steps
+        rules["manually_corrected"] = True
+        rules["correction_timestamp"] = datetime.now().isoformat()
+        rules["confidence"] = 1.0  # Manual correction has perfect confidence
+
+        # Set appropriate field labels based on detected pattern
+        if set(new_input_fields) == {"story", "question", "candidate_answers"}:
+            rules["field_labels"] = {
+                "story": "STORY:",
+                "question": "QUESTION:",
+                "candidate_answers": "OPTIONS:",
+            }
+        elif "context" in new_input_fields and "question" in new_input_fields:
+            rules["field_labels"] = {
+                new_input_fields[0]: (
+                    "CONTEXT:" if "context" in new_input_fields[0] else "INPUT:"
+                ),
+                new_input_fields[1]: (
+                    "QUESTION:" if "question" in new_input_fields[1] else "QUERY:"
+                ),
+            }
+        else:
+            # Generic labels
+            rules["field_labels"] = {
+                field: f"{field.upper()}:" for field in new_input_fields
+            }
+
+        # Display updated rules
+        console.print("\n✅ [bold green]Updated Rules:[/bold green]")
+        console.print(f"Input fields: [green]{new_input_fields}[/green]")
+        console.print(f"Output field: [green]{new_output_field}[/green]")
+        console.print(f"Preprocessing steps: [green]{new_preprocessing_steps}[/green]")
+        console.print(f"Confidence: [green]1.0[/green] (manually corrected)")
+
+        if dry_run:
+            display_info("🔍 Dry run mode - no changes saved")
+            console.print(f"\n[dim]Would save to: {rules_file}[/dim]")
+        else:
+            # Save updated rules
+            from ml_agents.core.dataset_preprocessor import NumpyJSONEncoder
+
+            with open(rules_file, "w") as f:
+                json.dump(rules, f, indent=2, cls=NumpyJSONEncoder)
+
+            display_success(f"✅ Rules successfully updated: {rules_file}")
+
+            console.print(f"\n📝 [bold blue]Next Steps:[/bold blue]")
+            console.print(f"1. Review the updated rules file")
+            console.print(f"2. Apply transformation:")
+            console.print(
+                f"   [cyan]ml-agents preprocess transform {dataset_name} {rules_file}[/cyan]"
+            )
+
+    except FileNotFoundError:
+        display_error(f"Rules file not found: {rules_file}")
+        raise typer.Exit(1)
+    except json.JSONDecodeError:
+        display_error(f"Invalid JSON in rules file: {rules_file}")
+        raise typer.Exit(1)
+    except Exception as e:
+        display_error(f"Failed to fix rules: {e}")
+        logger.error(f"Rules correction failed: {e}")
+        raise typer.Exit(1)

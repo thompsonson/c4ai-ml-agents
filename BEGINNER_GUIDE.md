@@ -149,11 +149,40 @@ The `generate-rules` command creates a JSON file that defines how to transform y
 - **preprocessing_steps**: Special transformations (e.g., convert answer indices to text)
 - **field_labels**: Headers added to INPUT sections
 
+#### Manual Rules Correction (✅ Stable)
+
+When automatic pattern detection gets the field mappings wrong, use the `fix-rules` command to correct them:
+
+```bash
+# Interactive mode (default) - prompts you for correct fields
+ml-agents preprocess fix-rules ./outputs/dataset/preprocessing/latest/rules.json
+
+# Non-interactive mode - specify corrections directly
+ml-agents preprocess fix-rules rules.json \
+  --input-fields story,question,candidate_answers \
+  --output-field answer \
+  --preprocessing-steps resolve_answer_index
+
+# Preview changes without saving
+ml-agents preprocess fix-rules rules.json --dry-run \
+  --input-fields story,question,candidate_answers \
+  --output-field answer
+```
+
+**Example workflow for problematic datasets**:
+1. `ml-agents preprocess inspect` - see available fields
+2. `ml-agents preprocess generate-rules` - creates initial (possibly wrong) rules
+3. `ml-agents preprocess fix-rules` - correct the field mappings
+4. `ml-agents preprocess transform` - apply the corrected rules
+
+The command validates field names against the actual dataset schema and adds correction metadata to track manual changes.
+
 #### Get Help for Preprocessing Commands
 
 ```bash
 ml-agents preprocess --help
 ml-agents preprocess generate-rules --help
+ml-agents preprocess fix-rules --help
 ml-agents preprocess transform --help
 ml-agents preprocess upload --help
 ```
@@ -279,6 +308,35 @@ ml-agents eval run --dataset MilaWang/SpatialEval --approach TreeOfThought --sam
 
 # 6. View organized results
 ml-agents results list
+```
+
+### Fixing Problematic Datasets
+
+Some datasets need manual field mapping corrections. Here's an example with a story-question-choice dataset:
+
+```bash
+# 1. Inspect the dataset first
+ml-agents preprocess inspect tasksource/spartqa-mchoice --samples 5
+# Shows: story, question, candidate_answers, answer (where answer is an index)
+
+# 2. Generate initial rules (might get it wrong)
+ml-agents preprocess generate-rules tasksource/spartqa-mchoice
+
+# 3. Check if the generated rules are wrong
+# If it incorrectly maps: input_fields=["story","question"], output_field="candidate_answers"
+# But should be: input_fields=["story","question","candidate_answers"], output_field="answer"
+
+# 4. Fix the rules manually
+ml-agents preprocess fix-rules ./outputs/tasksource_spartqa-mchoice/preprocessing/latest/rules.json \
+  --input-fields story,question,candidate_answers \
+  --output-field answer \
+  --preprocessing-steps resolve_answer_index
+
+# 5. Apply the corrected transformation
+ml-agents preprocess transform tasksource/spartqa-mchoice ./outputs/tasksource_spartqa-mchoice/preprocessing/latest/rules.json
+
+# 6. Now use for evaluation
+ml-agents eval run --dataset tasksource/spartqa-mchoice --approach ChainOfThought --samples 10
 ```
 
 ### Quick Test Workflow
