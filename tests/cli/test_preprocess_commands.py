@@ -379,9 +379,27 @@ class TestPreprocessTransformCommand:
         assert "transformation rules" in result.stdout.lower()
         assert "INPUT, OUTPUT" in result.stdout
 
+    @patch("ml_agents.cli.commands.preprocess.ensure_preprocessing_output_dir")
+    @patch("ml_agents.cli.commands.preprocess.generate_preprocessing_id")
     @patch("ml_agents.core.dataset_preprocessor.DatasetPreprocessor")
-    def test_preprocess_transform_apply(self, mock_preprocessor):
+    def test_preprocess_transform_apply(
+        self, mock_preprocessor, mock_gen_id, mock_ensure_dir
+    ):
         """Test applying transformations."""
+        # Mock directory and ID generation
+        temp_dir_holder = []  # Use list to capture temp_dir
+
+        def setup_temp_dir():
+            temp_dir = tempfile.mkdtemp()
+            temp_dir_holder.append(temp_dir)
+            output_dir = Path(temp_dir) / "preprocessing_output"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            return output_dir
+
+        output_dir = setup_temp_dir()
+        mock_ensure_dir.return_value = output_dir
+        mock_gen_id.return_value = "prep_20240824_143256"
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             mock_rules = {
                 "dataset_name": "test-dataset",
@@ -429,10 +447,33 @@ class TestPreprocessTransformCommand:
 
         finally:
             Path(rules_path).unlink()
+            # Clean up temp directory
+            if temp_dir_holder:
+                import shutil
 
+                shutil.rmtree(temp_dir_holder[0], ignore_errors=True)
+
+    @patch("ml_agents.cli.commands.preprocess.ensure_preprocessing_output_dir")
+    @patch("ml_agents.cli.commands.preprocess.generate_preprocessing_id")
     @patch("ml_agents.core.dataset_preprocessor.DatasetPreprocessor")
-    def test_preprocess_transform_with_validation(self, mock_preprocessor):
+    def test_preprocess_transform_with_validation(
+        self, mock_preprocessor, mock_gen_id, mock_ensure_dir
+    ):
         """Test transformation with validation enabled."""
+        # Mock directory and ID generation
+        temp_dir_holder = []  # Use list to capture temp_dir
+
+        def setup_temp_dir():
+            temp_dir = tempfile.mkdtemp()
+            temp_dir_holder.append(temp_dir)
+            output_dir = Path(temp_dir) / "preprocessing_output"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            return output_dir
+
+        output_dir = setup_temp_dir()
+        mock_ensure_dir.return_value = output_dir
+        mock_gen_id.return_value = "prep_20240824_143256"
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             mock_rules = {
                 "dataset_name": "test-dataset",
@@ -483,6 +524,11 @@ class TestPreprocessTransformCommand:
 
         finally:
             Path(rules_path).unlink()
+            # Clean up temp directory
+            if temp_dir_holder:
+                import shutil
+
+                shutil.rmtree(temp_dir_holder[0], ignore_errors=True)
 
 
 class TestPreprocessBatchCommand:

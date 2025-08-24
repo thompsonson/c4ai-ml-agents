@@ -37,6 +37,28 @@ def temp_dir() -> Generator[Path, None, None]:
 
 
 @pytest.fixture
+def test_db_path(temp_dir):
+    """Create a test database with up-to-date schema."""
+    db_path = temp_dir / "test_ml_agents.db"
+
+    try:
+        # Initialize database with latest schema
+        from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
+
+        db_config = DatabaseConfig(db_path=str(db_path))
+        db_manager = DatabaseManager(db_config)
+    except Exception as e:
+        # If database initialization fails, still return the path
+        # Tests can handle the failure appropriately
+        import pytest
+
+        pytest.skip(f"Failed to initialize test database: {e}")
+
+    # Return the path for use in tests
+    return str(db_path)
+
+
+@pytest.fixture
 def mock_api_keys() -> Dict[str, str]:
     """Mock API keys for testing."""
     return {

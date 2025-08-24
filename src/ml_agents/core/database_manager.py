@@ -45,7 +45,11 @@ class DatabaseManager:
         description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         config_json TEXT NOT NULL,
-        status TEXT DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed'))
+        status TEXT DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed')),
+        preprocessing_id TEXT,
+        preprocessing_rules_path TEXT,
+        dataset_name TEXT,
+        eval_output_path TEXT
     );
 
     -- Runs: Individual reasoning approach executions
@@ -85,7 +89,8 @@ class DatabaseManager:
     -- Dataset_preprocessing: Track dataset preprocessing metadata
     CREATE TABLE IF NOT EXISTS dataset_preprocessing (
         id TEXT PRIMARY KEY,
-        dataset_name TEXT UNIQUE NOT NULL,
+        dataset_name TEXT NOT NULL,
+        dataset_config TEXT,  -- HuggingFace config name if applicable
         dataset_url TEXT,
         status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processed', 'failed')),
         schema_analysis TEXT,  -- JSON with detected patterns and field mapping
@@ -95,8 +100,27 @@ class DatabaseManager:
         processed_samples INTEGER,
         validation_results TEXT,  -- JSON with validation metrics
         output_path TEXT,
+        rules_path TEXT,
+        analysis_path TEXT,
         processed_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(dataset_name, dataset_config)
+    );
+
+    -- Preprocessing-Evaluation linkage table
+    CREATE TABLE IF NOT EXISTS preprocessing_eval_link (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        experiment_id TEXT NOT NULL,
+        preprocessing_id TEXT NOT NULL,
+        dataset_name TEXT NOT NULL,
+        dataset_config TEXT,
+        preprocessing_path TEXT,
+        rules_path TEXT,
+        processed_data_path TEXT,
+        eval_output_path TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(experiment_id) REFERENCES experiments(id) ON DELETE CASCADE,
+        FOREIGN KEY(preprocessing_id) REFERENCES dataset_preprocessing(id)
     );
 
     -- Schema version tracking
@@ -113,6 +137,10 @@ class DatabaseManager:
     CREATE INDEX IF NOT EXISTS idx_experiments_status ON experiments(status);
     CREATE INDEX IF NOT EXISTS idx_preprocessing_status ON dataset_preprocessing(status);
     CREATE INDEX IF NOT EXISTS idx_preprocessing_confidence ON dataset_preprocessing(confidence_score);
+    CREATE INDEX IF NOT EXISTS idx_preprocessing_dataset ON dataset_preprocessing(dataset_name, dataset_config);
+    CREATE INDEX IF NOT EXISTS idx_prep_eval_link_experiment ON preprocessing_eval_link(experiment_id);
+    CREATE INDEX IF NOT EXISTS idx_prep_eval_link_preprocessing ON preprocessing_eval_link(preprocessing_id);
+    CREATE INDEX IF NOT EXISTS idx_prep_eval_link_dataset ON preprocessing_eval_link(dataset_name);
     """
 
     def __init__(self, config: DatabaseConfig):
@@ -150,6 +178,9 @@ class DatabaseManager:
 
             # Check and update schema version
             self._check_schema_version(conn)
+
+            # Run any necessary migrations
+            self._run_migrations(conn)
 
             conn.commit()
 
@@ -200,6 +231,114 @@ class DatabaseManager:
         # Add more migrations here as needed
 
         logger.info("Schema migration completed")
+
+    def _run_migrations(self, conn: sqlite3.Connection) -> None:
+        """Run any necessary database migrations.
+
+        Args:
+            conn: Database connection
+        """
+        # Check if we need to add new columns to existing tables
+        self._add_missing_columns(conn)
+
+    def _add_missing_columns(self, conn: sqlite3.Connection) -> None:
+        """Add any missing columns to existing tables.
+
+        Args:
+            conn: Database connection
+        """
+        try:
+            # Check experiments table for new columns
+            cursor = conn.execute("PRAGMA table_info(experiments)")
+            columns = {row[1] for row in cursor.fetchall()}
+
+            # Add missing columns to experiments table
+            if "preprocessing_id" not in columns:
+                conn.execute("ALTER TABLE experiments ADD COLUMN preprocessing_id TEXT")
+                logger.info("Added preprocessing_id column to experiments table")
+
+            if "preprocessing_rules_path" not in columns:
+                conn.execute(
+                    "ALTER TABLE experiments ADD COLUMN preprocessing_rules_path TEXT"
+                )
+                logger.info(
+                    "Added preprocessing_rules_path column to experiments table"
+                )
+
+            if "dataset_name" not in columns:
+                conn.execute("ALTER TABLE experiments ADD COLUMN dataset_name TEXT")
+                logger.info("Added dataset_name column to experiments table")
+
+            if "eval_output_path" not in columns:
+                conn.execute("ALTER TABLE experiments ADD COLUMN eval_output_path TEXT")
+                logger.info("Added eval_output_path column to experiments table")
+
+            # Check dataset_preprocessing table
+            cursor = conn.execute("PRAGMA table_info(dataset_preprocessing)")
+            columns = {row[1] for row in cursor.fetchall()}
+
+            if "dataset_config" not in columns:
+                conn.execute(
+                    "ALTER TABLE dataset_preprocessing ADD COLUMN dataset_config TEXT"
+                )
+                logger.info(
+                    "Added dataset_config column to dataset_preprocessing table"
+                )
+
+            if "rules_path" not in columns:
+                conn.execute(
+                    "ALTER TABLE dataset_preprocessing ADD COLUMN rules_path TEXT"
+                )
+                logger.info("Added rules_path column to dataset_preprocessing table")
+
+            if "analysis_path" not in columns:
+                conn.execute(
+                    "ALTER TABLE dataset_preprocessing ADD COLUMN analysis_path TEXT"
+                )
+                logger.info("Added analysis_path column to dataset_preprocessing table")
+
+            # Create preprocessing_eval_link table if it doesn't exist
+            cursor = conn.execute(
+                """
+                SELECT name FROM sqlite_master
+                WHERE type='table' AND name='preprocessing_eval_link'
+            """
+            )
+            if not cursor.fetchone():
+                conn.execute(
+                    """
+                    CREATE TABLE preprocessing_eval_link (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        experiment_id TEXT NOT NULL,
+                        preprocessing_id TEXT NOT NULL,
+                        dataset_name TEXT NOT NULL,
+                        dataset_config TEXT,
+                        preprocessing_path TEXT,
+                        rules_path TEXT,
+                        processed_data_path TEXT,
+                        eval_output_path TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(experiment_id) REFERENCES experiments(id) ON DELETE CASCADE,
+                        FOREIGN KEY(preprocessing_id) REFERENCES dataset_preprocessing(id)
+                    )
+                """
+                )
+                logger.info("Created preprocessing_eval_link table")
+
+                # Add indexes
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_prep_eval_link_experiment ON preprocessing_eval_link(experiment_id)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_prep_eval_link_preprocessing ON preprocessing_eval_link(preprocessing_id)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_prep_eval_link_dataset ON preprocessing_eval_link(dataset_name)"
+                )
+
+        except sqlite3.Error as e:
+            logger.warning(f"Error adding missing columns: {e}")
+            # Continue without failing - schema might already be up to date
 
     def _migrate_1_0_0_to_1_1_0(self, conn: sqlite3.Connection) -> None:
         """Migrate from schema version 1.0.0 to 1.1.0.
@@ -500,3 +639,177 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error importing CSV data: {e}")
             raise
+
+    def link_preprocessing_to_experiment(
+        self,
+        experiment_id: str,
+        preprocessing_id: str,
+        dataset_name: str,
+        dataset_config: Optional[str] = None,
+        preprocessing_path: Optional[str] = None,
+        rules_path: Optional[str] = None,
+        processed_data_path: Optional[str] = None,
+        eval_output_path: Optional[str] = None,
+    ) -> None:
+        """Link a preprocessing run to an evaluation experiment.
+
+        Args:
+            experiment_id: ID of the evaluation experiment
+            preprocessing_id: ID of the preprocessing run
+            dataset_name: Name of the dataset
+            dataset_config: Optional HuggingFace config name
+            preprocessing_path: Path to preprocessing output directory
+            rules_path: Path to the rules file used
+            processed_data_path: Path to the processed dataset
+            eval_output_path: Path to evaluation output directory
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.execute(
+                """
+                INSERT INTO preprocessing_eval_link (
+                    experiment_id, preprocessing_id, dataset_name, dataset_config,
+                    preprocessing_path, rules_path, processed_data_path, eval_output_path
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    experiment_id,
+                    preprocessing_id,
+                    dataset_name,
+                    dataset_config,
+                    preprocessing_path,
+                    rules_path,
+                    processed_data_path,
+                    eval_output_path,
+                ),
+            )
+
+            # Also update the experiment record with preprocessing info
+            conn.execute(
+                """
+                UPDATE experiments
+                SET preprocessing_id = ?, preprocessing_rules_path = ?,
+                    dataset_name = ?, eval_output_path = ?
+                WHERE id = ?
+                """,
+                (
+                    preprocessing_id,
+                    rules_path,
+                    dataset_name,
+                    eval_output_path,
+                    experiment_id,
+                ),
+            )
+
+            conn.commit()
+            logger.debug(
+                f"Linked preprocessing {preprocessing_id} to experiment {experiment_id}"
+            )
+
+    def get_experiment_preprocessing_info(
+        self, experiment_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get preprocessing information for an experiment.
+
+        Args:
+            experiment_id: ID of the experiment
+
+        Returns:
+            Dictionary with preprocessing details or None if not found
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                """
+                SELECT pel.*, dp.*
+                FROM preprocessing_eval_link pel
+                JOIN dataset_preprocessing dp ON pel.preprocessing_id = dp.id
+                WHERE pel.experiment_id = ?
+                """,
+                (experiment_id,),
+            )
+            row = cursor.fetchone()
+
+            if row:
+                return dict(row)
+            return None
+
+    def get_preprocessing_usage_stats(self, preprocessing_id: str) -> Dict[str, Any]:
+        """Get usage statistics for a preprocessing run.
+
+        Args:
+            preprocessing_id: ID of the preprocessing run
+
+        Returns:
+            Dictionary with usage statistics
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            # Count experiments using this preprocessing
+            cursor = conn.execute(
+                """
+                SELECT COUNT(*) as experiment_count
+                FROM preprocessing_eval_link
+                WHERE preprocessing_id = ?
+                """,
+                (preprocessing_id,),
+            )
+            experiment_count = cursor.fetchone()[0]
+
+            # Get list of experiments
+            cursor = conn.execute(
+                """
+                SELECT experiment_id, created_at
+                FROM preprocessing_eval_link
+                WHERE preprocessing_id = ?
+                ORDER BY created_at DESC
+                """,
+                (preprocessing_id,),
+            )
+            experiments = [
+                {"id": row[0], "created_at": row[1]} for row in cursor.fetchall()
+            ]
+
+            return {
+                "preprocessing_id": preprocessing_id,
+                "experiment_count": experiment_count,
+                "experiments": experiments,
+            }
+
+    def get_latest_preprocessing_for_dataset(
+        self, dataset_name: str, dataset_config: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Get the most recent preprocessing for a dataset.
+
+        Args:
+            dataset_name: Name of the dataset
+            dataset_config: Optional HuggingFace config name
+
+        Returns:
+            Dictionary with preprocessing details or None if not found
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            if dataset_config:
+                query = """
+                    SELECT * FROM dataset_preprocessing
+                    WHERE dataset_name = ? AND dataset_config = ?
+                        AND status = 'processed'
+                    ORDER BY processed_at DESC
+                    LIMIT 1
+                """
+                params = (dataset_name, dataset_config)
+            else:
+                query = """
+                    SELECT * FROM dataset_preprocessing
+                    WHERE dataset_name = ? AND status = 'processed'
+                    ORDER BY processed_at DESC
+                    LIMIT 1
+                """
+                params = (dataset_name,)
+
+            cursor = conn.execute(query, params)
+            row = cursor.fetchone()
+
+            if row:
+                return dict(row)
+            return None

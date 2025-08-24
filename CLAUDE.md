@@ -173,7 +173,18 @@ ml-agents/
 │   └── test_reasoning/
 │       └── test_*.py
 ├── outputs/
-│   └── [timestamped result files]
+│   └── {dataset_name}/
+│       ├── preprocessing/
+│       │   └── {timestamp}/
+│       │       ├── analysis.json
+│       │       ├── rules.json
+│       │       ├── processed.json
+│       │       └── metadata.json
+│       └── eval/
+│           └── {exp_timestamp}/
+│               ├── experiment_config.json
+│               ├── experiment_results.csv
+│               └── experiment_summary.json
 ├── requirements.txt
 ├── requirements-dev.txt     # Development dependencies
 ├── pytest.ini              # Pytest configuration
@@ -249,9 +260,19 @@ ml-agents/
 - Constants: UPPER_SNAKE_CASE (e.g., `MAX_RETRIES`)
 - Private methods: prefix with underscore (e.g., `_validate_config`)
 
-### Result File Naming
+### Output Directory Organization
 ```
-{provider}_{model}_{reasoning_approach}_{timestamp}.csv
+outputs/{dataset_name}/
+├── preprocessing/{timestamp}/
+│   ├── analysis.json      # Schema analysis results
+│   ├── rules.json         # Transformation rules
+│   ├── processed.json     # Standardized dataset
+│   └── metadata.json      # Preprocessing metadata
+└── eval/{exp_timestamp}/
+    ├── experiment_config.json   # Experiment configuration
+    ├── experiment_results.csv   # Detailed results per approach
+    ├── experiment_summary.json  # Performance summary
+    └── experiment_errors.json   # Error information
 ```
 
 ### Error Messages
@@ -378,7 +399,7 @@ ml-agents preprocess upload <processed_file> --source-dataset <source> --target-
 - **JSON Output Format**: Produces `[{"INPUT": "...", "OUTPUT": "..."}, ...]` for ML workflows
 - **HuggingFace Hub Integration**: Upload processed datasets to `c4ai-ml-agents` org with automated metadata
 
-**Default Output Location**: All preprocessing outputs save to `./outputs/preprocessing/` by default
+**Default Output Location**: All preprocessing outputs are organized in dataset-specific folders: `./outputs/{dataset_name}/preprocessing/{timestamp}/` with automatic latest symlinks
 
 **HuggingFace Hub Authentication**: For uploading datasets, set the `HF_TOKEN` environment variable with a token that has write access to the `c4ai-ml-agents` organization:
 ```bash
@@ -390,26 +411,27 @@ export HF_TOKEN=your_huggingface_token_here
 ```bash
 # 1. Inspect a dataset to understand its structure
 ml-agents preprocess inspect MilaWang/SpatialEval --config tqa --samples 100
-# → Saves analysis to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa_analysis.json
+# → Creates: ./outputs/MilaWang_SpatialEval_tqa/preprocessing/{timestamp}/analysis.json
 
 # 2. Generate transformation rules based on detected patterns
 ml-agents preprocess generate-rules MilaWang/SpatialEval --config tqa
-# → Saves rules to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa_rules.json
+# → Creates: ./outputs/MilaWang_SpatialEval_tqa/preprocessing/{timestamp}/rules.json
 
 # 3. Apply transformation to create standardized dataset
-ml-agents preprocess transform MilaWang/SpatialEval ./outputs/preprocessing/MilaWang_SpatialEval_tqa_rules.json --config tqa
-# → Saves dataset to: ./outputs/preprocessing/MilaWang_SpatialEval_tqa.json
-# → Format: [{"INPUT": "...", "OUTPUT": "..."}, {"INPUT": "...", "OUTPUT": "..."}, ...]
+ml-agents preprocess transform MilaWang/SpatialEval rules.json --config tqa
+# → Creates: ./outputs/MilaWang_SpatialEval_tqa/preprocessing/{timestamp}/
+#           ├── processed.json    # [{"INPUT": "...", "OUTPUT": "..."}, ...]
+#           ├── rules.json        # Transformation rules used
+#           └── metadata.json     # Processing metadata and IDs
 
 # 4. Upload processed dataset to HuggingFace Hub
-ml-agents preprocess upload ./outputs/preprocessing/MilaWang_SpatialEval_tqa.json \
+ml-agents preprocess upload ./outputs/MilaWang_SpatialEval_tqa/preprocessing/latest/processed.json \
   --source-dataset MilaWang/SpatialEval \
   --target-name SpatialEval \
   --config tqa \
   --description "Processed SpatialEval dataset in standardized INPUT/OUTPUT format for reasoning evaluation"
 # → Uploads to: https://huggingface.co/datasets/c4ai-ml-agents/SpatialEval
-# → Uploads all related files: .json, _analysis.json, _rules.json, .csv (if exists)
-# → Includes dataset card (README.md) with transformation rules and metadata
+# → Includes all preprocessing artifacts and full lineage tracking
 ```
 
 ### Multiple Choice Dataset Example
@@ -439,6 +461,48 @@ ml-agents preprocess transform your-dataset rules.json --config your-config
 - Formats options as A), B), C), D) in INPUT
 - Resolves numeric answer indices to actual text in OUTPUT
 - Handles edge cases like out-of-bounds indices and malformed data
+
+## Enhanced Preprocessing-Evaluation Integration (Latest)
+
+### Full Traceability System
+The platform now provides complete lineage tracking from dataset preprocessing through evaluation with database-backed relationships:
+
+```bash
+# Preprocessing creates organized dataset folders
+ml-agents preprocess transform dataset-name rules.json
+# → Creates: ./outputs/dataset_name/preprocessing/{timestamp}/
+
+# Evaluation automatically integrates with preprocessing
+ml-agents eval run --dataset dataset-name --approach ChainOfThought
+# → Creates: ./outputs/dataset_name/eval/{exp_timestamp}/
+# → Automatically links to latest preprocessing in database
+```
+
+### Preprocessing-Evaluation CLI Integration
+New CLI options provide flexible preprocessing integration:
+
+```bash
+# Auto-detect and use latest preprocessing for dataset
+ml-agents eval run --dataset MilaWang/SpatialEval --approach ChainOfThought --samples 50
+
+# Use specific preprocessing run by ID
+ml-agents eval run --preprocessing-id prep_20240824_143256 --approach TreeOfThought
+
+# Use custom preprocessed dataset file
+ml-agents eval run --preprocessing-path ./custom/processed.json --approach Reflection
+```
+
+### Database Schema Enhancements
+- **preprocessing_eval_link** table tracks all preprocessing-evaluation relationships
+- **Enhanced experiments table** includes preprocessing_id and rules_path columns
+- **Updated dataset_preprocessing** table with rules_path, analysis_path for full artifact tracking
+
+### Directory Structure Benefits
+1. **Dataset-centric organization**: All work for a dataset lives in `outputs/{dataset_name}/`
+2. **Full traceability**: Know exactly which preprocessing rules were used for each evaluation
+3. **Easy comparison**: Compare different preprocessing approaches on same evaluations
+4. **Automated linking**: Database automatically tracks relationships between runs
+5. **Symlink shortcuts**: Use `latest/` to access most recent preprocessing/evaluation runs
 
 ## Community Collaboration
 

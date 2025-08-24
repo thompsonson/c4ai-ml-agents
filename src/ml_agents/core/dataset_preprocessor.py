@@ -865,6 +865,10 @@ class DatasetPreprocessor:
         rules: Dict[str, Any],
         validation_results: Optional[Dict[str, Any]] = None,
         output_path: Optional[str] = None,
+        preprocessing_id: Optional[str] = None,
+        rules_path: Optional[str] = None,
+        analysis_path: Optional[str] = None,
+        dataset_config: Optional[str] = None,
     ) -> str:
         """Save preprocessing metadata to database.
 
@@ -875,6 +879,10 @@ class DatasetPreprocessor:
             rules: Transformation rules applied
             validation_results: Validation results if available
             output_path: Path where processed dataset was saved
+            preprocessing_id: Unique preprocessing identifier
+            rules_path: Path to the rules JSON file
+            analysis_path: Path to the analysis JSON file
+            dataset_config: Dataset configuration name if applicable
 
         Returns:
             Processing record ID
@@ -883,21 +891,22 @@ class DatasetPreprocessor:
             logger.warning("Database manager not initialized - skipping metadata save")
             return ""
 
-        record_id = str(uuid.uuid4())
+        record_id = preprocessing_id or str(uuid.uuid4())
 
         try:
             with self.db_manager.get_connection() as conn:
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO dataset_preprocessing
-                    (id, dataset_name, dataset_url, status, schema_analysis, transformation_rules,
+                    (id, dataset_name, dataset_config, dataset_url, status, schema_analysis, transformation_rules,
                      confidence_score, original_samples, processed_samples, validation_results,
-                     output_path, processed_at, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     output_path, rules_path, analysis_path, processed_at, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         record_id,
                         dataset_name,
+                        dataset_config,
                         dataset_url,
                         (
                             "processed"
@@ -920,6 +929,8 @@ class DatasetPreprocessor:
                             else None
                         ),
                         output_path,
+                        rules_path,
+                        analysis_path,
                         datetime.utcnow().isoformat(),
                         datetime.utcnow().isoformat(),
                     ),

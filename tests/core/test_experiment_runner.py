@@ -24,7 +24,7 @@ class TestExperimentRunner:
     """Test suite for ExperimentRunner."""
 
     @pytest.fixture
-    def config(self, temp_dir):
+    def config(self, temp_dir, test_db_path):
         """Create test configuration with temporary output directory."""
         return ExperimentConfig(
             dataset_name="test/dataset",
@@ -36,10 +36,11 @@ class TestExperimentRunner:
             output_dir=str(temp_dir / "outputs"),
             multi_step_verification=True,
             max_reasoning_calls=3,
+            database_path=test_db_path,  # Use test database with proper schema
         )
 
     @pytest.fixture
-    def critical_config(self, temp_dir):
+    def critical_config(self, temp_dir, test_db_path):
         """Create configuration for critical success scenario with Phase 4 specifications."""
         return ExperimentConfig(
             dataset_name="test/dataset",
@@ -51,6 +52,7 @@ class TestExperimentRunner:
             output_dir=str(temp_dir / "outputs"),
             multi_step_verification=True,
             max_reasoning_calls=3,
+            database_path=test_db_path,  # Use test database with proper schema
         )
 
     @pytest.fixture
@@ -147,7 +149,10 @@ class TestExperimentRunner:
             assert runner.current_sample == 0
             assert runner.total_samples == 0
             assert runner.checkpoint_interval == 10
-            assert runner.output_dir == Path(temp_dir / "outputs")
+            # New structure: outputs/{dataset_name}/eval/{timestamp}/
+            assert runner.output_dir.parent.parent.parent == Path(temp_dir / "outputs")
+            assert "test_dataset" in str(runner.output_dir)  # Sanitized dataset name
+            assert "eval" in str(runner.output_dir)
             assert runner.output_dir.exists()
 
     @patch("ml_agents.core.experiment_runner.get_available_approaches")

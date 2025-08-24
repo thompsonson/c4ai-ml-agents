@@ -204,6 +204,15 @@ ml-agents eval run --approach TreeOfThought --samples 100 --provider openrouter 
 
 # With advanced settings
 ml-agents eval run --approach ChainOfVerification --multi-step-verification --max-reasoning-calls 5
+
+# With preprocessing integration
+ml-agents eval run --dataset MilaWang/SpatialEval --approach ChainOfThought --samples 50
+
+# Use specific preprocessing
+ml-agents eval run --preprocessing-id prep_20240824_143256 --approach TreeOfThought
+
+# Use custom preprocessed data
+ml-agents eval run --preprocessing-path ./custom/processed.json --approach Reflection
 ```
 
 #### Comparison Experiments (⚠️ PRE-ALPHA)
@@ -307,15 +316,25 @@ ml-agents eval compare --approaches "None,ChainOfThought" --samples 500 --parall
 
 ### Output and Results
 
-Results are automatically saved with timestamps:
+Results are organized by dataset with full preprocessing-evaluation traceability:
 
 ```
 ./outputs/
-├── exp_20250818_143256/
-│   ├── experiment_summary.json
-│   ├── results_ChainOfThought.csv
-│   ├── results_AsPlanning.csv
-│   └── checkpoint_exp_20250818_143256.json
+├── {dataset_name}/
+│   ├── preprocessing/
+│   │   ├── {timestamp}/
+│   │   │   ├── analysis.json           # Dataset schema analysis
+│   │   │   ├── rules.json              # Transformation rules
+│   │   │   ├── processed.json          # Standardized dataset
+│   │   │   └── metadata.json           # Preprocessing metadata
+│   │   └── latest → {most_recent}/     # Symlink to latest preprocessing
+│   └── eval/
+│       ├── {exp_timestamp}/
+│       │   ├── experiment_config.json  # Experiment configuration
+│       │   ├── experiment_results.csv  # Detailed results per approach
+│       │   ├── experiment_summary.json # Performance summary
+│       │   └── experiment_errors.json  # Any processing errors
+│       └── latest → {most_recent}/     # Symlink to latest experiment
 ```
 
 Each result file contains:
@@ -325,6 +344,7 @@ Each result file contains:
 - Performance metrics (accuracy, time, cost)
 - Configuration details
 - Error information
+- **Preprocessing lineage**: Complete traceability to preprocessing rules used
 
 ### Example Workflows
 
@@ -355,14 +375,33 @@ ml-agents preprocess inspect MilaWang/SpatialEval --samples 100
 ml-agents preprocess batch --max 5
 ```
 
-#### 4. Quick Testing (⚠️ PRE-ALPHA)
+#### 4. Complete Dataset → Evaluation Pipeline
+
+```bash
+# 1. Preprocess a custom dataset (creates organized folder structure)
+ml-agents preprocess inspect MilaWang/SpatialEval --config tqa
+ml-agents preprocess generate-rules MilaWang/SpatialEval --config tqa
+ml-agents preprocess transform MilaWang/SpatialEval rules.json --config tqa
+
+# 2. Run evaluation with preprocessed data (auto-detects latest preprocessing) (⚠️ PRE-ALPHA)
+ml-agents eval run --dataset MilaWang/SpatialEval --approach ChainOfThought --samples 50
+
+# 3. Compare approaches on same preprocessed dataset (⚠️ PRE-ALPHA)
+ml-agents eval run --dataset MilaWang/SpatialEval --approach TreeOfThought --samples 50
+ml-agents eval run --dataset MilaWang/SpatialEval --approach Reflection --samples 50
+
+# 4. View organized results
+ml-agents results list
+```
+
+#### 5. Quick Testing (⚠️ PRE-ALPHA)
 
 ```bash
 # Test with small sample size
 ml-agents eval run --approach ChainOfThought --samples 5 --verbose
 ```
 
-#### 5. Research Study (⚠️ PRE-ALPHA)
+#### 6. Research Study (⚠️ PRE-ALPHA)
 
 ```bash
 # Comprehensive comparison study
@@ -468,7 +507,10 @@ ml-agents/
 │   ├── scripts/                # Batch processing scripts
 │   └── README.md               # Examples documentation
 ├── tests/                      # Test suite
-├── outputs/                    # Experiment results
+├── outputs/                    # Organized experiment and preprocessing results
+│   └── {dataset_name}/        # Dataset-centric organization
+│       ├── preprocessing/     # Preprocessing runs with timestamps
+│       └── eval/              # Evaluation runs with timestamps
 ├── Reasoning_LLM.ipynb        # Original Jupyter notebook
 ├── config.py                  # Environment configuration
 ├── requirements.txt           # Python dependencies

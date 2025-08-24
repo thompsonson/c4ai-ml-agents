@@ -88,6 +88,28 @@ def run_single_experiment(
         help="Top-p sampling parameter (0.0-1.0)",
         callback=lambda x: validate_top_p(x) if x is not None else None,
     ),
+    # Dataset and preprocessing settings
+    dataset: Optional[str] = typer.Option(
+        None,
+        "--dataset",
+        "-d",
+        help="Dataset name (overrides config)",
+    ),
+    preprocessing_id: Optional[str] = typer.Option(
+        None,
+        "--preprocessing-id",
+        help="Use specific preprocessing run by ID",
+    ),
+    preprocessing_path: Optional[str] = typer.Option(
+        None,
+        "--preprocessing-path",
+        help="Path to preprocessed dataset file",
+    ),
+    use_latest_preprocessing: bool = typer.Option(
+        True,
+        "--latest-preprocessing/--no-latest-preprocessing",
+        help="Auto-detect and use latest preprocessing for dataset",
+    ),
     # Execution settings
     output_dir: Optional[str] = typer.Option(
         None,
@@ -168,6 +190,10 @@ def run_single_experiment(
             max_parsing_retries=max_parsing_retries,
         )
 
+        # Override dataset if provided
+        if dataset:
+            experiment_config.dataset_name = dataset
+
         # Check environment is ready
         check_environment_ready(experiment_config.provider)
 
@@ -178,8 +204,81 @@ def run_single_experiment(
             total_samples=samples,
         )
 
+        # Handle preprocessing options
+        preprocessing_info = None
+        if preprocessing_path:
+            # User provided explicit path to preprocessed data
+            display_info(f"Using preprocessed data from: {preprocessing_path}")
+            preprocessing_info = {"path": preprocessing_path}
+        elif preprocessing_id and experiment_config.database_enabled:
+            # User provided specific preprocessing ID
+            from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
+
+            db_config = DatabaseConfig(
+                db_path=experiment_config.database_path,
+            )
+            db_manager = DatabaseManager(db_config)
+
+            # Query preprocessing info from database
+            with db_manager.get_connection() as conn:
+                cursor = conn.execute(
+                    "SELECT * FROM dataset_preprocessing WHERE id = ?",
+                    (preprocessing_id,),
+                )
+                row = cursor.fetchone()
+                if row:
+                    preprocessing_info = {
+                        "id": preprocessing_id,
+                        "path": row[11],  # output_path column
+                        "rules_path": row[12],  # rules_path column
+                    }
+                    display_info(f"Using preprocessing: {preprocessing_id}")
+                else:
+                    display_warning(f"Preprocessing ID {preprocessing_id} not found")
+        elif (
+            use_latest_preprocessing
+            and experiment_config.dataset_name
+            and experiment_config.database_enabled
+        ):
+            # Auto-detect latest preprocessing for the dataset
+            from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
+
+            db_config = DatabaseConfig(
+                db_path=experiment_config.database_path,
+            )
+            db_manager = DatabaseManager(db_config)
+
+            preprocessing_data = db_manager.get_latest_preprocessing_for_dataset(
+                experiment_config.dataset_name
+            )
+            if preprocessing_data:
+                preprocessing_info = {
+                    "id": preprocessing_data["id"],
+                    "path": preprocessing_data["output_path"],
+                    "rules_path": preprocessing_data.get("rules_path"),
+                }
+                display_info(
+                    f"Auto-detected latest preprocessing: {preprocessing_data['id']}"
+                )
+
         # Create and run experiment
         runner = ExperimentRunner(experiment_config)
+
+        # Store preprocessing info if available
+        if preprocessing_info:
+            runner.preprocessing_id = preprocessing_info.get("id")
+            runner.preprocessing_rules_path = preprocessing_info.get("rules_path")
+
+            # Link preprocessing to experiment after it's created
+            if runner.results_processor and preprocessing_info.get("id"):
+                runner.results_processor.db_manager.link_preprocessing_to_experiment(
+                    experiment_id=runner.experiment_id,
+                    preprocessing_id=preprocessing_info["id"],
+                    dataset_name=experiment_config.dataset_name,
+                    preprocessing_path=preprocessing_info.get("path"),
+                    rules_path=preprocessing_info.get("rules_path"),
+                    eval_output_path=str(runner.output_dir),
+                )
 
         console.print("🚀 [blue]Starting single experiment...[/blue]")
 

@@ -98,7 +98,9 @@ ml-agents eval run --approach ChainOfThought --samples 5 --verbose
 
 ### 1. Dataset Preprocessing
 
-Transform any HuggingFace dataset to standardized `{INPUT, OUTPUT}` format for reasoning evaluation:
+Transform any HuggingFace dataset to standardized `{INPUT, OUTPUT}` format for reasoning evaluation.
+
+**New Structure**: Preprocessing files are automatically organized in dataset-specific folders: `./outputs/{dataset_name}/preprocessing/{timestamp}/` with analysis, rules, processed data, and metadata files.
 
 ```bash
 # List available datasets for preprocessing (✅ Stable)
@@ -108,15 +110,13 @@ ml-agents preprocess list
 ml-agents preprocess inspect MilaWang/SpatialEval --samples 1 --config tqa
 
 # Step 2: Generate transformation rules file (✅ Stable)
-ml-agents preprocess generate-rules MilaWang/SpatialEval --config tqa \
-  --output ./outputs/preprocessing/milawang_spatialeval_rules.json
+ml-agents preprocess generate-rules MilaWang/SpatialEval --config tqa
 
 # Step 3: Apply transformation to create standardized dataset (✅ Stable)
-ml-agents preprocess transform MilaWang/SpatialEval \
-  ./outputs/preprocessing/milawang_spatialeval_rules.json --config tqa
+ml-agents preprocess transform MilaWang/SpatialEval rules.json --config tqa
 
 # Step 4: Upload to HuggingFace Hub (✅ Stable)
-ml-agents preprocess upload ./outputs/preprocessing/milawang_spatialeval.json
+ml-agents preprocess upload ./outputs/MilaWang_SpatialEval_tqa/preprocessing/latest/processed.json
 
 # Process multiple datasets automatically (✅ Stable)
 ml-agents preprocess batch --max 5
@@ -171,6 +171,21 @@ ml-agents eval run --approach TreeOfThought --samples 100 --provider openrouter 
 ml-agents eval run --approach ChainOfVerification --samples 50 --max-reasoning-calls 3
 ```
 
+#### Evaluation with Preprocessing Integration
+
+Use preprocessed datasets with your evaluation experiments:
+
+```bash
+# Auto-detect latest preprocessing for a dataset (⚠️ Experimental)
+ml-agents eval run --dataset dataset-name --approach ChainOfThought
+
+# Use specific preprocessing run by ID (⚠️ Experimental)
+ml-agents eval run --preprocessing-id prep_20240824_143256 --approach ChainOfThought
+
+# Use custom preprocessed data file (⚠️ Experimental)
+ml-agents eval run --preprocessing-path ./custom/processed.json --approach ChainOfThought
+```
+
 ### 3. Compare Multiple Approaches
 
 ```bash
@@ -198,14 +213,25 @@ ml-agents db backup --source ./ml_agents_results.db
 
 ### Output Files
 
-Results are saved in timestamped directories:
+Results are organized by dataset with full preprocessing-evaluation traceability:
 
 ```
 ./outputs/
-├── exp_20250823_143256/
-│   ├── experiment_summary.json     # Experiment configuration
-│   ├── results_ChainOfThought.csv  # Detailed results
-│   └── errors.json                 # Any processing errors
+├── {dataset_name}/
+│   ├── preprocessing/
+│   │   ├── {timestamp}/
+│   │   │   ├── analysis.json           # Dataset schema analysis
+│   │   │   ├── rules.json              # Transformation rules
+│   │   │   ├── processed.json          # Standardized dataset
+│   │   │   └── metadata.json           # Preprocessing metadata
+│   │   └── latest -> {most_recent}/    # Symlink to latest preprocessing
+│   └── eval/
+│       ├── {exp_timestamp}/
+│       │   ├── experiment_config.json  # Experiment configuration
+│       │   ├── experiment_results.csv  # Detailed results per approach
+│       │   ├── experiment_summary.json # Performance summary
+│       │   └── experiment_errors.json  # Any processing errors
+│       └── latest -> {most_recent}/    # Symlink to latest experiment
 ```
 
 ### Result Columns
@@ -231,6 +257,8 @@ ml-agents results compare "exp1,exp2,exp3"
 
 ## Example Workflow
 
+### Complete Dataset → Evaluation Pipeline
+
 ```bash
 # 1. Validate setup
 ml-agents setup validate-env
@@ -238,13 +266,34 @@ ml-agents setup validate-env
 # 2. Initialize database
 ml-agents db init
 
-# 3. Quick test with 5 samples
+# 3. Preprocess a custom dataset (creates organized folder structure)
+ml-agents preprocess inspect MilaWang/SpatialEval --config tqa
+ml-agents preprocess generate-rules MilaWang/SpatialEval --config tqa
+ml-agents preprocess transform MilaWang/SpatialEval rules.json --config tqa
+
+# 4. Run evaluation with preprocessed data (auto-detects latest preprocessing)
+ml-agents eval run --dataset MilaWang/SpatialEval --approach ChainOfThought --samples 50
+
+# 5. Compare approaches on same preprocessed dataset
+ml-agents eval run --dataset MilaWang/SpatialEval --approach TreeOfThought --samples 50
+
+# 6. View organized results
+ml-agents results list
+```
+
+### Quick Test Workflow
+
+```bash
+# 1. Validate setup
+ml-agents setup validate-env
+
+# 2. Initialize database
+ml-agents db init
+
+# 3. Quick test with default dataset
 ml-agents eval run --approach ChainOfThought --samples 5 --verbose
 
-# 4. Full comparison study
-ml-agents eval compare --approaches "None,ChainOfThought,TreeOfThought" --samples 100 --parallel
-
-# 5. View results
+# 4. View results
 ml-agents results list
 ```
 

@@ -34,14 +34,29 @@ class TestRunCommand:
     @patch("ml_agents.cli.commands.eval.check_environment_ready")
     @patch("ml_agents.cli.commands.eval.display_experiment_complete")
     @patch("ml_agents.cli.commands.eval.create_experiment_table")
+    @patch("ml_agents.cli.commands.eval.load_and_validate_config")
     def test_run_command_with_basic_args(
         self,
+        mock_load_config,
         mock_create_table,
         mock_display_complete,
         mock_check_env,
         mock_experiment_runner,
     ):
         """Test run command with basic arguments."""
+        # Mock configuration loading
+        from ml_agents.config import ExperimentConfig
+
+        mock_config = ExperimentConfig(
+            dataset_name="test/dataset",
+            sample_count=10,
+            provider="openrouter",
+            model="openai/gpt-5-mini",
+            reasoning_approaches=["ChainOfThought"],
+            database_enabled=False,  # Disable database for CLI tests
+        )
+        mock_load_config.return_value = mock_config
+
         # Mock the runner and its methods
         mock_runner_instance = Mock()
 
@@ -90,7 +105,22 @@ class TestRunCommand:
         )
 
         # Command should complete successfully
+        if result.exit_code != 0:
+            print(f"Exit code: {result.exit_code}")
+            print(f"Stdout: {result.stdout}")
+            print(f"Exception: {result.exception}")
+            if result.exception:
+                import traceback
+
+                traceback.print_exception(
+                    type(result.exception),
+                    result.exception,
+                    result.exception.__traceback__,
+                )
         assert result.exit_code == 0
+
+        # Verify config loading was called
+        mock_load_config.assert_called_once()
 
         # Verify ExperimentRunner was created and called
         mock_experiment_runner.assert_called_once()
@@ -103,14 +133,30 @@ class TestRunCommand:
     @patch("ml_agents.cli.commands.eval.check_environment_ready")
     @patch("ml_agents.cli.commands.eval.display_experiment_complete")
     @patch("ml_agents.cli.commands.eval.create_experiment_table")
+    @patch("ml_agents.cli.commands.eval.load_and_validate_config")
     def test_run_command_with_config_file(
         self,
+        mock_load_config,
         mock_create_table,
         mock_display_complete,
         mock_check_env,
         mock_experiment_runner,
     ):
         """Test run command with configuration file."""
+        # Mock configuration loading
+        from ml_agents.config import ExperimentConfig
+
+        mock_config = ExperimentConfig(
+            dataset_name="test/dataset",
+            sample_count=25,
+            provider="anthropic",
+            model="claude-sonnet-4-20250514",
+            temperature=0.7,
+            reasoning_approaches=["Reflection"],
+            database_enabled=False,  # Disable database for CLI tests
+        )
+        mock_load_config.return_value = mock_config
+
         # Create a temporary config file
         config_data = {
             "sample_count": 25,
@@ -223,8 +269,22 @@ class TestRunCommand:
 
         assert result.exit_code == 1
 
-    def test_run_command_keyboard_interrupt(self):
+    @patch("ml_agents.cli.commands.eval.load_and_validate_config")
+    def test_run_command_keyboard_interrupt(self, mock_load_config):
         """Test run command handling of keyboard interrupt."""
+        # Mock configuration loading
+        from ml_agents.config import ExperimentConfig
+
+        mock_config = ExperimentConfig(
+            dataset_name="test/dataset",
+            sample_count=5,
+            provider="openrouter",
+            model="openai/gpt-oss-120b",
+            reasoning_approaches=["ChainOfThought"],
+            database_enabled=False,  # Disable database for CLI tests
+        )
+        mock_load_config.return_value = mock_config
+
         with patch("ml_agents.cli.commands.eval.ExperimentRunner") as mock_runner:
             mock_runner_instance = Mock()
             mock_runner_instance.run_single_experiment.side_effect = KeyboardInterrupt()
@@ -699,10 +759,25 @@ class TestConfigurationPrecedence:
     @patch("pathlib.Path.glob")
     @patch("ml_agents.cli.commands.eval.ExperimentRunner")
     @patch("ml_agents.cli.commands.eval.check_environment_ready")
+    @patch("ml_agents.cli.commands.eval.load_and_validate_config")
     def test_cli_args_override_config_file(
-        self, mock_check_env, mock_experiment_runner, mock_glob
+        self, mock_load_config, mock_check_env, mock_experiment_runner, mock_glob
     ):
         """Test that CLI arguments override config file values."""
+        # Mock configuration loading with overrides applied
+        from ml_agents.config import ExperimentConfig
+
+        mock_config = ExperimentConfig(
+            dataset_name="test/dataset",
+            sample_count=25,  # CLI override value
+            provider="anthropic",
+            model="claude-sonnet-4-20250514",
+            temperature=0.8,  # CLI override value
+            reasoning_approaches=["ChainOfThought"],  # CLI override value
+            database_enabled=False,  # Disable database for CLI tests
+        )
+        mock_load_config.return_value = mock_config
+
         config_data = {
             "sample_count": 100,
             "provider": "anthropic",

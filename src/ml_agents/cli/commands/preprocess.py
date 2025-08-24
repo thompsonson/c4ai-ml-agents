@@ -1,6 +1,7 @@
 """Preprocessing commands for dataset standardization."""
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -21,13 +22,85 @@ console = Console()
 logger = get_logger(__name__)
 
 # Default preprocessing output directory
-PREPROCESSING_OUTPUT_DIR = Path("./outputs/preprocessing")
+PREPROCESSING_OUTPUT_DIR = Path("./outputs")
 
 
-def ensure_preprocessing_output_dir() -> Path:
-    """Ensure preprocessing output directory exists and return the path."""
-    PREPROCESSING_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    return PREPROCESSING_OUTPUT_DIR
+def sanitize_dataset_name(dataset_name: str) -> str:
+    """Sanitize dataset name for use in filesystem paths.
+
+    Args:
+        dataset_name: Original dataset name (e.g., "MrLight/bbeh-eval")
+
+    Returns:
+        Sanitized name safe for filesystem (e.g., "MrLight_bbeh-eval")
+    """
+    sanitized = dataset_name.replace("/", "_")
+    sanitized = sanitized.replace("\\", "_")
+    sanitized = sanitized.replace(":", "_")
+    sanitized = sanitized.replace("*", "_")
+    sanitized = sanitized.replace("?", "_")
+    sanitized = sanitized.replace('"', "_")
+    sanitized = sanitized.replace("<", "_")
+    sanitized = sanitized.replace(">", "_")
+    sanitized = sanitized.replace("|", "_")
+    sanitized = sanitized.replace(" ", "_")
+
+    # Remove any double underscores
+    while "__" in sanitized:
+        sanitized = sanitized.replace("__", "_")
+
+    return sanitized.strip("_")
+
+
+def ensure_preprocessing_output_dir(
+    dataset_name: str, config: Optional[str] = None
+) -> Path:
+    """Ensure preprocessing output directory exists for a dataset.
+
+    Args:
+        dataset_name: Dataset name (will be sanitized)
+        config: Optional dataset config name
+
+    Returns:
+        Path to the preprocessing output directory
+    """
+    from datetime import datetime
+
+    # Create directory structure: outputs/{dataset_name}/preprocessing/{timestamp}/
+    dataset_clean = sanitize_dataset_name(dataset_name)
+    if config:
+        dataset_clean += f"_{config}"
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = PREPROCESSING_OUTPUT_DIR / dataset_clean / "preprocessing" / timestamp
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create a symlink to latest
+    latest_link = output_dir.parent / "latest"
+    if latest_link.exists() or latest_link.is_symlink():
+        latest_link.unlink()
+    try:
+        latest_link.symlink_to(output_dir.name)
+    except OSError:
+        # Symlinks might not work on all systems
+        pass
+
+    return output_dir
+
+
+def generate_preprocessing_id() -> str:
+    """Generate unique preprocessing ID.
+
+    Returns:
+        Unique preprocessing identifier
+    """
+    import hashlib
+    import time
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    hash_part = hashlib.md5(f"{timestamp}{time.time()}".encode()).hexdigest()[:4]
+    return f"prep_{timestamp}_{hash_part}"
 
 
 def preprocess_list_unprocessed(
@@ -192,11 +265,8 @@ def preprocess_inspect(
 
         # Determine output file
         if not output_file:
-            output_dir = ensure_preprocessing_output_dir()
-            dataset_name = dataset.replace("/", "_").replace("\\", "_")
-            if config:
-                dataset_name += f"_{config}"
-            output_file = str(output_dir / f"{dataset_name}_analysis.json")
+            output_dir = ensure_preprocessing_output_dir(dataset, config)
+            output_file = str(output_dir / "analysis.json")
 
         # Save detailed results
         from ml_agents.core.dataset_preprocessor import NumpyJSONEncoder
@@ -249,11 +319,8 @@ def preprocess_generate_rules(
 
         # Determine output file
         if not output:
-            output_dir = ensure_preprocessing_output_dir()
-            dataset_name = dataset.replace("/", "_").replace("\\", "_")
-            if config:
-                dataset_name += f"_{config}"
-            output = str(output_dir / f"{dataset_name}_rules.json")
+            output_dir = ensure_preprocessing_output_dir(dataset, config)
+            output = str(output_dir / "rules.json")
 
         # Save rules
         from ml_agents.core.dataset_preprocessor import NumpyJSONEncoder
@@ -346,16 +413,35 @@ def preprocess_transform(
             dataset, transformation_rules, config
         )
 
-        # Determine output path
+        # Determine output path and create preprocessing ID
+        preprocessing_id = generate_preprocessing_id()
         if not output:
-            output_dir = ensure_preprocessing_output_dir()
-            dataset_name = dataset.replace("/", "_").replace("\\", "_")
-            if config:
-                dataset_name += f"_{config}"
-            output = str(output_dir / f"{dataset_name}.json")
+            output_dir = ensure_preprocessing_output_dir(dataset, config)
+            output = str(output_dir / "processed.json")
+
+            # Also save the rules to the same directory for tracking
+            rules_output = str(output_dir / "rules.json")
+            with open(rules_output, "w") as f:
+                json.dump(transformation_rules, f, indent=2)
+        else:
+            output_dir = Path(output).parent
 
         # Export standardized dataset
         preprocessor.export_standardized(transformed_dataset, output)
+
+        # Save metadata file
+        metadata = {
+            "preprocessing_id": preprocessing_id,
+            "dataset_name": dataset,
+            "dataset_config": config,
+            "rules_file": rules,
+            "output_file": output,
+            "timestamp": datetime.now().isoformat(),
+            "sample_count": len(transformed_dataset),
+        }
+        metadata_file = output_dir / "metadata.json"
+        with open(metadata_file, "w") as f:
+            json.dump(metadata, f, indent=2)
 
         # Validate transformation if requested
         if validate and original_dataset:
@@ -516,11 +602,12 @@ def preprocess_batch(
                     dataset_url, rules, config
                 )
 
-                # Export
-                safe_name = dataset_name.replace("/", "_").replace("\\", "_")
-                if config:
-                    safe_name += f"_{config}"
-                dataset_output_path = output_path / f"{safe_name}.json"
+                # Export using new directory structure
+                preprocessing_id = generate_preprocessing_id()
+                dataset_output_dir = ensure_preprocessing_output_dir(
+                    dataset_name, config
+                )
+                dataset_output_path = dataset_output_dir / "processed.json"
                 preprocessor.export_standardized(
                     transformed_dataset, str(dataset_output_path)
                 )
@@ -530,6 +617,34 @@ def preprocess_batch(
                     original_dataset, transformed_dataset
                 )
 
+                # Save rules alongside
+                rules_path = dataset_output_dir / "rules.json"
+                from ml_agents.core.dataset_preprocessor import NumpyJSONEncoder
+
+                with open(rules_path, "w") as f:
+                    json.dump(rules, f, indent=2, cls=NumpyJSONEncoder)
+
+                # Save analysis info
+                analysis_path = dataset_output_dir / "analysis.json"
+                with open(analysis_path, "w") as f:
+                    json.dump(schema_info, f, indent=2, cls=NumpyJSONEncoder)
+
+                # Save metadata file
+                metadata = {
+                    "preprocessing_id": preprocessing_id,
+                    "dataset_name": dataset_name,
+                    "dataset_config": config,
+                    "dataset_url": dataset_url,
+                    "rules_file": str(rules_path),
+                    "output_file": str(dataset_output_path),
+                    "timestamp": datetime.now().isoformat(),
+                    "sample_count": len(transformed_dataset),
+                    "validation_results": validation_results,
+                }
+                metadata_file = dataset_output_dir / "metadata.json"
+                with open(metadata_file, "w") as f:
+                    json.dump(metadata, f, indent=2, cls=NumpyJSONEncoder)
+
                 # Save metadata to database
                 preprocessor._save_preprocessing_metadata(
                     dataset_name=dataset_name,
@@ -537,15 +652,11 @@ def preprocess_batch(
                     schema_info=schema_info,
                     rules=rules,
                     validation_results=validation_results,
-                    output_path=str(dataset_output_path),
+                    output_path=str(dataset_output_dir),
+                    preprocessing_id=preprocessing_id,
+                    rules_path=str(rules_path),
+                    analysis_path=str(analysis_path),
                 )
-
-                # Save rules alongside
-                rules_path = output_path / f"{safe_name}_rules.json"
-                from ml_agents.core.dataset_preprocessor import NumpyJSONEncoder
-
-                with open(rules_path, "w") as f:
-                    json.dump(rules, f, indent=2, cls=NumpyJSONEncoder)
 
                 display_success(f"✅ Processed: {dataset_name}")
                 successful += 1

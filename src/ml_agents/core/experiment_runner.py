@@ -6,6 +6,7 @@ experiments across different reasoning approaches, datasets, and models.
 
 import csv
 import json
+import sqlite3
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
@@ -119,9 +120,17 @@ class ExperimentRunner:
         self.total_samples = 0
         self.checkpoint_interval = 10  # Save every 10 samples
 
-        # Output management
-        self.output_dir = Path(config.output_dir)
+        # Output management - new structure: outputs/{dataset_name}/eval/{exp_timestamp}/
+        dataset_name_clean = self._sanitize_dataset_name(config.dataset_name)
+        exp_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.output_dir = (
+            Path(config.output_dir) / dataset_name_clean / "eval" / exp_timestamp
+        )
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Store paths for database tracking
+        self.dataset_name_clean = dataset_name_clean
+        self.exp_timestamp = exp_timestamp
 
         # Rich progress setup
         self.use_rich = RICH_AVAILABLE
@@ -673,10 +682,8 @@ class ExperimentRunner:
         Args:
             summary: Experiment summary to save
         """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_filename = (
-            f"{self.config.provider}_{self.config.model.replace('/', '_')}_{timestamp}"
-        )
+        # Files are already in the experiment directory, so just use descriptive names
+        base_filename = "experiment"
 
         # Save detailed results as CSV
         results_file = self.output_dir / f"{base_filename}_results.csv"
@@ -693,11 +700,42 @@ class ExperimentRunner:
             with open(errors_file, "w") as f:
                 json.dump(self.errors, f, indent=2)
 
+        # Save experiment config with preprocessing info if available
+        config_file = self.output_dir / "experiment_config.json"
+        config_data = self.config.to_dict()
+        config_data["experiment_id"] = self.experiment_id
+        config_data["output_path"] = str(self.output_dir)
+
+        # Add preprocessing info if available
+        if hasattr(self, "preprocessing_id"):
+            config_data["preprocessing_id"] = self.preprocessing_id
+            config_data["preprocessing_rules_path"] = getattr(
+                self, "preprocessing_rules_path", None
+            )
+
+        with open(config_file, "w") as f:
+            json.dump(config_data, f, indent=2)
+
         logger.info(f"Results saved to {self.output_dir}")
+        logger.info(f"- Config: {config_file}")
         logger.info(f"- Results: {results_file}")
         logger.info(f"- Summary: {summary_file}")
         if self.errors:
             logger.info(f"- Errors: {errors_file}")
+
+        # Update database with output path if available
+        if self.results_processor:
+            try:
+                with sqlite3.connect(str(self.results_processor.db_path)) as conn:
+                    conn.execute(
+                        "UPDATE experiments SET eval_output_path = ? WHERE id = ?",
+                        (str(self.output_dir), self.experiment_id),
+                    )
+                    conn.commit()
+            except Exception as e:
+                logger.warning(
+                    f"Failed to update experiment output path in database: {e}"
+                )
 
         # Update experiment status in database
         if self.results_processor:
@@ -1020,8 +1058,37 @@ class ExperimentRunner:
         Returns:
             Unique experiment identifier
         """
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = getattr(
+            self, "exp_timestamp", datetime.now().strftime("%Y%m%d_%H%M%S")
+        )
         return f"exp_{timestamp}_{hash(str(self.config)) % 10000:04d}"
+
+    def _sanitize_dataset_name(self, dataset_name: str) -> str:
+        """Sanitize dataset name for use in filesystem paths.
+
+        Args:
+            dataset_name: Original dataset name (e.g., "MrLight/bbeh-eval")
+
+        Returns:
+            Sanitized name safe for filesystem (e.g., "MrLight_bbeh-eval")
+        """
+        # Replace forward slashes and other problematic characters
+        sanitized = dataset_name.replace("/", "_")
+        sanitized = sanitized.replace("\\", "_")
+        sanitized = sanitized.replace(":", "_")
+        sanitized = sanitized.replace("*", "_")
+        sanitized = sanitized.replace("?", "_")
+        sanitized = sanitized.replace('"', "_")
+        sanitized = sanitized.replace("<", "_")
+        sanitized = sanitized.replace(">", "_")
+        sanitized = sanitized.replace("|", "_")
+        sanitized = sanitized.replace(" ", "_")
+
+        # Remove any double underscores that may have been created
+        while "__" in sanitized:
+            sanitized = sanitized.replace("__", "_")
+
+        return sanitized.strip("_")
 
     def _get_checkpoint_path(self, approach: str) -> Path:
         """Get checkpoint file path for an approach.
