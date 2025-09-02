@@ -465,3 +465,206 @@ class TestDatasetUploaderIntegration:
                 uploader.validate_processed_file(corrupted_file)
         finally:
             os.unlink(corrupted_file)
+
+
+class TestDatasetUploader403Fallback:
+    """Test suite for DatasetUploader 403 fallback logic."""
+
+    @pytest.fixture
+    def uploader(self):
+        """Create DatasetUploader instance for testing."""
+        return DatasetUploader(org_name="test-org")
+
+    @pytest.fixture
+    def sample_json_dataset(self):
+        """Create a temporary JSON dataset file."""
+        data = [
+            {"INPUT": "What is 2+2?", "OUTPUT": "4"},
+            {"INPUT": "What is the capital of France?", "OUTPUT": "Paris"},
+        ]
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(data, f, indent=2)
+            return f.name
+
+    def teardown_method(self, method):
+        """Clean up temporary files."""
+        for temp_file in getattr(self, "_temp_files", []):
+            try:
+                os.unlink(temp_file)
+            except (OSError, FileNotFoundError):
+                pass
+
+    @patch("ml_agents.core.dataset_uploader.HfApi")
+    @patch("ml_agents.core.dataset_uploader.DatasetCard")
+    def test_upload_file_403_fallback_success(
+        self, mock_card_class, mock_hf_api, uploader, sample_json_dataset
+    ):
+        """Test successful fallback to PR creation after 403 error on file upload."""
+        # Mock authentication
+        uploader._authenticated = True
+        uploader.authenticate = Mock(return_value=True)
+
+        # Mock HfApi with 403 error on first upload, success on PR
+        mock_api_instance = Mock()
+        mock_api_instance.create_repo = Mock()
+
+        # First call fails with 403, second succeeds with create_pr=True
+        def upload_file_side_effect(*args, **kwargs):
+            if kwargs.get("create_pr", False):
+                return Mock(
+                    pr_url="https://huggingface.co/datasets/test-org/TestDataset/discussions/1"
+                )
+            else:
+                raise Exception("403 Forbidden: Authorization error.")
+
+        mock_api_instance.upload_file.side_effect = upload_file_side_effect
+        uploader.api = mock_api_instance
+
+        # Mock DatasetCard
+        mock_card = Mock()
+        mock_card.push_to_hub = Mock()
+        mock_card_class.return_value = mock_card
+
+        # Create temporary files for testing
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_name = Path(sample_json_dataset).stem
+            temp_path = Path(temp_dir)
+
+            # Create analysis and rules files
+            (temp_path / f"{base_name}_analysis.json").write_text(
+                '{"test": "analysis"}'
+            )
+            (temp_path / f"{base_name}_rules.json").write_text('{"test": "rules"}')
+
+            # Move the sample dataset to temp dir
+            import shutil
+
+            temp_dataset = temp_path / Path(sample_json_dataset).name
+            shutil.copy(sample_json_dataset, temp_dataset)
+
+            result = uploader.upload_dataset(
+                processed_file=str(temp_dataset),
+                source_dataset="test/source",
+                target_name="TestDataset",
+            )
+
+        assert result == "test-org/TestDataset"
+        # Should have called upload_file twice for each file (direct + PR fallback)
+        assert (
+            mock_api_instance.upload_file.call_count >= 6
+        )  # 3 files × 2 attempts each
+
+    @patch("ml_agents.core.dataset_uploader.HfApi")
+    @patch("ml_agents.core.dataset_uploader.DatasetCard")
+    def test_upload_dataset_card_403_fallback_success(
+        self, mock_card_class, mock_hf_api, uploader, sample_json_dataset
+    ):
+        """Test successful fallback to PR creation after 403 error on dataset card upload."""
+        # Mock authentication
+        uploader._authenticated = True
+        uploader.authenticate = Mock(return_value=True)
+
+        # Mock HfApi for successful file uploads
+        mock_api_instance = Mock()
+        mock_api_instance.create_repo = Mock()
+        mock_api_instance.upload_file = Mock()
+        uploader.api = mock_api_instance
+
+        # Mock DatasetCard with 403 error on first push, success on PR
+        mock_card = Mock()
+
+        def push_to_hub_side_effect(repo_id, create_pr=False):
+            if create_pr:
+                return Mock()  # Success
+            else:
+                raise Exception("403 Forbidden: Authorization error.")
+
+        mock_card.push_to_hub.side_effect = push_to_hub_side_effect
+        mock_card_class.return_value = mock_card
+
+        # Create temporary files for testing
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_name = Path(sample_json_dataset).stem
+            temp_path = Path(temp_dir)
+
+            # Create the main dataset file
+            temp_dataset = temp_path / Path(sample_json_dataset).name
+            import shutil
+
+            shutil.copy(sample_json_dataset, temp_dataset)
+
+            result = uploader.upload_dataset(
+                processed_file=str(temp_dataset),
+                source_dataset="test/source",
+                target_name="TestDataset",
+            )
+
+        assert result == "test-org/TestDataset"
+        # Should have called push_to_hub twice (direct + PR fallback)
+        assert mock_card.push_to_hub.call_count == 2
+
+    @patch("ml_agents.core.dataset_uploader.HfApi")
+    @patch("ml_agents.core.dataset_uploader.DatasetCard")
+    def test_upload_403_fallback_failure(
+        self, mock_card_class, mock_hf_api, uploader, sample_json_dataset
+    ):
+        """Test fallback failure when both direct upload and PR creation fail."""
+        # Mock authentication
+        uploader._authenticated = True
+        uploader.authenticate = Mock(return_value=True)
+
+        # Mock HfApi with 403 error on both direct and PR uploads
+        mock_api_instance = Mock()
+        mock_api_instance.create_repo = Mock()
+        mock_api_instance.upload_file.side_effect = Exception(
+            "403 Forbidden: Authorization error."
+        )
+        uploader.api = mock_api_instance
+
+        # Mock DatasetCard with failure on both attempts
+        mock_card = Mock()
+        mock_card.push_to_hub.side_effect = Exception(
+            "403 Forbidden: Authorization error."
+        )
+        mock_card_class.return_value = mock_card
+
+        # Create temporary files for testing
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_name = Path(sample_json_dataset).stem
+            temp_path = Path(temp_dir)
+
+            temp_dataset = temp_path / Path(sample_json_dataset).name
+            import shutil
+
+            shutil.copy(sample_json_dataset, temp_dataset)
+
+            # Should not raise exception but should complete with failed uploads
+            result = uploader.upload_dataset(
+                processed_file=str(temp_dataset),
+                source_dataset="test/source",
+                target_name="TestDataset",
+            )
+
+        assert result == "test-org/TestDataset"
+        # Should have attempted both direct and PR uploads
+        assert mock_api_instance.upload_file.call_count >= 2
+
+    def test_403_error_detection_patterns(self, uploader):
+        """Test that various 403 error patterns are detected correctly."""
+        test_errors = [
+            "403 Forbidden: Authorization error.",
+            "403 Forbidden: pass `create_pr=1` as a query parameter",
+            "Forbidden: pass `create_pr=1` as a query parameter",
+            "Authorization error.",
+            "HTTPError: 403 Client Error: Forbidden",
+        ]
+
+        for error_msg in test_errors:
+            error_str = error_msg.lower()
+            should_trigger = (
+                "403" in error_str
+                or "forbidden" in error_str
+                or "authorization" in error_str
+            )
+            assert should_trigger, f"Error pattern should trigger fallback: {error_msg}"

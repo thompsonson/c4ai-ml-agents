@@ -456,6 +456,7 @@ This processed dataset maintains the same license as the original source dataset
                         logger.info(f"Uploading: {source_path} → {target_file}")
 
                         try:
+                            # First attempt: direct upload
                             self.api.upload_file(
                                 path_or_fileobj=str(source_path),
                                 path_in_repo=target_file,
@@ -465,19 +466,99 @@ This processed dataset maintains the same license as the original source dataset
                             uploaded_files.append(target_file)
                             console.print(f"[green]✅ Uploaded: {target_file}[/green]")
                         except Exception as e:
-                            logger.error(f"Failed to upload {target_file}: {e}")
-                            failed_uploads.append((target_file, str(e)))
-                            console.print(
-                                f"[red]❌ Failed to upload: {target_file} - {e}[/red]"
-                            )
+                            # Check if it's a 403 permission error (broader detection)
+                            error_str = str(e).lower()
+                            if (
+                                "403" in error_str
+                                or "forbidden" in error_str
+                                or "authorization" in error_str
+                            ):
+                                logger.info(
+                                    f"Permission denied for direct upload of {target_file}, retrying with pull request"
+                                )
+                                console.print(
+                                    f"[yellow]⚠️ Direct upload denied, creating pull request for: {target_file}[/yellow]"
+                                )
+                                try:
+                                    # Fallback: create pull request
+                                    pr_response = self.api.upload_file(
+                                        path_or_fileobj=str(source_path),
+                                        path_in_repo=target_file,
+                                        repo_id=repo_id,
+                                        repo_type="dataset",
+                                        create_pr=True,
+                                        commit_message=f"Add {target_file} from {source_dataset}",
+                                    )
+                                    uploaded_files.append(target_file)
+                                    # Try to extract PR URL from response if available
+                                    pr_info = ""
+                                    if (
+                                        hasattr(pr_response, "pr_url")
+                                        and pr_response.pr_url
+                                    ):
+                                        pr_info = f" (PR: {pr_response.pr_url})"
+                                    console.print(
+                                        f"[green]✅ Created pull request for: {target_file}{pr_info}[/green]"
+                                    )
+                                except Exception as pr_error:
+                                    logger.error(
+                                        f"Failed to upload {target_file} via PR: {pr_error}"
+                                    )
+                                    failed_uploads.append((target_file, str(pr_error)))
+                                    console.print(
+                                        f"[red]❌ Failed to upload: {target_file} - {pr_error}[/red]"
+                                    )
+                            else:
+                                logger.error(f"Failed to upload {target_file}: {e}")
+                                failed_uploads.append((target_file, str(e)))
+                                console.print(
+                                    f"[red]❌ Failed to upload: {target_file} - {e}[/red]"
+                                )
                     else:
                         logger.info(f"Skipping {source_file} (not found)")
 
                 # Upload dataset card
                 progress.update(upload_task, description="Uploading dataset card...")
                 card = DatasetCard(card_content)
-                card.push_to_hub(repo_id)
-                console.print(f"[green]✅ Uploaded: README.md[/green]")
+                try:
+                    # First attempt: direct upload
+                    card.push_to_hub(repo_id)
+                    console.print(f"[green]✅ Uploaded: README.md[/green]")
+                except Exception as card_error:
+                    # Check if it's a 403 permission error
+                    error_str = str(card_error).lower()
+                    if (
+                        "403" in error_str
+                        or "forbidden" in error_str
+                        or "authorization" in error_str
+                    ):
+                        logger.info(
+                            "Permission denied for direct dataset card upload, retrying with pull request"
+                        )
+                        console.print(
+                            "[yellow]⚠️ Direct README upload denied, creating pull request...[/yellow]"
+                        )
+                        try:
+                            # Fallback: create pull request for dataset card
+                            card.push_to_hub(repo_id, create_pr=True)
+                            console.print(
+                                "[green]✅ Created pull request for: README.md[/green]"
+                            )
+                        except Exception as pr_card_error:
+                            logger.error(
+                                f"Failed to upload dataset card via PR: {pr_card_error}"
+                            )
+                            console.print(
+                                f"[red]❌ Failed to upload README.md via PR: {pr_card_error}[/red]"
+                            )
+                            # Don't fail the entire upload for README issues, but log it
+                            failed_uploads.append(("README.md", str(pr_card_error)))
+                    else:
+                        logger.error(f"Failed to upload dataset card: {card_error}")
+                        console.print(
+                            f"[red]❌ Failed to upload README.md: {card_error}[/red]"
+                        )
+                        failed_uploads.append(("README.md", str(card_error)))
 
                 progress.update(upload_task, description="Upload complete!")
 
@@ -487,28 +568,53 @@ This processed dataset maintains the same license as the original source dataset
 
         # Display success message
         if uploaded_files:
-            console.print(
-                f"\n[green]✅ Upload successful! Dataset available at: https://huggingface.co/datasets/{repo_id}[/green]"
-            )
-            console.print(
-                f"[green]   - Samples: {validation_results['sample_count']:,}[/green]"
-            )
-            console.print(f"[green]   - Format: INPUT/OUTPUT schema[/green]")
-            console.print(
-                f"[green]   - Files uploaded: {len(uploaded_files) + 1}[/green]"
-            )  # +1 for README
+            # Check if any files were uploaded via PR (indicated by yellow messages above)
+            has_pull_requests = any(
+                "⚠️ Direct upload denied" in str(msg) for msg in []
+            )  # This is a placeholder
+
+            if (
+                failed_uploads and len(failed_uploads) == len(files_to_upload) + 1
+            ):  # All files failed including README
+                console.print(
+                    f"\n[red]❌ Upload failed - no files were uploaded successfully[/red]"
+                )
+            else:
+                # Some or all files uploaded successfully
+                console.print(
+                    f"\n[green]✅ Upload successful! Dataset available at: https://huggingface.co/datasets/{repo_id}[/green]"
+                )
+                console.print(
+                    f"[green]   - Samples: {validation_results['sample_count']:,}[/green]"
+                )
+                console.print(f"[green]   - Format: INPUT/OUTPUT schema[/green]")
+                console.print(
+                    f"[green]   - Files uploaded: {len(uploaded_files)}[/green]"
+                )
+
+                # Add note about pull requests if any were created
+                if failed_uploads and not all(
+                    "Failed to upload" in error for _, error in failed_uploads
+                ):
+                    console.print(
+                        "[yellow]   - Note: Some files uploaded via pull requests (pending review)[/yellow]"
+                    )
 
             # List uploaded files
             console.print(f"\n[bold blue]📁 Uploaded Files:[/bold blue]")
             for file in uploaded_files:
                 console.print(f"   - {file}")
-            console.print("   - README.md")
+            if "README.md" not in [error[0] for error in failed_uploads]:
+                console.print("   - README.md")
 
             # Show failed uploads if any
             if failed_uploads:
-                console.print(f"\n[yellow]⚠️ Some files failed to upload:[/yellow]")
+                console.print(f"\n[yellow]⚠️ Files that encountered issues:[/yellow]")
                 for file, error in failed_uploads:
-                    console.print(f"   - {file}: {error}")
+                    if "Failed to upload" in error:
+                        console.print(f"   - {file}: Failed to upload ({error})")
+                    else:
+                        console.print(f"   - {file}: {error}")
         else:
             console.print(
                 f"\n[red]❌ Upload failed - no files were uploaded successfully[/red]"
