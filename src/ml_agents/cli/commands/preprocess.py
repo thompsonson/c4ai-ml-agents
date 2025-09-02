@@ -299,6 +299,18 @@ def preprocess_generate_rules(
         "-c",
         help="Dataset configuration name (for datasets with multiple configs)",
     ),
+    language: Optional[str] = typer.Option(
+        None,
+        "--language",
+        "-l",
+        help="Programming language to extract for coding datasets (javascript, python, java, cpp)",
+    ),
+    difficulty: Optional[str] = typer.Option(
+        None,
+        "--difficulty",
+        "-d",
+        help="Difficulty level to filter for coding datasets (easy, medium, hard)",
+    ),
 ) -> None:
     """Generate transformation rules for a dataset based on schema analysis."""
     from ml_agents.core.dataset_preprocessor import DatasetPreprocessor
@@ -315,7 +327,9 @@ def preprocess_generate_rules(
         schema_info = preprocessor.inspect_dataset_schema(dataset, sample_size, config)
 
         # Generate transformation rules
-        rules = preprocessor.generate_transformation_rules(schema_info)
+        rules = preprocessor.generate_transformation_rules(
+            schema_info, language=language, difficulty=difficulty
+        )
 
         # Determine output file
         if not output:
@@ -362,6 +376,18 @@ def preprocess_transform(
         "--config",
         "-c",
         help="Dataset configuration name (for datasets with multiple configs)",
+    ),
+    language: Optional[str] = typer.Option(
+        None,
+        "--language",
+        "-l",
+        help="Programming language to extract for coding datasets (javascript, python, java, cpp)",
+    ),
+    difficulty: Optional[str] = typer.Option(
+        None,
+        "--difficulty",
+        "-d",
+        help="Difficulty level to filter for coding datasets (easy, medium, hard)",
     ),
 ) -> None:
     """Apply transformation rules to convert dataset to {INPUT, OUTPUT} format."""

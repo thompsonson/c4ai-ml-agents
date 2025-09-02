@@ -566,11 +566,59 @@ class DatasetPreprocessor:
 
         return "\n".join(formatted_options)
 
-    def generate_transformation_rules(self, schema: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_code_from_text(self, text: str, language: Optional[str]) -> str:
+        """Extract code block from text containing code + explanation.
+
+        Args:
+            text: Text containing code block and explanation
+            language: Programming language to extract (javascript, python, java, cpp)
+
+        Returns:
+            Extracted code block or original text if no code block found
+        """
+        import re
+
+        if not language:
+            logger.warning("No language specified for code extraction")
+            return text
+
+        # Map language names to regex patterns
+        language_patterns = {
+            "javascript": r"```javascript\s*\n(.*?)\n```",
+            "python": r"```python\s*\n(.*?)\n```",
+            "java": r"```java\s*\n(.*?)\n```",
+            "cpp": r"```cpp\s*\n(.*?)\n```",
+            "c++": r"```cpp\s*\n(.*?)\n```",  # Handle both cpp and c++ naming
+        }
+
+        pattern = language_patterns.get(language.lower())
+        if not pattern:
+            logger.warning(f"Unsupported language for code extraction: {language}")
+            return text
+
+        # Extract code block using regex with DOTALL flag for multiline matching
+        match = re.search(pattern, text, re.DOTALL)
+        if match:
+            extracted_code = match.group(1).strip()
+            logger.debug(
+                f"Extracted {language} code block ({len(extracted_code)} chars)"
+            )
+            return extracted_code
+        else:
+            logger.warning(f"No {language} code block found in text")
+            return text
+
+    def generate_transformation_rules(
+        self,
+        schema: Dict[str, Any],
+        language: Optional[str] = None,
+        difficulty: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Generate transformation rules based on detected patterns.
 
         Args:
             schema: Schema information from inspect_dataset_schema
+            language: Programming language for coding datasets (javascript, python, java, cpp)
 
         Returns:
             Transformation rules dictionary
@@ -578,17 +626,83 @@ class DatasetPreprocessor:
         detected_patterns = schema.get("detected_patterns", {})
         recommendation = detected_patterns.get("recommended_pattern", {})
 
-        rules = {
-            "dataset_name": schema["dataset_name"],
-            "transformation_type": recommendation.get("type", "manual"),
-            "confidence": recommendation.get("confidence", 0.0),
-            "input_format": "single_field",
-            "input_fields": recommendation.get("input_fields", []),
-            "output_field": recommendation.get("output_field"),
-            "field_separator": "\n\n",
-            "field_labels": {},
-            "preprocessing_steps": [],
-        }
+        # Check for coding dataset pattern (content + multiple language fields)
+        columns = schema.get("columns", [])
+        coding_languages = ["java", "c++", "python", "javascript"]
+        has_content = "content" in columns
+        has_language_fields = any(lang in columns for lang in coding_languages)
+
+        if has_content and has_language_fields:
+            # This is a coding dataset - override automatic detection
+            if language:
+                # Map cpp to c++ for field lookup
+                field_name = "c++" if language == "cpp" else language
+                if field_name in columns:
+                    rules = {
+                        "dataset_name": schema["dataset_name"],
+                        "transformation_type": "coding_dataset",
+                        "confidence": 1.0,
+                        "input_format": "single_field",
+                        "input_fields": ["content"],
+                        "output_field": field_name,
+                        "field_separator": "\n\n",
+                        "field_labels": {},
+                        "preprocessing_steps": ["extract_code_only"],
+                        "language": language,
+                    }
+                    logger.info(
+                        f"Detected coding dataset with {language} language selection"
+                    )
+                else:
+                    logger.warning(
+                        f"Language '{language}' not found in dataset columns: {columns}"
+                    )
+                    # Fallback to automatic detection
+                    rules = {
+                        "dataset_name": schema["dataset_name"],
+                        "transformation_type": recommendation.get("type", "manual"),
+                        "confidence": recommendation.get("confidence", 0.0),
+                        "input_format": "single_field",
+                        "input_fields": recommendation.get("input_fields", []),
+                        "output_field": recommendation.get("output_field"),
+                        "field_separator": "\n\n",
+                        "field_labels": {},
+                        "preprocessing_steps": [],
+                    }
+            else:
+                # Suggest language selection for coding dataset
+                available_languages = [
+                    lang for lang in coding_languages if lang in columns
+                ]
+                rules = {
+                    "dataset_name": schema["dataset_name"],
+                    "transformation_type": "coding_dataset_needs_language",
+                    "confidence": 0.0,
+                    "input_format": "single_field",
+                    "input_fields": ["content"],
+                    "output_field": None,
+                    "field_separator": "\n\n",
+                    "field_labels": {},
+                    "preprocessing_steps": [],
+                    "available_languages": available_languages,
+                    "suggestion": f"This appears to be a coding dataset. Please specify --language option: {', '.join(available_languages)}",
+                }
+                logger.info(
+                    f"Detected coding dataset. Available languages: {available_languages}"
+                )
+        else:
+            # Standard pattern detection
+            rules = {
+                "dataset_name": schema["dataset_name"],
+                "transformation_type": recommendation.get("type", "manual"),
+                "confidence": recommendation.get("confidence", 0.0),
+                "input_format": "single_field",
+                "input_fields": recommendation.get("input_fields", []),
+                "output_field": recommendation.get("output_field"),
+                "field_separator": "\n\n",
+                "field_labels": {},
+                "preprocessing_steps": [],
+            }
 
         # Set up field labels and format based on pattern type
         if recommendation.get("type") == "multi_field":
@@ -731,8 +845,13 @@ class DatasetPreprocessor:
                 if output_field and output_field in example:
                     output_value = example[output_field]
 
+                    # Check if we need to extract code only
+                    if "extract_code_only" in rules.get("preprocessing_steps", []):
+                        output_text = self._extract_code_from_text(
+                            str(output_value), rules.get("language")
+                        )
                     # Check if we need to resolve answer index to text
-                    if "resolve_answer_index" in rules.get("preprocessing_steps", []):
+                    elif "resolve_answer_index" in rules.get("preprocessing_steps", []):
                         if isinstance(output_value, (int, np.integer)):
                             # Dynamic field detection for answer options
                             options_field = None
@@ -801,6 +920,23 @@ class DatasetPreprocessor:
                     output_text = ""
 
                 return {"INPUT": input_text, "OUTPUT": output_text}
+
+            # Apply difficulty filtering if specified
+            if "filter_by_difficulty" in rules.get("preprocessing_steps", []):
+                difficulty_filter = rules.get("difficulty_filter")
+                if difficulty_filter and "difficulty" in dataset.column_names:
+                    original_count = len(dataset)
+                    dataset = dataset.filter(
+                        lambda x: x["difficulty"].lower() == difficulty_filter
+                    )
+                    filtered_count = len(dataset)
+                    logger.info(
+                        f"Filtered dataset by difficulty '{difficulty_filter}': {original_count} -> {filtered_count} samples"
+                    )
+                else:
+                    logger.warning(
+                        "Difficulty filtering requested but no difficulty field found or filter not specified"
+                    )
 
             # Apply transformation
             transformed_dataset = dataset.map(
