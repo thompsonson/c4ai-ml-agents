@@ -140,7 +140,8 @@ The `generate-rules` command creates a JSON file that defines how to transform y
     "question": "QUESTION:",
     "candidate_answers": "OPTIONS:"
   },
-  "preprocessing_steps": ["resolve_answer_index"]
+  "preprocessing_steps": ["resolve_answer_index"],
+  "answer_options_field": "candidate_answers"  // Optional: explicitly specify the field containing answer options
 }
 ```
 
@@ -148,6 +149,9 @@ The `generate-rules` command creates a JSON file that defines how to transform y
 - **output_field**: Dataset column used for OUTPUT field
 - **preprocessing_steps**: Special transformations (e.g., convert answer indices to text)
 - **field_labels**: Headers added to INPUT sections
+- **answer_options_field** (optional): Explicitly specify which field contains the answer options for index resolution
+  - If not specified, auto-detects from common field names: "options", "candidate_answers", "choices", "alternatives"
+  - Example: GPQA dataset uses "options" field, spartqa uses "candidate_answers"
 
 #### Manual Rules Correction (✅ Stable)
 
@@ -337,6 +341,33 @@ ml-agents preprocess transform tasksource/spartqa-mchoice ./outputs/tasksource_s
 
 # 6. Now use for evaluation
 ml-agents eval run --dataset tasksource/spartqa-mchoice --approach ChainOfThought --samples 10
+```
+
+#### Example: Different Datasets with Various Answer Option Fields
+
+```bash
+# GPQA dataset has "options" field
+ml-agents preprocess inspect jeggers/gpqa_formatted --config main
+# Shows: Question, options, answer
+
+# SpartQA has "candidate_answers" field
+ml-agents preprocess inspect tasksource/spartqa-mchoice
+# Shows: story, question, candidate_answers, answer
+
+# The system auto-detects these fields, but you can be explicit:
+# For GPQA:
+{
+  "input_fields": ["Question", "options"],
+  "answer_options_field": "options",  // Explicitly specify
+  "preprocessing_steps": ["resolve_answer_index"]
+}
+
+# For SpartQA:
+{
+  "input_fields": ["story", "question", "candidate_answers"],
+  "answer_options_field": "candidate_answers",  // Explicitly specify
+  "preprocessing_steps": ["resolve_answer_index"]
+}
 ```
 
 ### Quick Test Workflow

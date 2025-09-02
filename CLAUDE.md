@@ -247,7 +247,9 @@ ml-agents/
 
 ### Multiple Choice Dataset Support (Latest)
 - **New Pattern**: `story_question_choices` for datasets with story/question/candidate_answers structure
-- **Answer Resolution**: Automatic conversion from numeric indices to text answers
+- **Answer Resolution**: Automatic conversion from numeric indices to text answers with dynamic field detection
+- **Dynamic Field Detection**: Automatically detects answer option fields ("options", "candidate_answers", "choices", etc.)
+- **Flexible Configuration**: Optional `answer_options_field` in rules for explicit field specification
 - **Option Formatting**: Candidate answers formatted as A), B), C), D) options
 - **Comprehensive Testing**: 37 tests covering all functionality including edge cases
 - **JSON Serialization**: Enhanced export with NumpyJSONEncoder for proper numpy type handling
@@ -392,7 +394,7 @@ ml-agents preprocess upload <processed_file> --source-dataset <source> --target-
 **Key Features:**
 - **Automated Schema Detection**: Detects input/output fields with 90%+ confidence
 - **Advanced Pattern Detection**: Supports 7+ dataset patterns including story_question_choices for multiple choice questions
-- **Multiple Choice Dataset Support**: Native support for story-question-choices format with automatic candidate answer formatting (A, B, C, D) and answer index resolution
+- **Multiple Choice Dataset Support**: Native support for story-question-choices format with automatic candidate answer formatting (A, B, C, D) and dynamic answer index resolution (auto-detects "options", "candidate_answers", "choices", etc.)
 - **Native HuggingFace Config Support**: Handles datasets with multiple configurations seamlessly
 - **Enhanced Field Selection**: Prioritizes complete answer fields (e.g., `oracle_full_answer` over `oracle_answer`)
 - **Database Integration**: Tracks preprocessing metadata in SQLite (schema v1.2.0)

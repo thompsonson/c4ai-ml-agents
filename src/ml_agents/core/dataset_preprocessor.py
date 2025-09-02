@@ -688,14 +688,25 @@ class DatasetPreprocessor:
                                 field, f"{field.upper()}:"
                             )
 
-                            # Special formatting for candidate_answers field
-                            if field == "candidate_answers" and isinstance(
-                                example[field], list
-                            ):
-                                options_text = self._format_multiple_choice_options(
-                                    example[field]
-                                )
-                                input_parts.append(f"{label}\n\n{options_text}")
+                            # Special formatting for list fields (likely answer options)
+                            if isinstance(example[field], list):
+                                # Check if this field is marked as answer options or commonly named
+                                is_options_field = field == rules.get(
+                                    "answer_options_field"
+                                ) or field in [
+                                    "options",
+                                    "candidate_answers",
+                                    "choices",
+                                    "alternatives",
+                                ]
+                                if is_options_field:
+                                    options_text = self._format_multiple_choice_options(
+                                        example[field]
+                                    )
+                                    input_parts.append(f"{label}\n\n{options_text}")
+                                else:
+                                    # Format as regular list
+                                    input_parts.append(f"{label}\n\n{example[field]}")
                             else:
                                 input_parts.append(f"{label}\n\n{example[field]}")
                         else:
@@ -722,18 +733,63 @@ class DatasetPreprocessor:
 
                     # Check if we need to resolve answer index to text
                     if "resolve_answer_index" in rules.get("preprocessing_steps", []):
-                        if (
-                            isinstance(output_value, (int, np.integer))
-                            and "candidate_answers" in example
-                        ):
-                            candidates = example["candidate_answers"]
-                            if isinstance(candidates, list) and 0 <= output_value < len(
-                                candidates
-                            ):
-                                output_text = str(candidates[output_value]).strip()
+                        if isinstance(output_value, (int, np.integer)):
+                            # Dynamic field detection for answer options
+                            options_field = None
+                            candidates = None
+
+                            # First, check if answer_options_field is specified in rules
+                            if "answer_options_field" in rules:
+                                options_field = rules["answer_options_field"]
+                                if options_field in example:
+                                    candidates = example[options_field]
+
+                            # If not specified or not found, auto-detect
+                            if candidates is None:
+                                # Common field names for answer options
+                                common_option_fields = [
+                                    "options",
+                                    "candidate_answers",
+                                    "choices",
+                                    "alternatives",
+                                    "answers",
+                                    "answer_choices",
+                                ]
+                                for field_name in common_option_fields:
+                                    if field_name in example and isinstance(
+                                        example[field_name], list
+                                    ):
+                                        options_field = field_name
+                                        candidates = example[field_name]
+                                        break
+
+                            # If still not found, check all fields for lists
+                            if candidates is None:
+                                for field_name, field_value in example.items():
+                                    if (
+                                        isinstance(field_value, list)
+                                        and len(field_value) > 1
+                                    ):
+                                        # Likely to be answer options if it's a list with multiple items
+                                        options_field = field_name
+                                        candidates = field_value
+                                        logger.debug(
+                                            f"Auto-detected '{field_name}' as answer options field"
+                                        )
+                                        break
+
+                            # Resolve the answer index to text
+                            if candidates is not None and isinstance(candidates, list):
+                                if 0 <= output_value < len(candidates):
+                                    output_text = str(candidates[output_value]).strip()
+                                else:
+                                    logger.warning(
+                                        f"Answer index {output_value} out of range for {len(candidates)} options"
+                                    )
+                                    output_text = str(output_value)
                             else:
                                 logger.warning(
-                                    f"Could not resolve answer index {output_value}"
+                                    f"Could not find answer options field to resolve index {output_value}"
                                 )
                                 output_text = str(output_value)
                         else:

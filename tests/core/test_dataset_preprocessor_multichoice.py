@@ -596,6 +596,173 @@ class TestEdgeCases:
         result = transformed[0]
         assert result["OUTPUT"] == "-1"
 
+    @patch("ml_agents.core.dataset_preprocessor.load_dataset")
+    def test_resolve_answer_index_with_options_field(self, mock_load_dataset):
+        """Test resolving answer index with 'options' field (like GPQA dataset)."""
+        mock_dataset = Mock()
+        mock_dataset.column_names = ["question", "options", "answer"]
+        mock_dataset.__len__ = Mock(return_value=1)
+
+        def mock_map(transform_func, **kwargs):
+            example = {
+                "question": "Test question?",
+                "options": ["option A", "option B", "option C", "option D"],
+                "answer": 2,  # Index 2 should be "option C"
+            }
+            result = transform_func(example)
+
+            # Check if the answer was resolved correctly
+            assert result["OUTPUT"] == "option C"
+            return Mock(column_names=["INPUT", "OUTPUT"], __len__=Mock(return_value=1))
+
+        mock_dataset.map = mock_map
+        mock_load_dataset.return_value = mock_dataset
+
+        # Rules without specifying answer_options_field (should auto-detect)
+        rules = {
+            "dataset_name": "test",
+            "input_format": "multi_field",
+            "input_fields": ["question", "options"],
+            "output_field": "answer",
+            "field_separator": "\n\n",
+            "field_labels": {
+                "question": "QUESTION:",
+                "options": "OPTIONS:",
+            },
+            "preprocessing_steps": ["resolve_answer_index"],
+        }
+
+        transformed = self.preprocessor.apply_transformation("test-dataset", rules)
+        # Test passes if no exception and assertion in mock_map passes
+
+    @patch("ml_agents.core.dataset_preprocessor.load_dataset")
+    def test_resolve_answer_index_with_explicit_field_specification(
+        self, mock_load_dataset
+    ):
+        """Test using explicit answer_options_field in rules."""
+        mock_dataset = Mock()
+        mock_dataset.column_names = ["question", "my_choices", "answer"]
+        mock_dataset.__len__ = Mock(return_value=1)
+
+        def mock_map(transform_func, **kwargs):
+            example = {
+                "question": "Test question?",
+                "my_choices": ["choice 1", "choice 2", "choice 3"],
+                "answer": 1,
+            }
+            result = transform_func(example)
+
+            # Should resolve to "choice 2" (index 1)
+            assert result["OUTPUT"] == "choice 2"
+            return Mock(column_names=["INPUT", "OUTPUT"], __len__=Mock(return_value=1))
+
+        mock_dataset.map = mock_map
+        mock_load_dataset.return_value = mock_dataset
+
+        # Explicitly specify the answer_options_field
+        rules = {
+            "dataset_name": "test",
+            "input_format": "multi_field",
+            "input_fields": ["question", "my_choices"],
+            "output_field": "answer",
+            "field_separator": "\n\n",
+            "field_labels": {
+                "question": "QUESTION:",
+                "my_choices": "CHOICES:",
+            },
+            "preprocessing_steps": ["resolve_answer_index"],
+            "answer_options_field": "my_choices",  # Explicitly specify
+        }
+
+        transformed = self.preprocessor.apply_transformation("test-dataset", rules)
+
+    @patch("ml_agents.core.dataset_preprocessor.load_dataset")
+    def test_resolve_answer_index_auto_detect_various_fields(self, mock_load_dataset):
+        """Test auto-detection of various common answer option field names."""
+        test_cases = [
+            ("choices", ["A", "B", "C"]),
+            ("alternatives", ["Alt 1", "Alt 2", "Alt 3"]),
+            ("answers", ["ans1", "ans2", "ans3"]),
+            ("answer_choices", ["choice A", "choice B", "choice C"]),
+        ]
+
+        for field_name, options_list in test_cases:
+            mock_dataset = Mock()
+            mock_dataset.column_names = ["question", field_name, "answer"]
+            mock_dataset.__len__ = Mock(return_value=1)
+
+            def create_mock_map(expected_field, expected_options):
+                def mock_map(transform_func, **kwargs):
+                    example = {
+                        "question": "Test question?",
+                        expected_field: expected_options,
+                        "answer": 1,
+                    }
+                    result = transform_func(example)
+                    # Should auto-detect and resolve index 1
+                    assert result["OUTPUT"] == expected_options[1]
+                    return Mock(
+                        column_names=["INPUT", "OUTPUT"], __len__=Mock(return_value=1)
+                    )
+
+                return mock_map
+
+            mock_dataset.map = create_mock_map(field_name, options_list)
+            mock_load_dataset.return_value = mock_dataset
+
+            rules = {
+                "dataset_name": "test",
+                "input_format": "multi_field",
+                "input_fields": ["question", field_name],
+                "output_field": "answer",
+                "field_separator": "\n\n",
+                "field_labels": {
+                    "question": "QUESTION:",
+                    field_name: "OPTIONS:",
+                },
+                "preprocessing_steps": ["resolve_answer_index"],
+                # No answer_options_field specified - should auto-detect
+            }
+
+            transformed = self.preprocessor.apply_transformation("test-dataset", rules)
+
+    @patch("ml_agents.core.dataset_preprocessor.load_dataset")
+    def test_resolve_answer_index_fallback_to_any_list_field(self, mock_load_dataset):
+        """Test fallback to any list field when no common names found."""
+        mock_dataset = Mock()
+        mock_dataset.column_names = ["question", "unusual_field_name", "answer"]
+        mock_dataset.__len__ = Mock(return_value=1)
+
+        def mock_map(transform_func, **kwargs):
+            example = {
+                "question": "Test question?",
+                "unusual_field_name": ["item1", "item2", "item3", "item4"],
+                "answer": 3,
+            }
+            result = transform_func(example)
+
+            # Should detect unusual_field_name as the list field and resolve index 3
+            assert result["OUTPUT"] == "item4"
+            return Mock(column_names=["INPUT", "OUTPUT"], __len__=Mock(return_value=1))
+
+        mock_dataset.map = mock_map
+        mock_load_dataset.return_value = mock_dataset
+
+        rules = {
+            "dataset_name": "test",
+            "input_format": "multi_field",
+            "input_fields": ["question", "unusual_field_name"],
+            "output_field": "answer",
+            "field_separator": "\n\n",
+            "field_labels": {
+                "question": "QUESTION:",
+                "unusual_field_name": "OPTIONS:",
+            },
+            "preprocessing_steps": ["resolve_answer_index"],
+        }
+
+        transformed = self.preprocessor.apply_transformation("test-dataset", rules)
+
     def test_validation_with_multiple_choice_dataset(self):
         """Test validation of transformed multiple choice dataset."""
         # Create mock original dataset
