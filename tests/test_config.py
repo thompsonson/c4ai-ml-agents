@@ -117,9 +117,11 @@ class TestExperimentConfig:
             ExperimentConfig(reasoning_approaches=["Invalid Approach"])
 
     def test_config_validation_empty_dataset_name(self):
-        """Test validation fails for empty dataset name."""
-        with pytest.raises(ValueError, match="dataset_name cannot be empty"):
-            ExperimentConfig(dataset_name="")
+        """Test validation fails for empty dataset name without benchmark_id."""
+        with pytest.raises(
+            ValueError, match="Either dataset_name or benchmark_id must be provided"
+        ):
+            ExperimentConfig(dataset_name="", benchmark_id=None)
 
     def test_config_validation_negative_sample_count(self):
         """Test validation fails for negative sample count."""
@@ -298,13 +300,14 @@ class TestConfigurationEdgeCases:
         with pytest.raises(ValueError) as exc_info:
             ExperimentConfig(
                 dataset_name="",
+                benchmark_id=None,  # Ensure neither is provided
                 sample_count=-1,
                 temperature=3.0,
                 top_p=1.5,
             )
 
         error_msg = str(exc_info.value)
-        assert "dataset_name cannot be empty" in error_msg
+        assert "Either dataset_name or benchmark_id must be provided" in error_msg
         assert "sample_count must be >= 1" in error_msg
         assert "temperature must be between" in error_msg
         assert "top_p must be between" in error_msg

@@ -120,16 +120,18 @@ class ExperimentRunner:
         self.total_samples = 0
         self.checkpoint_interval = 10  # Save every 10 samples
 
-        # Output management - new structure: outputs/{dataset_name}/eval/{exp_timestamp}/
-        dataset_name_clean = self._sanitize_dataset_name(config.dataset_name)
+        # Output management - new structure: outputs/{benchmark_id}/eval/{exp_timestamp}/
+        # Use benchmark_id if available, otherwise fallback to dataset_name
+        identifier = getattr(config, "benchmark_id", None) or config.dataset_name
+        identifier_clean = self._sanitize_dataset_name(identifier)
         exp_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.output_dir = (
-            Path(config.output_dir) / dataset_name_clean / "eval" / exp_timestamp
+            Path(config.output_dir) / identifier_clean / "eval" / exp_timestamp
         )
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Store paths for database tracking
-        self.dataset_name_clean = dataset_name_clean
+        self.dataset_name_clean = identifier_clean
         self.exp_timestamp = exp_timestamp
 
         # Rich progress setup
@@ -165,6 +167,7 @@ class ExperimentRunner:
     def run_single_experiment(
         self,
         approach: str,
+        benchmark_id: Optional[str] = None,
         sample_count: Optional[int] = None,
         resume_from_checkpoint: bool = True,
         save_checkpoints: bool = True,
@@ -174,6 +177,7 @@ class ExperimentRunner:
 
         Args:
             approach: Name of the reasoning approach to test
+            benchmark_id: Optional benchmark ID (uses config if None)
             sample_count: Number of samples to process (uses config default if None)
             resume_from_checkpoint: Whether to resume from existing checkpoint
             save_checkpoints: Whether to save progress checkpoints
@@ -208,10 +212,16 @@ class ExperimentRunner:
 
         try:
             # Load dataset
-            logger.info("Loading dataset...")
+            benchmark_to_use = benchmark_id or getattr(
+                self.config, "benchmark_id", None
+            )
+            if not benchmark_to_use:
+                raise ValueError("No benchmark_id specified in config or method call")
+
+            logger.info(f"Loading benchmark: {benchmark_to_use}...")
             if progress_callback:
-                progress_callback("Loading dataset...")
-            dataset = self.dataset_loader.load_dataset()
+                progress_callback(f"Loading benchmark: {benchmark_to_use}...")
+            dataset = self.dataset_loader.load_dataset(benchmark_to_use)
             samples = self.dataset_loader.sample_data(sample_size=sample_count)
             self.total_samples = len(samples)
             if progress_callback:
@@ -423,8 +433,12 @@ class ExperimentRunner:
 
         try:
             # Load dataset once for all approaches
-            logger.info("Loading dataset...")
-            dataset = self.dataset_loader.load_dataset()
+            benchmark_to_use = getattr(self.config, "benchmark_id", None)
+            if not benchmark_to_use:
+                raise ValueError("No benchmark_id specified in config")
+
+            logger.info(f"Loading benchmark: {benchmark_to_use}...")
+            dataset = self.dataset_loader.load_dataset(benchmark_to_use)
             samples = self.dataset_loader.sample_data(sample_size=sample_count)
             self.total_samples = len(samples)
 

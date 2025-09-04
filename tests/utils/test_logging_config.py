@@ -205,6 +205,7 @@ class TestLoggingSetup:
         assert logger.level == logging.DEBUG
         assert isinstance(logger.handlers[0].formatter, JSONFormatter)
 
+    @pytest.mark.logging_test
     def test_setup_logging_with_file(self, temp_dir) -> None:
         """Test setting up logging with file output."""
         log_dir = str(temp_dir)
@@ -381,6 +382,7 @@ class TestLoggingIntegration:
         assert logging.getLogger("requests").level == logging.WARNING
         assert logging.getLogger("transformers").level == logging.WARNING
 
+    @pytest.mark.logging_test
     @patch.dict(os.environ, {"LOG_TO_FILE": "true"})
     def test_file_logging_rotation(self, temp_dir) -> None:
         """Test file logging with rotation."""

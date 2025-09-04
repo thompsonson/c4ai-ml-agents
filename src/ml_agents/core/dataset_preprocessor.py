@@ -3,7 +3,7 @@
 import json
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -1123,8 +1123,8 @@ class DatasetPreprocessor:
                         output_path,
                         rules_path,
                         analysis_path,
-                        datetime.utcnow().isoformat(),
-                        datetime.utcnow().isoformat(),
+                        datetime.now(timezone.utc).isoformat(),
+                        datetime.now(timezone.utc).isoformat(),
                     ),
                 )
 

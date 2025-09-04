@@ -28,6 +28,7 @@ class TestExperimentRunner:
         """Create test configuration with temporary output directory."""
         return ExperimentConfig(
             dataset_name="test/dataset",
+            benchmark_id="TEST_BENCHMARK",  # Add benchmark_id for new system
             sample_count=3,  # Changed to match test expectations
             provider="openrouter",
             model="openai/gpt-oss-120b",
@@ -44,6 +45,7 @@ class TestExperimentRunner:
         """Create configuration for critical success scenario with Phase 4 specifications."""
         return ExperimentConfig(
             dataset_name="test/dataset",
+            benchmark_id="TEST_BENCHMARK",  # Add benchmark_id for new system
             sample_count=5,  # Phase 4 specification requirement
             provider="openrouter",
             model="openai/gpt-oss-120b",
@@ -149,9 +151,11 @@ class TestExperimentRunner:
             assert runner.current_sample == 0
             assert runner.total_samples == 0
             assert runner.checkpoint_interval == 10
-            # New structure: outputs/{dataset_name}/eval/{timestamp}/
+            # New structure: outputs/{benchmark_id}/eval/{timestamp}/
             assert runner.output_dir.parent.parent.parent == Path(temp_dir / "outputs")
-            assert "test_dataset" in str(runner.output_dir)  # Sanitized dataset name
+            assert "TEST_BENCHMARK" in str(
+                runner.output_dir
+            )  # Benchmark ID in directory structure
             assert "eval" in str(runner.output_dir)
             assert runner.output_dir.exists()
 

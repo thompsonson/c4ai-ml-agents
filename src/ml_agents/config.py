@@ -131,7 +131,8 @@ class ExperimentConfig:
     """Configuration for ML Agents experiments with validation."""
 
     # Dataset configuration
-    dataset_name: str = "MrLight/bbeh-eval"
+    dataset_name: str = "MrLight/bbeh-eval"  # Kept for backward compatibility
+    benchmark_id: Optional[str] = None  # New: centralized benchmark ID
     sample_count: int = 50
 
     # Model configuration
@@ -186,9 +187,11 @@ class ExperimentConfig:
         except ValueError as e:
             errors.append(str(e))
 
-        # Validate dataset
-        if not self.dataset_name or not self.dataset_name.strip():
-            errors.append("dataset_name cannot be empty")
+        # Validate dataset - either dataset_name OR benchmark_id must be provided
+        if not self.benchmark_id and (
+            not self.dataset_name or not self.dataset_name.strip()
+        ):
+            errors.append("Either dataset_name or benchmark_id must be provided")
 
         if self.sample_count < 1:
             errors.append("sample_count must be >= 1")
@@ -291,6 +294,7 @@ class ExperimentConfig:
         """Convert config to dictionary."""
         return {
             "dataset_name": self.dataset_name,
+            "benchmark_id": self.benchmark_id,
             "sample_count": self.sample_count,
             "provider": self.provider,
             "model": self.model,

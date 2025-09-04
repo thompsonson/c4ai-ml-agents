@@ -6,6 +6,7 @@ from typing import Optional
 
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from ml_agents.cli.config_loader import load_and_validate_config
 from ml_agents.cli.display import (
@@ -31,6 +32,7 @@ from ml_agents.cli.validators import (
     validate_temperature,
     validate_top_p,
 )
+from ml_agents.core.benchmark_registry import BenchmarkRegistry
 from ml_agents.core.experiment_runner import ExperimentRunner
 
 console = Console()
@@ -50,15 +52,14 @@ def display_pre_alpha_warning() -> None:
 
 
 def run_single_experiment(
-    approach: str = typer.Option(
-        "ChainOfThought", "--approach", "-a", help="Reasoning approach to use"
-    ),
+    benchmark_id: str = typer.Argument(..., help="Benchmark ID (e.g., GPQA, MMLU)"),
+    approach: str = typer.Argument(..., help="Reasoning approach name"),
     samples: int = typer.Option(
-        50,
+        None,
         "--samples",
         "-n",
-        help="Number of samples to process",
-        callback=lambda x: validate_sample_count(x) if x else 50,
+        help="Number of samples to process (uses full benchmark if not specified)",
+        callback=lambda x: validate_sample_count(x) if x else None,
     ),
     config: Optional[str] = typer.Option(
         None,
@@ -87,28 +88,6 @@ def run_single_experiment(
         "--top-p",
         help="Top-p sampling parameter (0.0-1.0)",
         callback=lambda x: validate_top_p(x) if x is not None else None,
-    ),
-    # Dataset and preprocessing settings
-    dataset: Optional[str] = typer.Option(
-        None,
-        "--dataset",
-        "-d",
-        help="Dataset name (overrides config)",
-    ),
-    preprocessing_id: Optional[str] = typer.Option(
-        None,
-        "--preprocessing-id",
-        help="Use specific preprocessing run by ID",
-    ),
-    preprocessing_path: Optional[str] = typer.Option(
-        None,
-        "--preprocessing-path",
-        help="Path to preprocessed dataset file",
-    ),
-    use_latest_preprocessing: bool = typer.Option(
-        True,
-        "--latest-preprocessing/--no-latest-preprocessing",
-        help="Auto-detect and use latest preprocessing for dataset",
     ),
     # Execution settings
     output_dir: Optional[str] = typer.Option(
@@ -158,9 +137,9 @@ def run_single_experiment(
         False, "--skip-warnings", help="Skip pre-alpha warnings"
     ),
 ) -> None:
-    """⚠️ PRE-ALPHA: Run a single reasoning experiment with the specified approach.
+    """⚠️ PRE-ALPHA: Run a single reasoning experiment with the specified benchmark and approach.
 
-    This command is in pre-alpha development and may be unstable."""
+    This command uses the centralized benchmark repository and may be unstable."""
 
     try:
         # Display pre-alpha warning
@@ -174,7 +153,7 @@ def run_single_experiment(
         experiment_config = load_and_validate_config(
             config_file=config,
             reasoning_approaches=[approach],
-            sample_count=samples,
+            sample_count=samples or 50,  # Default to 50 if not specified
             provider=provider,
             model=model,
             temperature=temperature,
@@ -190,9 +169,8 @@ def run_single_experiment(
             max_parsing_retries=max_parsing_retries,
         )
 
-        # Override dataset if provided
-        if dataset:
-            experiment_config.dataset_name = dataset
+        # Set benchmark ID
+        experiment_config.benchmark_id = benchmark_id
 
         # Check environment is ready
         check_environment_ready(experiment_config.provider)
@@ -204,86 +182,25 @@ def run_single_experiment(
             total_samples=samples,
         )
 
-        # Handle preprocessing options
-        preprocessing_info = None
-        if preprocessing_path:
-            # User provided explicit path to preprocessed data
-            display_info(f"Using preprocessed data from: {preprocessing_path}")
-            preprocessing_info = {"path": preprocessing_path}
-        elif preprocessing_id and experiment_config.database_enabled:
-            # User provided specific preprocessing ID
-            from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
-
-            db_config = DatabaseConfig(
-                db_path=experiment_config.database_path,
+        # Validate benchmark exists
+        try:
+            registry = BenchmarkRegistry()
+            benchmark_info = registry.get_benchmark_info(benchmark_id)
+            display_info(
+                f"Loading benchmark: {benchmark_id} ({benchmark_info['num_samples']} samples)"
             )
-            db_manager = DatabaseManager(db_config)
-
-            # Query preprocessing info from database
-            with db_manager.get_connection() as conn:
-                cursor = conn.execute(
-                    "SELECT * FROM dataset_preprocessing WHERE id = ?",
-                    (preprocessing_id,),
-                )
-                row = cursor.fetchone()
-                if row:
-                    preprocessing_info = {
-                        "id": preprocessing_id,
-                        "path": row[11],  # output_path column
-                        "rules_path": row[12],  # rules_path column
-                    }
-                    display_info(f"Using preprocessing: {preprocessing_id}")
-                else:
-                    display_warning(f"Preprocessing ID {preprocessing_id} not found")
-        elif (
-            use_latest_preprocessing
-            and experiment_config.dataset_name
-            and experiment_config.database_enabled
-        ):
-            # Auto-detect latest preprocessing for the dataset
-            from ml_agents.core.database_manager import DatabaseConfig, DatabaseManager
-
-            db_config = DatabaseConfig(
-                db_path=experiment_config.database_path,
-            )
-            db_manager = DatabaseManager(db_config)
-
-            preprocessing_data = db_manager.get_latest_preprocessing_for_dataset(
-                experiment_config.dataset_name
-            )
-            if preprocessing_data:
-                preprocessing_info = {
-                    "id": preprocessing_data["id"],
-                    "path": preprocessing_data["output_path"],
-                    "rules_path": preprocessing_data.get("rules_path"),
-                }
-                display_info(
-                    f"Auto-detected latest preprocessing: {preprocessing_data['id']}"
-                )
+        except Exception as e:
+            display_error(f"Benchmark '{benchmark_id}' not found: {e}")
+            raise typer.Exit(1)
 
         # Create and run experiment
         runner = ExperimentRunner(experiment_config)
-
-        # Store preprocessing info if available
-        if preprocessing_info:
-            runner.preprocessing_id = preprocessing_info.get("id")
-            runner.preprocessing_rules_path = preprocessing_info.get("rules_path")
-
-            # Link preprocessing to experiment after it's created
-            if runner.results_processor and preprocessing_info.get("id"):
-                runner.results_processor.db_manager.link_preprocessing_to_experiment(
-                    experiment_id=runner.experiment_id,
-                    preprocessing_id=preprocessing_info["id"],
-                    dataset_name=experiment_config.dataset_name,
-                    preprocessing_path=preprocessing_info.get("path"),
-                    rules_path=preprocessing_info.get("rules_path"),
-                    eval_output_path=str(runner.output_dir),
-                )
 
         console.print("🚀 [blue]Starting single experiment...[/blue]")
 
         result = runner.run_single_experiment(
             approach=approach,
+            benchmark_id=benchmark_id,
             progress_callback=lambda msg: (
                 console.print(f"   {msg}") if verbose else None
             ),
@@ -768,4 +685,75 @@ def list_checkpoints(
 
     except Exception as e:
         display_error(f"Failed to list checkpoints: {e}")
+        raise typer.Exit(1)
+
+
+def list_benchmarks() -> None:
+    """List all available benchmarks from central repository."""
+    try:
+        registry = BenchmarkRegistry()
+        benchmarks = registry.list_available_benchmarks()
+
+        if not benchmarks:
+            display_info("No benchmarks found in repository")
+            return
+
+        # Create benchmarks table
+        table = Table(title="Available Benchmarks")
+        table.add_column("Benchmark ID", style="cyan")
+        table.add_column("Samples", justify="right", style="green")
+        table.add_column("Has INPUT/OUTPUT", style="yellow")
+
+        for benchmark_id in benchmarks:
+            try:
+                info = registry.get_benchmark_info(benchmark_id)
+                table.add_row(
+                    benchmark_id,
+                    str(info.get("num_samples", "N/A")),
+                    "✓" if info.get("has_input_output", False) else "✗",
+                )
+            except Exception as e:
+                table.add_row(benchmark_id, "Error", f"Error: {e}")
+
+        console.print(table)
+        console.print(
+            f"\n📊 [bold green]Found {len(benchmarks)} benchmarks[/bold green]"
+        )
+
+    except Exception as e:
+        display_error(f"Failed to list benchmarks: {e}")
+        raise typer.Exit(1)
+
+
+def benchmark_info(
+    benchmark_id: str = typer.Argument(..., help="Benchmark ID to inspect")
+) -> None:
+    """Show detailed information about a specific benchmark."""
+    try:
+        registry = BenchmarkRegistry()
+        info = registry.get_benchmark_info(benchmark_id)
+
+        console.print(
+            f"\n📋 [bold blue]Benchmark Information: {benchmark_id}[/bold blue]\n"
+        )
+
+        # Basic info
+        console.print(f"[cyan]Benchmark ID:[/cyan] {info['benchmark_id']}")
+        console.print(f"[cyan]Total Samples:[/cyan] {info['num_samples']}")
+        console.print(f"[cyan]Columns:[/cyan] {', '.join(info['columns'])}")
+        console.print(
+            f"[cyan]Has INPUT/OUTPUT:[/cyan] {'✓' if info['has_input_output'] else '✗'}"
+        )
+
+        # Sample data
+        if "sample" in info and info["sample"]:
+            console.print(f"\n[bold yellow]Sample Data:[/bold yellow]")
+            sample = info["sample"]
+            console.print(
+                f"[green]INPUT:[/green] {sample['INPUT'][:200]}{'...' if len(sample['INPUT']) > 200 else ''}"
+            )
+            console.print(f"[green]OUTPUT:[/green] {sample['OUTPUT']}")
+
+    except Exception as e:
+        display_error(f"Failed to get benchmark info: {e}")
         raise typer.Exit(1)

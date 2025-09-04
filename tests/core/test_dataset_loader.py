@@ -10,6 +10,10 @@ import pytest
 from datasets import Dataset
 
 from ml_agents.config import ExperimentConfig
+from ml_agents.core.benchmark_registry import (
+    BenchmarkFormatError,
+    BenchmarkNotFoundError,
+)
 from ml_agents.core.dataset_loader import BBEHDatasetLoader
 
 
@@ -20,7 +24,7 @@ class TestBBEHDatasetLoader:
     def config(self):
         """Create test configuration."""
         return ExperimentConfig(
-            dataset_name="test/dataset",
+            benchmark_id="TEST_BENCHMARK",  # Phase 12: Use benchmark_id instead of dataset_name
             sample_count=10,
             provider="openrouter",
             model="openai/gpt-oss-120b",
@@ -33,105 +37,131 @@ class TestBBEHDatasetLoader:
 
     @pytest.fixture
     def sample_dataset(self):
-        """Create sample dataset for testing."""
+        """Create sample dataset for testing (Phase 12 INPUT/OUTPUT format)."""
         data = {
-            "input": [
+            "INPUT": [
                 "What is 2+2?",
                 "What is the capital of France?",
                 "Explain photosynthesis",
             ],
-            "answer": ["4", "Paris", "Process by which plants make food"],
+            "OUTPUT": ["4", "Paris", "Process by which plants make food"],
             "id": [1, 2, 3],
         }
         return Dataset.from_dict(data)
 
     @pytest.fixture
-    def alternative_dataset(self):
-        """Create dataset with alternative column names."""
+    def invalid_dataset(self):
+        """Create dataset with invalid format (missing INPUT/OUTPUT)."""
         data = {
             "question": ["What is 2+2?", "What is the capital of France?"],
-            "target": ["4", "Paris"],
+            "answer": ["4", "Paris"],
             "metadata": [{"difficulty": "easy"}, {"difficulty": "medium"}],
         }
         return Dataset.from_dict(data)
 
-    def test_init(self, config):
-        """Test loader initialization."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_init(self, mock_registry_class, config):
+        """Test loader initialization (Phase 12)."""
         loader = BBEHDatasetLoader(config)
 
         assert loader.config == config
-        assert loader.dataset_name == "test/dataset"
         assert loader.sample_count == 10
         assert loader._dataset is None
-        assert loader._cache_dir.exists()
+        # Phase 12: No more cache_dir, has benchmark_registry instead
+        assert hasattr(loader, "benchmark_registry")
+        mock_registry_class.assert_called_once()
 
-    @patch("ml_agents.core.dataset_loader.load_dataset")
-    def test_load_dataset_success(self, mock_load_dataset, loader, sample_dataset):
-        """Test successful dataset loading."""
-        mock_load_dataset.return_value = sample_dataset
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_load_dataset_success(self, mock_registry_class, config, sample_dataset):
+        """Test successful dataset loading (Phase 12)."""
+        # Mock the registry
+        mock_registry = Mock()
+        mock_registry_class.return_value = mock_registry
+        mock_registry.load_benchmark.return_value = sample_dataset
 
-        with (
-            patch.object(loader, "_load_from_cache", return_value=None),
-            patch.object(loader, "_save_to_cache"),
-        ):
-            result = loader.load_dataset()
+        # Create loader inside test (after patch is applied)
+        loader = BBEHDatasetLoader(config)
 
-            assert result == sample_dataset
-            assert loader._dataset == sample_dataset
-            mock_load_dataset.assert_called_once_with("test/dataset", split="train")
+        result = loader.load_dataset("TEST_BENCHMARK")
 
-    @patch("ml_agents.core.dataset_loader.load_dataset")
-    def test_load_dataset_from_cache(self, mock_load_dataset, loader, sample_dataset):
-        """Test loading dataset from cache."""
-        with patch.object(loader, "_load_from_cache", return_value=sample_dataset):
-            result = loader.load_dataset()
+        assert result == sample_dataset
+        assert loader._dataset == sample_dataset
+        mock_registry.load_benchmark.assert_called_once_with("TEST_BENCHMARK")
 
-            assert result == sample_dataset
-            assert loader._dataset == sample_dataset
-            mock_load_dataset.assert_not_called()
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_load_dataset_not_found(self, mock_registry_class, config):
+        """Test dataset loading when benchmark not found (Phase 12)."""
+        # Mock the registry to raise BenchmarkNotFoundError
+        mock_registry = Mock()
+        mock_registry_class.return_value = mock_registry
+        mock_registry.load_benchmark.side_effect = BenchmarkNotFoundError(
+            "Benchmark not found"
+        )
 
-    @patch("ml_agents.core.dataset_loader.load_dataset")
-    def test_load_dataset_failure(self, mock_load_dataset, loader):
-        """Test dataset loading failure."""
-        mock_load_dataset.side_effect = Exception("API Error")
+        # Create loader inside test (after patch is applied)
+        loader = BBEHDatasetLoader(config)
 
-        with patch.object(loader, "_load_from_cache", return_value=None):
-            with pytest.raises(RuntimeError, match="Failed to load dataset"):
-                loader.load_dataset()
+        with pytest.raises(BenchmarkNotFoundError):
+            loader.load_dataset("NONEXISTENT")
 
-    def test_validate_format_valid_dataset(self, loader, sample_dataset):
-        """Test validation of valid dataset."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_load_dataset_format_error(self, mock_registry_class, config):
+        """Test dataset loading with format error (Phase 12)."""
+        # Mock the registry to raise BenchmarkFormatError
+        mock_registry = Mock()
+        mock_registry_class.return_value = mock_registry
+        mock_registry.load_benchmark.side_effect = BenchmarkFormatError(
+            "Invalid format"
+        )
+
+        # Create loader inside test (after patch is applied)
+        loader = BBEHDatasetLoader(config)
+
+        with pytest.raises(BenchmarkFormatError):
+            loader.load_dataset("INVALID_FORMAT")
+
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_validate_format_valid_dataset(
+        self, mock_registry_class, config, sample_dataset
+    ):
+        """Test validation of valid dataset (Phase 12 INPUT/OUTPUT format)."""
+        loader = BBEHDatasetLoader(config)
         # Should not raise any exception
         loader.validate_format(sample_dataset)
 
-    def test_validate_format_alternative_columns(self, loader, alternative_dataset):
-        """Test validation with alternative column names."""
-        # Should not raise exception, should work with 'question' column
-        loader.validate_format(alternative_dataset)
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_validate_format_missing_input(
+        self, mock_registry_class, config, invalid_dataset
+    ):
+        """Test validation with missing INPUT column (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
+        # Should raise ValueError for missing INPUT column
+        with pytest.raises(ValueError, match="INPUT column"):
+            loader.validate_format(invalid_dataset)
 
-    def test_validate_format_empty_dataset(self, loader):
-        """Test validation of empty dataset."""
-        empty_dataset = Dataset.from_dict({})
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_validate_format_empty_dataset(self, mock_registry_class, config):
+        """Test validation of empty dataset (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
+        empty_dataset = Dataset.from_dict({"INPUT": [], "OUTPUT": []})
 
         with pytest.raises(ValueError, match="Dataset is empty"):
             loader.validate_format(empty_dataset)
 
-    def test_validate_format_no_text_columns(self, loader):
-        """Test validation with no valid text columns."""
-        bad_data = {
-            "numeric_col": [1, 2, 3],
-            "empty_text": ["", "", ""],
-            "none_col": [None, None, None],
-        }
-        bad_dataset = Dataset.from_dict(bad_data)
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_validate_format_missing_output(self, mock_registry_class, config):
+        """Test validation with missing OUTPUT column (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
+        data = {"INPUT": ["question1", "question2"], "other": ["data1", "data2"]}
+        bad_dataset = Dataset.from_dict(data)
 
-        with pytest.raises(
-            ValueError, match="must contain at least one text input column"
-        ):
+        with pytest.raises(ValueError, match="OUTPUT column"):
             loader.validate_format(bad_dataset)
 
-    def test_sample_data_basic(self, loader, sample_dataset):
-        """Test basic data sampling."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_sample_data_basic(self, mock_registry_class, config, sample_dataset):
+        """Test basic data sampling (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
         loader._dataset = sample_dataset
 
         sampled = loader.sample_data(sample_size=2)
@@ -139,8 +169,12 @@ class TestBBEHDatasetLoader:
         assert len(sampled) == 2
         assert isinstance(sampled, Dataset)
 
-    def test_sample_data_larger_than_dataset(self, loader, sample_dataset):
-        """Test sampling more data than available."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_sample_data_larger_than_dataset(
+        self, mock_registry_class, config, sample_dataset
+    ):
+        """Test sampling more data than available (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
         loader._dataset = sample_dataset
 
         sampled = loader.sample_data(sample_size=10)
@@ -148,18 +182,28 @@ class TestBBEHDatasetLoader:
         # Should return full dataset
         assert len(sampled) == len(sample_dataset)
 
-    def test_sample_data_no_dataset_loaded(self, loader):
-        """Test sampling without loaded dataset."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_sample_data_no_dataset_loaded(self, mock_registry_class, config):
+        """Test sampling without loaded dataset (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
         with pytest.raises(ValueError, match="No dataset loaded"):
             loader.sample_data()
 
-    def test_sample_data_invalid_size(self, loader, sample_dataset):
-        """Test sampling with invalid size."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_sample_data_invalid_size(
+        self, mock_registry_class, config, sample_dataset
+    ):
+        """Test sampling with invalid size (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
         with pytest.raises(ValueError, match="Sample size must be positive"):
             loader.sample_data(dataset=sample_dataset, sample_size=0)
 
-    def test_sample_data_reproducible(self, loader, sample_dataset):
-        """Test that sampling is reproducible with same seed."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_sample_data_reproducible(
+        self, mock_registry_class, config, sample_dataset
+    ):
+        """Test that sampling is reproducible with same seed (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
         sample1 = loader.sample_data(
             dataset=sample_dataset, sample_size=2, random_seed=42
         )
@@ -171,103 +215,77 @@ class TestBBEHDatasetLoader:
         assert sample1[0] == sample2[0]
         assert sample1[1] == sample2[1]
 
-    def test_get_dataset_info_with_data(self, loader, sample_dataset):
-        """Test getting dataset info with loaded data."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_get_dataset_info_with_data(
+        self, mock_registry_class, config, sample_dataset
+    ):
+        """Test getting dataset info with loaded data (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
         loader._dataset = sample_dataset
 
         info = loader.get_dataset_info()
 
-        assert info["name"] == "test/dataset"
         assert info["size"] == 3
-        assert "input" in info["columns"]
-        assert "answer" in info["columns"]
+        assert "INPUT" in info["columns"]
+        assert "OUTPUT" in info["columns"]
         assert len(info["sample_examples"]) == 3
 
-    def test_get_dataset_info_no_data(self, loader):
-        """Test getting dataset info without loaded data."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_get_dataset_info_no_data(self, mock_registry_class, config):
+        """Test getting dataset info without loaded data (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
         info = loader.get_dataset_info()
 
         assert "error" in info
         assert info["error"] == "No dataset loaded"
 
-    def test_cache_path_generation(self, loader):
-        """Test cache path generation."""
-        path1 = loader._get_cache_path("test")
-        path2 = loader._get_cache_path("train")
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_get_input_column_name(self, mock_registry_class, config):
+        """Test getting input column name (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
+        assert loader.get_input_column_name() == "INPUT"
 
-        assert path1 != path2
-        assert path1.suffix == ".json"
-        assert path1.parent == loader._cache_dir
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_get_output_column_name(self, mock_registry_class, config):
+        """Test getting output column name (Phase 12)."""
+        loader = BBEHDatasetLoader(config)
+        assert loader.get_output_column_name() == "OUTPUT"
 
-    def test_cache_save_and_load(self, loader, sample_dataset):
-        """Test caching functionality."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            loader._cache_dir = Path(temp_dir)
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_list_available_benchmarks(self, mock_registry_class, config):
+        """Test listing available benchmarks (Phase 12)."""
+        mock_registry = Mock()
+        mock_registry_class.return_value = mock_registry
+        mock_registry.list_available_benchmarks.return_value = ["GPQA", "MMLU", "ARC"]
 
-            # Save to cache
-            loader._save_to_cache(sample_dataset, "test")
+        loader = BBEHDatasetLoader(config)
+        result = loader.list_available_benchmarks()
 
-            # Load from cache
-            cached_dataset = loader._load_from_cache("test")
+        assert result == ["GPQA", "MMLU", "ARC"]
+        mock_registry.list_available_benchmarks.assert_called_once()
 
-            assert cached_dataset is not None
-            assert len(cached_dataset) == len(sample_dataset)
-            assert cached_dataset.column_names == sample_dataset.column_names
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_get_benchmark_info(self, mock_registry_class, config):
+        """Test getting benchmark info (Phase 12)."""
+        mock_registry = Mock()
+        mock_registry_class.return_value = mock_registry
+        expected_info = {
+            "benchmark_id": "TEST_BENCHMARK",
+            "num_samples": 1000,
+            "columns": ["INPUT", "OUTPUT"],
+        }
+        mock_registry.get_benchmark_info.return_value = expected_info
 
-    def test_cache_load_nonexistent(self, loader):
-        """Test loading from nonexistent cache."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            loader._cache_dir = Path(temp_dir)
+        loader = BBEHDatasetLoader(config)
+        result = loader.get_benchmark_info("TEST_BENCHMARK")
 
-            result = loader._load_from_cache("nonexistent")
+        assert result == expected_info
+        mock_registry.get_benchmark_info.assert_called_once_with("TEST_BENCHMARK")
 
-            assert result is None
-
-    def test_cache_load_corrupted(self, loader):
-        """Test loading corrupted cache file."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            loader._cache_dir = Path(temp_dir)
-            cache_path = loader._get_cache_path("test")
-
-            # Create corrupted cache file
-            cache_path.write_text("invalid json")
-
-            result = loader._load_from_cache("test")
-
-            assert result is None
-            assert not cache_path.exists()  # Should be cleaned up
-
-    def test_clear_cache(self, loader):
-        """Test cache clearing."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            loader._cache_dir = Path(temp_dir)
-
-            # Create some cache files
-            (loader._cache_dir / "cache1.json").write_text("{}")
-            (loader._cache_dir / "cache2.json").write_text("{}")
-
-            loader.clear_cache()
-
-            assert len(list(loader._cache_dir.glob("*.json"))) == 0
-
-    @patch("ml_agents.core.dataset_loader.load_dataset")
-    def test_load_dataset_different_split(
-        self, mock_load_dataset, loader, sample_dataset
-    ):
-        """Test loading different dataset split."""
-        mock_load_dataset.return_value = sample_dataset
-
-        with (
-            patch.object(loader, "_load_from_cache", return_value=None),
-            patch.object(loader, "_save_to_cache"),
-        ):
-            loader.load_dataset(split="train")
-
-            mock_load_dataset.assert_called_once_with("test/dataset", split="train")
-
-    def test_config_integration(self, config):
-        """Test that loader uses config parameters correctly."""
+    @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")
+    def test_config_integration(self, mock_registry_class, config):
+        """Test that loader uses config parameters correctly (Phase 12)."""
         loader = BBEHDatasetLoader(config)
 
-        assert loader.dataset_name == config.dataset_name
+        assert loader.config == config
         assert loader.sample_count == config.sample_count

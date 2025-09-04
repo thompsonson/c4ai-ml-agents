@@ -67,7 +67,7 @@ configure-mcp:
 # Testing
 test:
 	@echo "🧪 Running test suite..."
-	$(PYTEST) tests/ -v -m "not integration"
+	$(PYTEST) tests/ -m "not integration"
 
 test-cov:
 	@echo "🧪 Running test suite with coverage..."

@@ -1,137 +1,64 @@
-"""Dataset loader for BBEH evaluation datasets."""
+"""Dataset loader for centralized benchmark evaluation."""
 
-import hashlib
-import json
-import os
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-import pandas as pd
-from datasets import Dataset, load_dataset
+from datasets import Dataset
 
 from ml_agents.config import ExperimentConfig
+from ml_agents.core.benchmark_registry import BenchmarkRegistry
 from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
 
 class BBEHDatasetLoader:
-    """Loads and manages BBEH evaluation datasets from HuggingFace."""
+    """Loads and manages benchmark datasets from centralized HuggingFace repository."""
 
     def __init__(self, config: ExperimentConfig) -> None:
         """Initialize dataset loader with experiment configuration.
 
         Args:
-            config: Experiment configuration containing dataset settings
+            config: Experiment configuration containing benchmark settings
         """
         self.config = config
-        self.dataset_name = config.dataset_name
+        self.benchmark_registry = BenchmarkRegistry()
         self.sample_count = config.sample_count
         self._dataset: Optional[Dataset] = None
 
-        # Column mappings discovered during validation
-        self._input_column: Optional[str] = None
-        self._output_column: Optional[str] = None
-
-        # Get cache directory from environment or use XDG default
-        cache_base = os.getenv(
-            "ML_AGENTS_CACHE_DIR", str(Path.home() / ".cache" / "ml-agents")
+        logger.info(
+            f"Initialized BBEHDatasetLoader with sample_count: {self.sample_count}"
         )
-        self._cache_dir = Path(cache_base) / "datasets"
-        self._cache_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Initialized BBEHDatasetLoader for dataset: {self.dataset_name}")
-
-    def load_dataset(self, split: str = "train") -> Dataset:
-        """Load dataset from HuggingFace.
+    def load_dataset(self, benchmark_id: str, split: str = "train") -> Dataset:
+        """Load dataset from benchmark registry.
 
         Args:
-            split: Dataset split to load (default: "train")
+            benchmark_id: Benchmark identifier
+            split: Dataset split (ignored for benchmarks, kept for compatibility)
 
         Returns:
-            Loaded dataset
+            Loaded dataset with INPUT/OUTPUT columns
 
         Raises:
-            ValueError: If dataset cannot be loaded or is invalid
-            RuntimeError: If HuggingFace API fails
+            BenchmarkNotFoundError: If benchmark not found
+            BenchmarkFormatError: If benchmark format is invalid
         """
-        try:
-            logger.info(f"Loading dataset {self.dataset_name}, split: {split}")
+        logger.info(f"Loading benchmark: {benchmark_id}")
 
-            # Check cache first
-            cached_dataset = self._load_from_cache(split)
-            if cached_dataset is not None:
-                logger.info("Loaded dataset from cache")
-                self._dataset = cached_dataset
-                # Validate format and discover column mappings for cached dataset
-                self.validate_format(cached_dataset)
-                return cached_dataset
+        # Load dataset from benchmark registry
+        dataset = self.benchmark_registry.load_benchmark(benchmark_id)
 
-            # Load from HuggingFace
-            logger.info("Loading dataset from HuggingFace Hub")
-            try:
-                dataset = load_dataset(self.dataset_name, split=split)
-            except ValueError as ve:
-                if "Unknown split" in str(ve):
-                    # Try to get available splits and suggest alternatives
-                    try:
-                        # Load dataset info to get available splits
-                        dataset_info = load_dataset(self.dataset_name, split=None)
-                        available_splits = list(dataset_info.keys())
-                        logger.warning(
-                            f"Requested split '{split}' not found. Available splits: {available_splits}"
-                        )
+        # Validate format (should already be validated by registry)
+        self.validate_format(dataset)
 
-                        # Try fallback splits in order of preference
-                        fallback_splits = ["train", "test", "validation", "val"]
-                        for fallback_split in fallback_splits:
-                            if (
-                                fallback_split in available_splits
-                                and fallback_split != split
-                            ):
-                                logger.info(
-                                    f"Using fallback split '{fallback_split}' instead of '{split}'"
-                                )
-                                dataset = dataset_info[fallback_split]
-                                break
-                        else:
-                            # No fallback worked, use the first available split
-                            if available_splits:
-                                first_split = available_splits[0]
-                                logger.info(
-                                    f"Using first available split '{first_split}' instead of '{split}'"
-                                )
-                                dataset = dataset_info[first_split]
-                            else:
-                                raise ValueError(
-                                    f"No splits available in dataset {self.dataset_name}"
-                                )
-                    except Exception:
-                        # If split detection fails, re-raise original error
-                        raise ve
-                else:
-                    raise ve
-
-            if not isinstance(dataset, Dataset):
-                raise ValueError(f"Expected Dataset, got {type(dataset)}")
-
-            # Validate dataset format
-            self.validate_format(dataset)
-
-            # Cache the dataset
-            self._save_to_cache(dataset, split)
-
-            self._dataset = dataset
-            logger.info(f"Successfully loaded dataset with {len(dataset)} examples")
-            return dataset
-
-        except Exception as e:
-            error_msg = f"Failed to load dataset {self.dataset_name}: {str(e)}"
-            logger.error(error_msg)
-            raise RuntimeError(error_msg) from e
+        self._dataset = dataset
+        logger.info(
+            f"Successfully loaded benchmark {benchmark_id} with {len(dataset)} examples"
+        )
+        return dataset
 
     def validate_format(self, dataset: Dataset) -> None:
-        """Validate that dataset has required format.
+        """Validate that dataset has required INPUT/OUTPUT format.
 
         Args:
             dataset: Dataset to validate
@@ -144,57 +71,28 @@ class BBEHDatasetLoader:
         if len(dataset) == 0:
             raise ValueError("Dataset is empty")
 
-        # Get the first example to check structure
-        example = dataset[0]
+        # Check for required INPUT/OUTPUT columns
+        columns = set(dataset.column_names)
 
-        # Check for required columns - handle both 'input' and other common variations
-        required_cols = set()
-        has_input = False
-
-        # Common input column names
-        input_variations = ["input", "question", "prompt", "text", "query"]
-
-        for col_name in input_variations:
-            if col_name in example:
-                has_input = True
-                self._input_column = col_name
-                logger.debug(f"Discovered input column: '{col_name}'")
-                break
-
-        if not has_input:
-            # If no standard input column, check if we have any text-like columns
-            text_cols = [
-                k
-                for k, v in example.items()
-                if isinstance(v, str) and len(v.strip()) > 0
-            ]
-            if not text_cols:
-                raise ValueError(
-                    f"Dataset must contain at least one text input column. "
-                    f"Available columns: {list(example.keys())}"
-                )
-            else:
-                logger.warning(
-                    f"No standard input column found. Available text columns: {text_cols}"
-                )
-
-        # Check for expected answer column (optional but recommended)
-        answer_variations = ["answer", "target", "label", "output", "expected"]
-        has_answer = False
-        for col_name in answer_variations:
-            if col_name in example:
-                has_answer = True
-                self._output_column = col_name
-                logger.debug(f"Discovered output column: '{col_name}'")
-                break
-
-        if not has_answer:
-            logger.warning(
-                f"No standard answer column found. This may affect evaluation. "
-                f"Available columns: {list(example.keys())}"
+        if "INPUT" not in columns:
+            raise ValueError(
+                f"Dataset must have INPUT column. Found columns: {list(columns)}"
             )
 
-        logger.info(f"Dataset validation passed. Columns: {list(example.keys())}")
+        if "OUTPUT" not in columns:
+            raise ValueError(
+                f"Dataset must have OUTPUT column. Found columns: {list(columns)}"
+            )
+
+        # Validate that INPUT and OUTPUT have content
+        example = dataset[0]
+        if not example.get("INPUT"):
+            raise ValueError("INPUT column contains empty values")
+
+        if not example.get("OUTPUT"):
+            raise ValueError("OUTPUT column contains empty values")
+
+        logger.info("Dataset validation passed - INPUT/OUTPUT format confirmed")
 
     def sample_data(
         self,
@@ -258,7 +156,6 @@ class BBEHDatasetLoader:
             dataset = self._dataset
 
         info = {
-            "name": self.dataset_name,
             "size": len(dataset),
             "columns": list(dataset.column_names),
             "features": {
@@ -273,105 +170,37 @@ class BBEHDatasetLoader:
 
         return info
 
-    def _get_cache_path(self, split: str) -> Path:
-        """Generate cache path for dataset.
-
-        Args:
-            split: Dataset split name
-
-        Returns:
-            Path to cache file
-        """
-        # Create a hash of dataset name and split for cache key
-        cache_key = hashlib.md5(
-            f"{self.dataset_name}_{split}".encode(), usedforsecurity=False
-        ).hexdigest()  # nosec B324
-        return self._cache_dir / f"{cache_key}.json"
-
-    def _load_from_cache(self, split: str) -> Optional[Dataset]:
-        """Load dataset from cache.
-
-        Args:
-            split: Dataset split name
-
-        Returns:
-            Cached dataset or None if not found
-        """
-        cache_path = self._get_cache_path(split)
-
-        if not cache_path.exists():
-            return None
-
-        try:
-            logger.debug(f"Loading dataset from cache: {cache_path}")
-            with open(cache_path, "r") as f:
-                data = json.load(f)
-
-            # Convert back to Dataset
-            df = pd.DataFrame(data["examples"])
-            dataset = Dataset.from_pandas(df)
-
-            logger.debug(f"Successfully loaded {len(dataset)} examples from cache")
-            return dataset
-
-        except Exception as e:
-            logger.warning(f"Failed to load from cache: {e}")
-            # Remove corrupted cache file
-            cache_path.unlink(missing_ok=True)
-            return None
-
-    def _save_to_cache(self, dataset: Dataset, split: str) -> None:
-        """Save dataset to cache.
-
-        Args:
-            dataset: Dataset to cache
-            split: Dataset split name
-        """
-        cache_path = self._get_cache_path(split)
-
-        try:
-            logger.debug(f"Saving dataset to cache: {cache_path}")
-
-            # Convert dataset to serializable format
-            cache_data = {
-                "dataset_name": self.dataset_name,
-                "split": split,
-                "size": len(dataset),
-                "examples": dataset.to_dict(),
-            }
-
-            with open(cache_path, "w") as f:
-                json.dump(cache_data, f, ensure_ascii=False, indent=2)
-
-            logger.debug(f"Successfully cached {len(dataset)} examples")
-
-        except Exception as e:
-            logger.warning(f"Failed to save to cache: {e}")
-
-    def clear_cache(self) -> None:
-        """Clear all cached datasets."""
-        try:
-            cache_files = list(self._cache_dir.glob("*.json"))
-            for cache_file in cache_files:
-                cache_file.unlink()
-
-            logger.info(f"Cleared {len(cache_files)} cache files")
-
-        except Exception as e:
-            logger.warning(f"Failed to clear cache: {e}")
-
     def get_input_column_name(self) -> str:
         """Get the name of the input column for this dataset.
 
         Returns:
-            Column name for input data, defaults to 'input' if not discovered
+            Column name for input data (always 'INPUT' for benchmarks)
         """
-        return self._input_column or "input"
+        return "INPUT"
 
     def get_output_column_name(self) -> str:
         """Get the name of the output column for this dataset.
 
         Returns:
-            Column name for output/answer data, defaults to 'output' if not discovered
+            Column name for output data (always 'OUTPUT' for benchmarks)
         """
-        return self._output_column or "output"
+        return "OUTPUT"
+
+    def list_available_benchmarks(self) -> list[str]:
+        """List all available benchmarks.
+
+        Returns:
+            List of available benchmark IDs
+        """
+        return self.benchmark_registry.list_available_benchmarks()
+
+    def get_benchmark_info(self, benchmark_id: str) -> Dict[str, Any]:
+        """Get information about a specific benchmark.
+
+        Args:
+            benchmark_id: Benchmark identifier
+
+        Returns:
+            Dictionary containing benchmark metadata
+        """
+        return self.benchmark_registry.get_benchmark_info(benchmark_id)

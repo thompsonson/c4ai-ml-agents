@@ -26,10 +26,11 @@ class TestRunCommand:
 
         assert result.exit_code == 0
         assert "single reasoning experiment" in result.stdout.lower()
-        assert "--approach" in result.stdout
+        assert "approach" in result.stdout.lower()  # Now a positional argument
         assert "--samples" in result.stdout
         assert "--config" in result.stdout
 
+    @patch("ml_agents.cli.commands.eval.BenchmarkRegistry")
     @patch("ml_agents.cli.commands.eval.ExperimentRunner")
     @patch("ml_agents.cli.commands.eval.check_environment_ready")
     @patch("ml_agents.cli.commands.eval.display_experiment_complete")
@@ -42,6 +43,7 @@ class TestRunCommand:
         mock_display_complete,
         mock_check_env,
         mock_experiment_runner,
+        mock_benchmark_registry,
     ):
         """Test run command with basic arguments."""
         # Mock configuration loading
@@ -49,6 +51,7 @@ class TestRunCommand:
 
         mock_config = ExperimentConfig(
             dataset_name="test/dataset",
+            benchmark_id="TEST_BENCHMARK",
             sample_count=10,
             provider="openrouter",
             model="openai/gpt-5-mini",
@@ -56,6 +59,15 @@ class TestRunCommand:
             database_enabled=False,  # Disable database for CLI tests
         )
         mock_load_config.return_value = mock_config
+
+        # Mock BenchmarkRegistry
+        mock_registry = Mock()
+        mock_registry.get_benchmark_info.return_value = {
+            "benchmark_id": "TEST_BENCHMARK",
+            "num_samples": 100,
+            "has_input_output": True,
+        }
+        mock_benchmark_registry.return_value = mock_registry
 
         # Mock the runner and its methods
         mock_runner_instance = Mock()
@@ -93,14 +105,15 @@ class TestRunCommand:
             [
                 "eval",
                 "run",
-                "--approach",
-                "ChainOfThought",
+                "TEST_BENCHMARK",  # benchmark_id
+                "ChainOfThought",  # approach
                 "--samples",
                 "10",
                 "--provider",
                 "openrouter",
                 "--model",
                 "openai/gpt-5-mini",
+                "--skip-warnings",
             ],
         )
 
@@ -129,6 +142,7 @@ class TestRunCommand:
         # Verify environment was checked
         mock_check_env.assert_called_once()
 
+    @patch("ml_agents.cli.commands.eval.BenchmarkRegistry")
     @patch("ml_agents.cli.commands.eval.ExperimentRunner")
     @patch("ml_agents.cli.commands.eval.check_environment_ready")
     @patch("ml_agents.cli.commands.eval.display_experiment_complete")
@@ -141,6 +155,7 @@ class TestRunCommand:
         mock_display_complete,
         mock_check_env,
         mock_experiment_runner,
+        mock_benchmark_registry,
     ):
         """Test run command with configuration file."""
         # Mock configuration loading
@@ -148,6 +163,7 @@ class TestRunCommand:
 
         mock_config = ExperimentConfig(
             dataset_name="test/dataset",
+            benchmark_id="BENCHMARK",
             sample_count=25,
             provider="anthropic",
             model="claude-sonnet-4-20250514",
@@ -156,6 +172,15 @@ class TestRunCommand:
             database_enabled=False,  # Disable database for CLI tests
         )
         mock_load_config.return_value = mock_config
+
+        # Mock BenchmarkRegistry
+        mock_registry = Mock()
+        mock_registry.get_benchmark_info.return_value = {
+            "benchmark_id": "BENCHMARK",
+            "num_samples": 100,
+            "has_input_output": True,
+        }
+        mock_benchmark_registry.return_value = mock_registry
 
         # Create a temporary config file
         config_data = {
@@ -206,10 +231,11 @@ class TestRunCommand:
                 [
                     "eval",
                     "run",
+                    "BENCHMARK",
+                    "ChainOfThought",  # Should override config file
                     "--config",
                     config_path,
-                    "--approach",
-                    "ChainOfThought",  # Should override config file
+                    "--skip-warnings",
                 ],
             )
 
@@ -229,7 +255,7 @@ class TestRunCommand:
         )
 
         result = self.runner.invoke(
-            app, ["eval", "run", "--approach", "InvalidApproach"]
+            app, ["eval", "run", "BENCHMARK", "InvalidApproach"]
         )
 
         assert result.exit_code != 0
@@ -237,7 +263,15 @@ class TestRunCommand:
     def test_run_command_invalid_samples(self):
         """Test run command with invalid sample count."""
         result = self.runner.invoke(
-            app, ["eval", "run", "--samples", "-5"]  # Invalid: must be positive
+            app,
+            [
+                "eval",
+                "run",
+                "BENCHMARK",
+                "ChainOfThought",
+                "--samples",
+                "-5",
+            ],  # Invalid: must be positive
         )
 
         assert result.exit_code != 0
@@ -248,7 +282,15 @@ class TestRunCommand:
     def test_run_command_invalid_temperature(self):
         """Test run command with invalid temperature."""
         result = self.runner.invoke(
-            app, ["eval", "run", "--temperature", "3.0"]  # Invalid: must be <= 2.0
+            app,
+            [
+                "eval",
+                "run",
+                "BENCHMARK",
+                "ChainOfThought",
+                "--temperature",
+                "3.0",
+            ],  # Invalid: must be <= 2.0
         )
 
         assert result.exit_code != 0
@@ -256,27 +298,52 @@ class TestRunCommand:
         assert "Temperature must be" in result.output
         assert "between 0.0 and 2.0" in result.output
 
+    @patch("ml_agents.cli.commands.eval.BenchmarkRegistry")
     @patch("ml_agents.cli.commands.eval.ExperimentRunner")
-    def test_run_command_experiment_failure(self, mock_experiment_runner):
+    def test_run_command_experiment_failure(
+        self, mock_experiment_runner, mock_benchmark_registry
+    ):
         """Test run command when experiment fails."""
+        # Mock BenchmarkRegistry
+        mock_registry = Mock()
+        mock_registry.get_benchmark_info.return_value = {
+            "benchmark_id": "BENCHMARK",
+            "num_samples": 100,
+            "has_input_output": True,
+        }
+        mock_benchmark_registry.return_value = mock_registry
+
         mock_runner_instance = Mock()
         mock_runner_instance.run_single_experiment.return_value = None  # Failure
         mock_experiment_runner.return_value = mock_runner_instance
 
         result = self.runner.invoke(
-            app, ["eval", "run", "--approach", "ChainOfThought", "--samples", "5"]
+            app,
+            [
+                "eval",
+                "run",
+                "BENCHMARK",
+                "ChainOfThought",
+                "--samples",
+                "5",
+                "--skip-warnings",
+            ],
         )
 
         assert result.exit_code == 1
 
+    @patch("ml_agents.cli.commands.eval.BenchmarkRegistry")
     @patch("ml_agents.cli.commands.eval.load_and_validate_config")
-    def test_run_command_keyboard_interrupt(self, mock_load_config):
+    def test_run_command_keyboard_interrupt(
+        self, mock_load_config, mock_benchmark_registry
+    ):
         """Test run command handling of keyboard interrupt."""
         # Mock configuration loading
         from ml_agents.config import ExperimentConfig
 
         mock_config = ExperimentConfig(
             dataset_name="test/dataset",
+            benchmark_id="BENCHMARK",
             sample_count=5,
             provider="openrouter",
             model="openai/gpt-oss-120b",
@@ -285,13 +352,22 @@ class TestRunCommand:
         )
         mock_load_config.return_value = mock_config
 
+        # Mock BenchmarkRegistry
+        mock_registry = Mock()
+        mock_registry.get_benchmark_info.return_value = {
+            "benchmark_id": "BENCHMARK",
+            "num_samples": 100,
+            "has_input_output": True,
+        }
+        mock_benchmark_registry.return_value = mock_registry
+
         with patch("ml_agents.cli.commands.eval.ExperimentRunner") as mock_runner:
             mock_runner_instance = Mock()
             mock_runner_instance.run_single_experiment.side_effect = KeyboardInterrupt()
             mock_runner.return_value = mock_runner_instance
 
             result = self.runner.invoke(
-                app, ["eval", "run", "--approach", "ChainOfThought"]
+                app, ["eval", "run", "BENCHMARK", "ChainOfThought", "--skip-warnings"]
             )
 
             assert result.exit_code == 130  # Standard interrupt exit code
@@ -738,13 +814,20 @@ class TestEnvironmentValidation:
 
         # Test run command
         result = self.runner.invoke(
-            app, ["eval", "run", "--approach", "ChainOfThought"]
+            app, ["eval", "run", "BENCHMARK", "ChainOfThought", "--skip-warnings"]
         )
         assert result.exit_code == 1
 
-        # Test compare command
+        # Test compare command (compare doesn't use positional benchmark_id)
         result = self.runner.invoke(
-            app, ["eval", "compare", "--approaches", "ChainOfThought,AsPlanning"]
+            app,
+            [
+                "eval",
+                "compare",
+                "--approaches",
+                "ChainOfThought,AsPlanning",
+                "--skip-warnings",
+            ],
         )
         assert result.exit_code == 1
 
@@ -757,11 +840,17 @@ class TestConfigurationPrecedence:
         self.runner = CliRunner()
 
     @patch("pathlib.Path.glob")
+    @patch("ml_agents.cli.commands.eval.BenchmarkRegistry")
     @patch("ml_agents.cli.commands.eval.ExperimentRunner")
     @patch("ml_agents.cli.commands.eval.check_environment_ready")
     @patch("ml_agents.cli.commands.eval.load_and_validate_config")
     def test_cli_args_override_config_file(
-        self, mock_load_config, mock_check_env, mock_experiment_runner, mock_glob
+        self,
+        mock_load_config,
+        mock_check_env,
+        mock_experiment_runner,
+        mock_benchmark_registry,
+        mock_glob,
     ):
         """Test that CLI arguments override config file values."""
         # Mock configuration loading with overrides applied
@@ -769,6 +858,7 @@ class TestConfigurationPrecedence:
 
         mock_config = ExperimentConfig(
             dataset_name="test/dataset",
+            benchmark_id="BENCHMARK",
             sample_count=25,  # CLI override value
             provider="anthropic",
             model="claude-sonnet-4-20250514",
@@ -777,6 +867,15 @@ class TestConfigurationPrecedence:
             database_enabled=False,  # Disable database for CLI tests
         )
         mock_load_config.return_value = mock_config
+
+        # Mock BenchmarkRegistry
+        mock_registry = Mock()
+        mock_registry.get_benchmark_info.return_value = {
+            "benchmark_id": "BENCHMARK",
+            "num_samples": 100,
+            "has_input_output": True,
+        }
+        mock_benchmark_registry.return_value = mock_registry
 
         config_data = {
             "sample_count": 100,
@@ -814,14 +913,15 @@ class TestConfigurationPrecedence:
                 [
                     "eval",
                     "run",
+                    "BENCHMARK",
+                    "ChainOfThought",  # Override config file
                     "--config",
                     config_path,
                     "--samples",
                     "25",  # Override config file
                     "--temperature",
                     "0.8",  # Override config file
-                    "--approach",
-                    "ChainOfThought",  # Override config file
+                    "--skip-warnings",
                 ],
             )
 

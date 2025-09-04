@@ -25,6 +25,7 @@ class TestDatabasePersistenceIntegration:
 
         config = ExperimentConfig(
             dataset_name="test_dataset",
+            benchmark_id="TEST_BENCHMARK",  # Add benchmark_id for Phase 12 compatibility
             sample_count=5,
             provider="openrouter",
             model="openai/gpt-oss-120b",
@@ -40,6 +41,40 @@ class TestDatabasePersistenceIntegration:
         Path(db_path).unlink(missing_ok=True)
         Path(f"{db_path}-wal").unlink(missing_ok=True)
         Path(f"{db_path}-shm").unlink(missing_ok=True)
+
+    @pytest.fixture
+    def mock_benchmark_registry(self):
+        """Mock benchmark registry for database integration tests."""
+        with patch(
+            "ml_agents.core.benchmark_registry.load_dataset"
+        ) as mock_load_dataset:
+            # Mock a dataset with proper structure
+            from unittest.mock import Mock
+
+            mock_dataset = Mock()
+            mock_dataset.column_names = ["INPUT", "OUTPUT"]
+            mock_dataset.__len__ = Mock(return_value=5)
+            mock_dataset.__getitem__ = Mock(
+                side_effect=lambda i: {
+                    "INPUT": f"Question {i}",
+                    "OUTPUT": f"Answer {i}",
+                }
+            )
+            # Mock shuffling and sampling
+            mock_shuffled = Mock()
+            mock_sampled = Mock()
+            mock_sampled.__len__ = Mock(return_value=5)
+            mock_sampled.__getitem__ = Mock(
+                side_effect=lambda i: {
+                    "INPUT": f"Question {i}",
+                    "OUTPUT": f"Answer {i}",
+                }
+            )
+            mock_shuffled.select = Mock(return_value=mock_sampled)
+            mock_dataset.shuffle = Mock(return_value=mock_shuffled)
+
+            mock_load_dataset.return_value = mock_dataset
+            yield mock_dataset
 
     @pytest.fixture
     def mock_dataset_loader(self):
@@ -113,7 +148,11 @@ class TestDatabasePersistenceIntegration:
             yield mock_instance
 
     def test_experiment_runner_database_integration(
-        self, temp_config, mock_dataset_loader, mock_reasoning_engine
+        self,
+        temp_config,
+        mock_benchmark_registry,
+        mock_dataset_loader,
+        mock_reasoning_engine,
     ):
         """Test that ExperimentRunner properly integrates with database persistence."""
         config, db_path = temp_config
@@ -195,11 +234,12 @@ class TestDatabasePersistenceIntegration:
         assert updated_experiment["status"] == "completed"
 
     def test_database_disabled_fallback(
-        self, mock_dataset_loader, mock_reasoning_engine
+        self, mock_benchmark_registry, mock_dataset_loader, mock_reasoning_engine
     ):
         """Test that system works correctly when database is disabled."""
         config = ExperimentConfig(
             dataset_name="test_dataset",
+            benchmark_id="TEST_BENCHMARK",  # Add benchmark_id for Phase 12 compatibility
             sample_count=3,
             provider="openrouter",
             model="openai/gpt-oss-120b",
@@ -227,7 +267,9 @@ class TestDatabasePersistenceIntegration:
         # Verify results are still collected in memory
         assert len(runner.results) == 3
 
-    def test_parsing_metrics_integration(self, temp_config, mock_dataset_loader):
+    def test_parsing_metrics_integration(
+        self, temp_config, mock_benchmark_registry, mock_dataset_loader
+    ):
         """Test that parsing metrics are properly saved through the full pipeline."""
         config, db_path = temp_config
 
@@ -311,7 +353,11 @@ class TestDatabasePersistenceIntegration:
                 assert metric[4] == "Minor parsing issue"  # error_details
 
     def test_export_integration(
-        self, temp_config, mock_dataset_loader, mock_reasoning_engine
+        self,
+        temp_config,
+        mock_benchmark_registry,
+        mock_dataset_loader,
+        mock_reasoning_engine,
     ):
         """Test export functionality works with persisted data."""
         config, db_path = temp_config
@@ -370,7 +416,11 @@ class TestDatabasePersistenceIntegration:
             Path(json_path).unlink(missing_ok=True)
 
     def test_comparison_analysis_integration(
-        self, temp_config, mock_dataset_loader, mock_reasoning_engine
+        self,
+        temp_config,
+        mock_benchmark_registry,
+        mock_dataset_loader,
+        mock_reasoning_engine,
     ):
         """Test approach comparison works with database data."""
         config, db_path = temp_config
@@ -468,7 +518,9 @@ class TestDatabasePersistenceIntegration:
         assert 0 <= none_accuracy <= 1
         assert 0 <= cot_accuracy <= 1
 
-    def test_error_recovery_integration(self, temp_config, mock_dataset_loader):
+    def test_error_recovery_integration(
+        self, temp_config, mock_benchmark_registry, mock_dataset_loader
+    ):
         """Test that system handles errors gracefully while maintaining database consistency."""
         config, db_path = temp_config
 
