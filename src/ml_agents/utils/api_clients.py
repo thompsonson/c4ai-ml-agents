@@ -403,6 +403,97 @@ class OpenRouterClient(APIClient):
             raise
 
 
+class LocalOpenAIClient(APIClient):
+    """Local OpenAI-compatible API client."""
+
+    def __init__(self, config: ExperimentConfig) -> None:
+        """Initialize Local OpenAI client."""
+        super().__init__(config)
+
+        # Get base URL from config or environment, default to pop-os
+        base_url = getattr(config, "api_base_url", None) or "http://pop-os:8000/v1"
+
+        # No API key required for local server
+        self.client = openai.OpenAI(
+            base_url=base_url, api_key="not-needed"  # Local server doesn't require auth
+        )
+
+        logger.info(f"Initialized LocalOpenAI client for base_url: {base_url}")
+
+    def generate(self, prompt: str, **kwargs) -> StandardResponse:
+        """Generate response using local OpenAI-compatible API.
+
+        Args:
+            prompt: Input prompt
+            **kwargs: Additional generation parameters
+
+        Returns:
+            StandardResponse with generated text and metadata
+        """
+        # Apply rate limiting
+        self.rate_limiter.acquire()
+
+        start_time = time.time()
+
+        try:
+            gen_params = self.get_generation_params(**kwargs)
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=gen_params["max_tokens"],
+                temperature=gen_params["temperature"],
+                top_p=gen_params["top_p"],
+            )
+
+            end_time = time.time()
+
+            response_text = (
+                response.choices[0].message.content.strip()
+                if response.choices[0].message.content
+                else ""
+            )
+
+            # Handle empty responses
+            if not response_text and response.choices[0].finish_reason == "length":
+                response_text = "[RESPONSE_TRUNCATED_DUE_TO_TOKEN_LIMIT]"
+                logger.warning(
+                    f"Response truncated due to token limit (max_tokens={self.max_tokens})"
+                )
+            elif not response_text:
+                response_text = "[EMPTY_RESPONSE]"
+                logger.warning("Received empty response from local API")
+
+            return StandardResponse(
+                text=response_text,
+                provider=self.provider,
+                model=self.model,
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens,
+                generation_time=end_time - start_time,
+                parameters=gen_params,
+                response_id=response.id,
+            )
+
+        except Exception as e:
+            self.handle_api_error(e)
+
+    def validate_connection(self) -> bool:
+        """Validate local OpenAI API connection."""
+        try:
+            # Test with a minimal request
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": "Hi"}],
+                max_tokens=1,
+            )
+            return response is not None
+        except Exception as e:
+            logger.error(f"Local OpenAI validation failed: {e}")
+            raise
+
+
 def create_api_client(config: ExperimentConfig) -> APIClient:
     """Factory function to create appropriate API client.
 
@@ -419,6 +510,7 @@ def create_api_client(config: ExperimentConfig) -> APIClient:
         "anthropic": AnthropicClient,
         "cohere": CohereClient,
         "openrouter": OpenRouterClient,
+        "local-openai": LocalOpenAIClient,
     }
 
     if config.provider not in client_map:

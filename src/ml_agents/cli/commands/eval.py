@@ -71,6 +71,9 @@ def run_single_experiment(
     # Model settings
     provider: Optional[str] = typer.Option(None, "--provider", help="Model provider"),
     model: Optional[str] = typer.Option(None, "--model", help="Model name"),
+    api_base_url: Optional[str] = typer.Option(
+        None, "--api-base", help="Custom API base URL for local/custom endpoints"
+    ),
     temperature: Optional[float] = typer.Option(
         None,
         "--temperature",
@@ -156,6 +159,7 @@ def run_single_experiment(
             sample_count=samples or 50,  # Default to 50 if not specified
             provider=provider,
             model=model,
+            api_base_url=api_base_url,
             temperature=temperature,
             max_tokens=max_tokens,
             top_p=top_p,

@@ -1,0 +1,22 @@
+[
+  {
+    "INPUT": "What is 2 + 2?",
+    "OUTPUT": "4"
+  },
+  {
+    "INPUT": "What is the capital of France?",
+    "OUTPUT": "Paris"
+  },
+  {
+    "INPUT": "Complete the sequence: 2, 4, 6, 8, ?",
+    "OUTPUT": "10"
+  },
+  {
+    "INPUT": "What color is the sky on a clear day?",
+    "OUTPUT": "Blue"
+  },
+  {
+    "INPUT": "How many days are in a week?",
+    "OUTPUT": "7"
+  }
+]

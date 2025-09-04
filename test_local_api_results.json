@@ -1,0 +1,37 @@
+[
+  {
+    "question": "What is 2 + 2?",
+    "response": "The answer to \"What is 2 + 2?\" is 4.\nThis can be reasoned as follows:\n1. We start with two objects or quantities (let's call them A and B).\n2. We add another object or quantity of the same type to the first one (A).\n3. The total number of objects we have now is twice what we started with, which is four.\nTherefore, when you add 2 to itself, you get 4. This is a fundamental",
+    "extracted_answer": "a",
+    "time": 2.2445900440216064,
+    "tokens": 175
+  },
+  {
+    "question": "What is the capital of France?",
+    "response": "The capital of France is Paris. This can be determined from historical facts and official sources such as the French government's website or encyclopedias that list the capitals of various countries around the world. Paris has been the capital city of France since 1790 when it replaced Versailles due to political reasons during the French Revolution. It continues to serve as the seat of the President of the Republic, the Prime Minister, and other governmental institutions.",
+    "extracted_answer": "The capital of France is Paris. This can be determined from historical facts and official sources such as the French government's website or encyclopedias that list the capitals of various countries around the world. Paris has been the capital city of France since 1790 when it replaced Versailles due to political reasons during the French Revolution. It continues to serve as the seat of the President of the Republic, the Prime Minister, and other governmental institutions.",
+    "time": 0.878793478012085,
+    "tokens": 167
+  },
+  {
+    "question": "Complete the sequence: 2, 4, 6, 8, ?",
+    "response": "To complete this sequence, we need to identify the pattern or rule that governs how each number is generated from the previous one. Let's examine the given numbers:\n\n1. The first number is 2.\n2. The second number is 4.\n3. The third number is 6.\n4. The fourth number is 8.\n\nWe can see that each number in the sequence increases by 2 compared to the previous number:\n- From 2 to 4 (increase of 2",
+    "extracted_answer": "1. The first number is 2.\n2. The second number is 4.\n3. The third number is 6.\n4. The fourth number is 8.",
+    "time": 0.9484827518463135,
+    "tokens": 184
+  },
+  {
+    "question": "What color is the sky on a clear day?",
+    "response": "The color of the sky on a clear day can vary depending on atmospheric conditions such as altitude, latitude, season, time of day, and weather phenomena like clouds or pollution. However, under normal circumstances without any significant interference from other factors, the sky appears blue due to a phenomenon called Rayleigh scattering. This occurs when sunlight passes through Earth's atmosphere, which contains gases and tiny particles (like dust and water vapor). The shorter wavelengths of light (blue and violet) scatter more easily than longer wavelengths",
+    "extracted_answer": "a",
+    "time": 0.9428095817565918,
+    "tokens": 177
+  },
+  {
+    "question": "How many days are in a week?",
+    "response": "There are 7 days in a week. This is a fundamental fact of timekeeping that has been consistently observed throughout human history and across various cultures. The concept of a week as consisting of seven days originated from the ancient Babylonians, who used a sexagesimal (base-60) system for their calendar. They divided the month into four weeks, each containing seven days. This practice was later adopted by other civilizations including the Egyptians, Greeks, and Romans, leading to the widespread use of",
+    "extracted_answer": "a",
+    "time": 0.9447557926177979,
+    "tokens": 175
+  }
+]

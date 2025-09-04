@@ -16,6 +16,7 @@ API_KEYS = {
     "anthropic": os.getenv("ANTHROPIC_API_KEY"),
     "cohere": os.getenv("COHERE_API_KEY"),
     "openrouter": os.getenv("OPENROUTER_API_KEY"),
+    "local-openai": "not-required",  # Local API doesn't require authentication
 }
 
 # Supported providers and their models
@@ -31,6 +32,10 @@ SUPPORTED_MODELS = {
         "openai/gpt-5-mini",
         "openai/gpt-oss-120b",
         "google/gemini-2.5-flash-lite",
+    ],
+    "local-openai": [
+        "Qwen/Qwen2.5-1.5B-Instruct",  # Local model on pop-os
+        # Add other local models as needed
     ],
 }
 
@@ -138,6 +143,7 @@ class ExperimentConfig:
     # Model configuration
     provider: str = "openrouter"
     model: str = "openai/gpt-oss-120b"
+    api_base_url: Optional[str] = None  # Custom API base URL for local/custom endpoints
     temperature: float = 0.3
     max_tokens: int = 16384  # Max output tokens - model-specific limits apply:
     # - Claude 3.5 Sonnet: up to 64,000 tokens

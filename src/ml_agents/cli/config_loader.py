@@ -29,6 +29,9 @@ class CLIExperimentConfig(BaseModel):
     # Model settings
     provider: str = Field("openrouter", description="Model provider")
     model: str = Field("openai/gpt-oss-120b", description="Model name")
+    api_base_url: Optional[str] = Field(
+        None, description="Custom API base URL for local/custom endpoints"
+    )
     temperature: float = Field(0.3, ge=0.0, le=2.0, description="Sampling temperature")
     max_tokens: int = Field(
         16384, ge=1, le=131000, description="Maximum tokens to generate"
@@ -101,6 +104,7 @@ class CLIExperimentConfig(BaseModel):
             sample_count=self.sample_count,
             provider=self.provider,
             model=self.model,
+            api_base_url=self.api_base_url,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             top_p=self.top_p,
