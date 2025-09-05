@@ -13,8 +13,10 @@ from ml_agents.cli.commands import (
     db_migrate,
     db_stats,
     export_experiment,
+    file_info,
     list_approaches,
     list_checkpoints,
+    list_csv_files,
     list_experiments,
     preprocess_batch,
     preprocess_fix_rules,
@@ -98,6 +100,8 @@ eval_app.command("run")(run_single_experiment)
 eval_app.command("compare")(run_comparison_experiment)
 eval_app.command("resume")(resume_experiment)
 eval_app.command("checkpoints")(list_checkpoints)
+eval_app.command("list")(list_csv_files)
+eval_app.command("info")(file_info)
 
 # Results commands
 results_app.command("export")(export_experiment)

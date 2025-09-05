@@ -7,6 +7,7 @@ from datasets import Dataset
 from ml_agents.config import ExperimentConfig
 from ml_agents.core.benchmark_registry import BenchmarkRegistry
 from ml_agents.core.local_test_dataset import LocalTestDataset
+from ml_agents.core.repository_manager import RepositoryManager
 from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -23,6 +24,7 @@ class BBEHDatasetLoader:
         """
         self.config = config
         self.benchmark_registry = BenchmarkRegistry()
+        self.repository_manager = RepositoryManager()
         self.sample_count = config.sample_count
         self._dataset: Optional[Dataset] = None
 
@@ -30,12 +32,15 @@ class BBEHDatasetLoader:
             f"Initialized BBEHDatasetLoader with sample_count: {self.sample_count}"
         )
 
-    def load_dataset(self, benchmark_id: str, split: str = "train") -> Dataset:
-        """Load dataset from benchmark registry or local test data.
+    def load_dataset(
+        self, benchmark_id: str, split: str = "train", repo_id: Optional[str] = None
+    ) -> Dataset:
+        """Load dataset from repository CSV files, local test data, or benchmark registry.
 
         Args:
-            benchmark_id: Benchmark identifier
+            benchmark_id: Benchmark identifier or CSV filename
             split: Dataset split (ignored for benchmarks, kept for compatibility)
+            repo_id: Optional repository ID for CSV files
 
         Returns:
             Loaded dataset with INPUT/OUTPUT columns
@@ -49,8 +54,15 @@ class BBEHDatasetLoader:
         # Check if this is a local test dataset
         if LocalTestDataset.is_local_test_dataset(benchmark_id):
             dataset = LocalTestDataset.load_dataset(benchmark_id, self.sample_count)
+        # Check if this is a CSV file from repository
+        elif benchmark_id.endswith(".csv"):
+            logger.info(f"Loading CSV file '{benchmark_id}' from repository")
+            dataset = self.repository_manager.load_csv_as_dataset(benchmark_id, repo_id)
         else:
-            # Load dataset from benchmark registry
+            # Fallback to legacy benchmark registry (deprecated)
+            logger.warning(
+                f"Using legacy benchmark registry for '{benchmark_id}' - consider using CSV format"
+            )
             dataset = self.benchmark_registry.load_benchmark(benchmark_id)
 
         # Validate format (should already be validated by registry)
@@ -191,28 +203,70 @@ class BBEHDatasetLoader:
         """
         return "OUTPUT"
 
-    def list_available_benchmarks(self) -> list[str]:
-        """List all available benchmarks including local test datasets.
+    def list_available_benchmarks(self, repo_id: Optional[str] = None) -> list[str]:
+        """List all available benchmarks including local test datasets and repository CSV files.
+
+        Args:
+            repo_id: Optional repository ID to list CSV files from
 
         Returns:
-            List of available benchmark IDs
+            List of available benchmark IDs and CSV filenames
         """
-        benchmarks = self.benchmark_registry.list_available_benchmarks()
+        benchmarks = []
+
         # Add local test datasets
         benchmarks.extend(
             [LocalTestDataset.DATASET_ID, LocalTestDataset.DATASET_ID_LARGE]
         )
-        return sorted(benchmarks)
 
-    def get_benchmark_info(self, benchmark_id: str) -> Dict[str, Any]:
+        # Add CSV files from repository
+        try:
+            csv_files = self.repository_manager.list_csv_files(repo_id)
+            benchmarks.extend(csv_files)
+            logger.info(f"Found {len(csv_files)} CSV files in repository")
+        except Exception as e:
+            logger.warning(f"Could not list CSV files from repository: {e}")
+
+        # Add legacy benchmarks (deprecated)
+        try:
+            legacy_benchmarks = self.benchmark_registry.list_available_benchmarks()
+            benchmarks.extend(legacy_benchmarks)
+            if legacy_benchmarks:
+                logger.warning(
+                    f"Found {len(legacy_benchmarks)} legacy benchmarks - consider migrating to CSV format"
+                )
+        except Exception as e:
+            logger.warning(f"Could not list legacy benchmarks: {e}")
+
+        return sorted(list(set(benchmarks)))
+
+    def get_benchmark_info(
+        self, benchmark_id: str, repo_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Get information about a specific benchmark.
 
         Args:
-            benchmark_id: Benchmark identifier
+            benchmark_id: Benchmark identifier or CSV filename
+            repo_id: Optional repository ID for CSV files
 
         Returns:
             Dictionary containing benchmark metadata
         """
+        # Handle local test datasets
         if LocalTestDataset.is_local_test_dataset(benchmark_id):
             return LocalTestDataset.get_dataset_info(benchmark_id)
-        return self.benchmark_registry.get_benchmark_info(benchmark_id)
+
+        # Handle CSV files from repository
+        elif benchmark_id.endswith(".csv"):
+            try:
+                return self.repository_manager.get_file_info(benchmark_id, repo_id)
+            except Exception as e:
+                logger.error(f"Error getting info for CSV file '{benchmark_id}': {e}")
+                raise
+
+        # Fallback to legacy benchmark registry
+        else:
+            logger.warning(
+                f"Using legacy benchmark registry for '{benchmark_id}' info - consider using CSV format"
+            )
+            return self.benchmark_registry.get_benchmark_info(benchmark_id)

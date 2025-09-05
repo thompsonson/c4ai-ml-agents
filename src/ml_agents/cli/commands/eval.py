@@ -33,7 +33,10 @@ from ml_agents.cli.validators import (
     validate_top_p,
 )
 from ml_agents.core.benchmark_registry import BenchmarkRegistry
+from ml_agents.core.dataset_loader import BBEHDatasetLoader
 from ml_agents.core.experiment_runner import ExperimentRunner
+from ml_agents.core.local_test_dataset import LocalTestDataset
+from ml_agents.core.repository_manager import RepositoryManager
 
 console = Console()
 
@@ -186,13 +189,26 @@ def run_single_experiment(
             total_samples=samples,
         )
 
-        # Validate benchmark exists
+        # Validate benchmark exists (handles LOCAL_TEST and CSV files)
         try:
-            registry = BenchmarkRegistry()
-            benchmark_info = registry.get_benchmark_info(benchmark_id)
-            display_info(
-                f"Loading benchmark: {benchmark_id} ({benchmark_info['num_samples']} samples)"
-            )
+            # Use BBEHDatasetLoader which properly handles LOCAL_TEST and repository CSV files
+            loader = BBEHDatasetLoader(experiment_config)
+            benchmark_info = loader.get_benchmark_info(benchmark_id)
+
+            # Display appropriate info based on benchmark type
+            if LocalTestDataset.is_local_test_dataset(benchmark_id):
+                display_info(
+                    f"Using local test dataset: {benchmark_id} ({benchmark_info['size']} samples)"
+                )
+            elif benchmark_id.endswith(".csv"):
+                display_info(
+                    f"Loading CSV file: {benchmark_id} ({benchmark_info['num_rows']} samples)"
+                )
+            else:
+                display_info(
+                    f"Loading benchmark: {benchmark_id} ({benchmark_info.get('num_samples', '?')} samples)"
+                )
+
         except Exception as e:
             display_error(f"Benchmark '{benchmark_id}' not found: {e}")
             raise typer.Exit(1)
@@ -692,72 +708,183 @@ def list_checkpoints(
         raise typer.Exit(1)
 
 
-def list_benchmarks() -> None:
-    """List all available benchmarks from central repository."""
+def list_csv_files(
+    repo_id: Optional[str] = typer.Option(
+        None, "--repo", help="Repository ID (default: c4ai-ml-agents/benchmarks-base)"
+    )
+) -> None:
+    """List available CSV files and local test datasets."""
     try:
-        registry = BenchmarkRegistry()
-        benchmarks = registry.list_available_benchmarks()
+        manager = RepositoryManager()
 
-        if not benchmarks:
-            display_info("No benchmarks found in repository")
-            return
+        # Get repository info
+        repo_name = repo_id or manager.DEFAULT_REPO
 
-        # Create benchmarks table
-        table = Table(title="Available Benchmarks")
-        table.add_column("Benchmark ID", style="cyan")
+        # Create main table for all available benchmarks/datasets
+        table = Table(title=f"Available Benchmarks and Datasets")
+        table.add_column("Identifier", style="cyan")
+        table.add_column("Type", style="magenta")
         table.add_column("Samples", justify="right", style="green")
-        table.add_column("Has INPUT/OUTPUT", style="yellow")
+        table.add_column("Valid Format", style="yellow")
 
-        for benchmark_id in benchmarks:
+        total_items = 0
+
+        # Add LOCAL_TEST datasets
+        for test_id in [LocalTestDataset.DATASET_ID, LocalTestDataset.DATASET_ID_LARGE]:
             try:
-                info = registry.get_benchmark_info(benchmark_id)
-                table.add_row(
-                    benchmark_id,
-                    str(info.get("num_samples", "N/A")),
-                    "✓" if info.get("has_input_output", False) else "✗",
-                )
+                info = LocalTestDataset.get_dataset_info(test_id)
+                table.add_row(test_id, "Local Test", str(info["size"]), "✓")
+                total_items += 1
             except Exception as e:
-                table.add_row(benchmark_id, "Error", f"Error: {e}")
+                table.add_row(test_id, "Local Test", "Error", f"Error: {e}")
 
+        # Add CSV files from repository
+        try:
+            csv_files = manager.list_csv_files(repo_id)
+
+            for filename in csv_files:
+                try:
+                    info = manager.get_file_info(filename, repo_id)
+                    table.add_row(
+                        filename,
+                        "Repository CSV",
+                        str(info["num_rows"]),
+                        "✓" if info["has_input_output"] else "✗",
+                    )
+                    total_items += 1
+                except Exception as e:
+                    table.add_row(filename, "Repository CSV", "Error", f"Error: {e}")
+
+        except Exception as e:
+            console.print(
+                f"[yellow]Warning: Could not access repository {repo_name}: {e}[/yellow]"
+            )
+
+        # Display table
         console.print(table)
         console.print(
-            f"\n📊 [bold green]Found {len(benchmarks)} benchmarks[/bold green]"
+            f"\n📊 [bold green]Found {total_items} available datasets[/bold green]"
+        )
+
+        if repo_id is None:
+            console.print(
+                f"[dim]Using default repository: {manager.DEFAULT_REPO}[/dim]"
+            )
+        else:
+            console.print(f"[dim]Using repository: {repo_id}[/dim]")
+
+        console.print("\n[dim]Usage examples:[/dim]")
+        console.print(
+            "  [cyan]LOCAL_TEST[/cyan] → ml-agents eval run LOCAL_TEST ChainOfThought"
+        )
+        console.print(
+            "  [cyan]BENCHMARK-01-GPQA.csv[/cyan] → ml-agents eval run BENCHMARK-01-GPQA.csv ChainOfThought"
         )
 
     except Exception as e:
-        display_error(f"Failed to list benchmarks: {e}")
+        display_error(f"Failed to list datasets: {e}")
         raise typer.Exit(1)
 
 
-def benchmark_info(
-    benchmark_id: str = typer.Argument(..., help="Benchmark ID to inspect")
+def file_info(
+    identifier: str = typer.Argument(
+        ..., help="Dataset identifier (LOCAL_TEST or CSV filename)"
+    ),
+    repo_id: Optional[str] = typer.Option(
+        None, "--repo", help="Repository ID for CSV files"
+    ),
 ) -> None:
-    """Show detailed information about a specific benchmark."""
+    """Show detailed information about a specific dataset or CSV file."""
     try:
-        registry = BenchmarkRegistry()
-        info = registry.get_benchmark_info(benchmark_id)
-
         console.print(
-            f"\n📋 [bold blue]Benchmark Information: {benchmark_id}[/bold blue]\n"
+            f"\n📋 [bold blue]Dataset Information: {identifier}[/bold blue]\n"
         )
 
-        # Basic info
-        console.print(f"[cyan]Benchmark ID:[/cyan] {info['benchmark_id']}")
-        console.print(f"[cyan]Total Samples:[/cyan] {info['num_samples']}")
-        console.print(f"[cyan]Columns:[/cyan] {', '.join(info['columns'])}")
-        console.print(
-            f"[cyan]Has INPUT/OUTPUT:[/cyan] {'✓' if info['has_input_output'] else '✗'}"
-        )
+        # Handle LOCAL_TEST datasets
+        if LocalTestDataset.is_local_test_dataset(identifier):
+            info = LocalTestDataset.get_dataset_info(identifier)
 
-        # Sample data
-        if "sample" in info and info["sample"]:
-            console.print(f"\n[bold yellow]Sample Data:[/bold yellow]")
-            sample = info["sample"]
+            console.print(f"[cyan]Dataset ID:[/cyan] {info['id']}")
+            console.print(f"[cyan]Name:[/cyan] {info['name']}")
+            console.print(f"[cyan]Description:[/cyan] {info['description']}")
+            console.print(f"[cyan]Total Samples:[/cyan] {info['size']}")
+            console.print(f"[cyan]Format:[/cyan] {info['format']}")
+            console.print(f"[cyan]Source:[/cyan] {info['source']}")
+            console.print(f"[cyan]Type:[/cyan] Local Test Dataset")
+
+            # Load a sample
+            try:
+                dataset = LocalTestDataset.load_dataset(identifier, sample_size=1)
+                if len(dataset) > 0:
+                    sample = dataset[0]
+                    console.print(f"\n[bold yellow]Sample Data:[/bold yellow]")
+                    console.print(
+                        f"[green]INPUT:[/green] {sample['INPUT'][:200]}{'...' if len(sample['INPUT']) > 200 else ''}"
+                    )
+                    console.print(f"[green]OUTPUT:[/green] {sample['OUTPUT']}")
+            except Exception as e:
+                console.print(
+                    f"[yellow]Warning: Could not load sample data: {e}[/yellow]"
+                )
+
+        # Handle CSV files from repository
+        elif identifier.endswith(".csv"):
+            manager = RepositoryManager()
+            info = manager.get_file_info(identifier, repo_id)
+
+            console.print(f"[cyan]Filename:[/cyan] {info['filename']}")
+            console.print(f"[cyan]Repository:[/cyan] {info['repo_id']}")
+            console.print(f"[cyan]Total Rows:[/cyan] {info['num_rows']}")
+            console.print(f"[cyan]Columns:[/cyan] {', '.join(info['columns'])}")
             console.print(
-                f"[green]INPUT:[/green] {sample['INPUT'][:200]}{'...' if len(sample['INPUT']) > 200 else ''}"
+                f"[cyan]Has INPUT/OUTPUT:[/cyan] {'✓' if info['has_input_output'] else '✗'}"
             )
-            console.print(f"[green]OUTPUT:[/green] {sample['OUTPUT']}")
+            console.print(f"[cyan]Type:[/cyan] Repository CSV File")
+
+            # Show sample data if available
+            if "sample_data" in info and info["sample_data"]:
+                console.print(f"\n[bold yellow]Sample Data (first row):[/bold yellow]")
+                sample = info["sample_data"][0]
+
+                if "INPUT" in sample and "OUTPUT" in sample:
+                    console.print(
+                        f"[green]INPUT:[/green] {str(sample['INPUT'])[:200]}{'...' if len(str(sample['INPUT'])) > 200 else ''}"
+                    )
+                    console.print(f"[green]OUTPUT:[/green] {sample['OUTPUT']}")
+                else:
+                    console.print(
+                        "[yellow]Sample data available but not in INPUT/OUTPUT format[/yellow]"
+                    )
+                    for key, value in list(sample.items())[:3]:  # Show first 3 columns
+                        console.print(
+                            f"[green]{key}:[/green] {str(value)[:100]}{'...' if len(str(value)) > 100 else ''}"
+                        )
+
+        # Handle legacy benchmarks (deprecated)
+        else:
+            console.print(
+                "[yellow]Warning: Using legacy benchmark registry - consider using CSV format[/yellow]"
+            )
+            registry = BenchmarkRegistry()
+            info = registry.get_benchmark_info(identifier)
+
+            console.print(f"[cyan]Benchmark ID:[/cyan] {info['benchmark_id']}")
+            console.print(f"[cyan]Total Samples:[/cyan] {info['num_samples']}")
+            console.print(f"[cyan]Columns:[/cyan] {', '.join(info['columns'])}")
+            console.print(
+                f"[cyan]Has INPUT/OUTPUT:[/cyan] {'✓' if info['has_input_output'] else '✗'}"
+            )
+            console.print(f"[cyan]Type:[/cyan] Legacy Benchmark (Deprecated)")
+
+            # Sample data
+            if "sample" in info and info["sample"]:
+                console.print(f"\n[bold yellow]Sample Data:[/bold yellow]")
+                sample = info["sample"]
+                console.print(
+                    f"[green]INPUT:[/green] {sample['INPUT'][:200]}{'...' if len(sample['INPUT']) > 200 else ''}"
+                )
+                console.print(f"[green]OUTPUT:[/green] {sample['OUTPUT']}")
 
     except Exception as e:
-        display_error(f"Failed to get benchmark info: {e}")
+        display_error(f"Failed to get dataset info: {e}")
         raise typer.Exit(1)

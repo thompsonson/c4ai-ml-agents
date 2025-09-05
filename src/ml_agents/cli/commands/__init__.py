@@ -2,7 +2,9 @@
 
 from .db import db_backup, db_init, db_migrate, db_stats
 from .eval import (
+    file_info,
     list_checkpoints,
+    list_csv_files,
     resume_experiment,
     run_comparison_experiment,
     run_single_experiment,
@@ -31,7 +33,9 @@ __all__ = [
     "db_migrate",
     "db_stats",
     # Evaluation commands
+    "file_info",
     "list_checkpoints",
+    "list_csv_files",
     "resume_experiment",
     "run_comparison_experiment",
     "run_single_experiment",
