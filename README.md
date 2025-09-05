@@ -87,7 +87,7 @@ With [uv](https://github.com/astral-sh/uv) (fastest):
 uv tool install ml-agents-reasoning
 
 # Run without installing (recommended for trying out)
-uvx ml-agents-reasoning eval run --approach ChainOfThought --samples 10
+uvx ml-agents-reasoning eval run LOCAL_TEST ChainOfThought --samples 10
 
 # Add to project dependencies
 uv add ml-agents-reasoning
@@ -141,11 +141,20 @@ ml-agents setup validate-env
 # List available reasoning approaches
 ml-agents setup list-approaches
 
+# Discover available datasets (⚠️ PRE-ALPHA)
+ml-agents eval list
+
+# Get dataset information (⚠️ PRE-ALPHA)
+ml-agents eval info LOCAL_TEST
+
 # Run a simple experiment (⚠️ PRE-ALPHA)
-ml-agents eval run --approach ChainOfThought --samples 10
+ml-agents eval run LOCAL_TEST ChainOfThought --samples 10
+
+# Run with repository benchmark (⚠️ PRE-ALPHA)
+ml-agents eval run BENCHMARK-01-GPQA.csv TreeOfThought --samples 50
 
 # Compare multiple approaches (⚠️ PRE-ALPHA)
-ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning,TreeOfThought" --samples 50 --parallel
+ml-agents eval compare --config examples/configs/comparison_study.yaml
 ```
 
 ### Jupyter Notebook (Original Interface)
@@ -201,55 +210,70 @@ ml-agents results list --status completed                # List experiments
 
 ### Basic Commands
 
+#### Dataset Discovery (⚠️ PRE-ALPHA)
+
+Explore available datasets before running experiments:
+
+```bash
+# List all available datasets
+ml-agents eval list
+
+# Get detailed information about a dataset
+ml-agents eval info LOCAL_TEST
+ml-agents eval info BENCHMARK-01-GPQA.csv
+
+# List datasets from custom repository
+ml-agents eval list --repo your-org/your-benchmarks
+```
+
 #### Single Experiment (⚠️ PRE-ALPHA)
 
 Run one reasoning approach on a dataset:
 
 ```bash
-# Basic usage
-ml-agents eval run --approach ChainOfThought --samples 50
+# Basic usage with LOCAL_TEST
+ml-agents eval run LOCAL_TEST ChainOfThought --samples 10
 
-# With specific model
-ml-agents eval run --approach TreeOfThought --samples 100 --provider openrouter --model "openai/gpt-oss-120b"
+# Use repository benchmark
+ml-agents eval run BENCHMARK-01-GPQA.csv TreeOfThought --samples 50
 
-# With advanced settings
-ml-agents eval run --approach ChainOfVerification --multi-step-verification --max-reasoning-calls 5
+# With specific model provider
+ml-agents eval run LOCAL_TEST Reflection --provider anthropic --model claude-3-5-haiku-20241022
 
-# With preprocessing integration
-ml-agents eval run --dataset MilaWang/SpatialEval --approach ChainOfThought --samples 50
+# With advanced reasoning settings
+ml-agents eval run LOCAL_TEST ChainOfVerification --multi-step-verification --max-reasoning-calls 5
 
-# Use specific preprocessing
-ml-agents eval run --preprocessing-id prep_20240824_143256 --approach TreeOfThought
-
-# Use custom preprocessed data
-ml-agents eval run --preprocessing-path ./custom/processed.json --approach Reflection
+# With custom repository
+ml-agents eval run my-dataset.csv ChainOfThought --repo your-org/benchmarks --samples 100
 ```
 
 #### Comparison Experiments (⚠️ PRE-ALPHA)
 
-Compare multiple approaches side-by-side:
+Compare multiple approaches using configuration files:
 
 ```bash
-# Basic comparison
-ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning,TreeOfThought" --samples 100
+# Basic comparison with config file
+ml-agents eval compare --config examples/configs/comparison_study.yaml
 
-# Parallel execution for faster results
-ml-agents eval compare --approaches "None,ChainOfThought,Reflection" --samples 200 --parallel --max-workers 4
-
-# Advanced reasoning comparison
-ml-agents eval compare --approaches "ChainOfVerification,Reflection,SkeletonOfThought" --multi-step-verification --parallel
+# Override config settings
+ml-agents eval compare --config examples/configs/comparison_study.yaml --samples 200 --parallel
 ```
+
+**Note**: The compare command uses YAML configuration files to specify multiple approaches. See the Configuration Files section below for details.
 
 ### Configuration Files
 
 For complex experiments, use YAML configuration files:
 
 ```bash
-# Run with configuration file (⚠️ PRE-ALPHA)
-ml-agents eval run --config examples/configs/single_experiment.yaml
+# Run single experiment with config (⚠️ PRE-ALPHA)
+ml-agents eval run LOCAL_TEST ChainOfThought --config examples/configs/single_experiment.yaml
 
-# Override specific parameters (⚠️ PRE-ALPHA)
-ml-agents eval run --config examples/configs/comparison_study.yaml --samples 200 --parallel
+# Run comparison with config (⚠️ PRE-ALPHA)
+ml-agents eval compare --config examples/configs/comparison_study.yaml
+
+# Override config parameters (⚠️ PRE-ALPHA)
+ml-agents eval compare --config examples/configs/comparison_study.yaml --samples 200 --parallel
 ```
 
 **Example configuration** (`config.yaml`):
@@ -298,30 +322,30 @@ ml-agents eval resume checkpoint_exp_20250818_123456.json
 
 ```bash
 # Set reasoning limits to control costs
-ml-agents eval run --approach ChainOfVerification --max-reasoning-calls 3 --samples 50
+ml-agents eval run LOCAL_TEST ChainOfVerification --max-reasoning-calls 3 --samples 50
 
 # Monitor costs with verbose output
-ml-agents eval compare --approaches "ChainOfThought,TreeOfThought" --samples 100 --verbose
+ml-agents eval compare --config examples/configs/comparison_study.yaml --samples 100 --verbose
 ```
 
 #### Multi-step Reasoning
 
 ```bash
 # Enable multi-step reflection
-ml-agents eval run --approach Reflection --multi-step-reflection --max-reflection-iterations 3
+ml-agents eval run LOCAL_TEST Reflection --multi-step-reflection --max-reflection-iterations 3
 
 # Enable multi-step verification
-ml-agents eval run --approach ChainOfVerification --multi-step-verification --max-reasoning-calls 5
+ml-agents eval run LOCAL_TEST ChainOfVerification --multi-step-verification --max-reasoning-calls 5
 ```
 
 #### Parallel Processing
 
 ```bash
-# Parallel execution with custom worker count
-ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning,TreeOfThought,Reflection" --parallel --max-workers 2
+# Parallel execution with config file (approaches defined in YAML)
+ml-agents eval compare --config examples/configs/comparison_study.yaml --parallel --max-workers 2
 
-# Balance speed vs rate limits
-ml-agents eval compare --approaches "None,ChainOfThought" --samples 500 --parallel --max-workers 8
+# Override config for large experiments
+ml-agents eval compare --config examples/configs/comparison_study.yaml --samples 500 --parallel --max-workers 8
 ```
 
 ### Output and Results
@@ -394,11 +418,11 @@ ml-agents preprocess generate-rules MilaWang/SpatialEval --config tqa
 ml-agents preprocess transform MilaWang/SpatialEval rules.json --config tqa
 
 # 2. Run evaluation with preprocessed data (auto-detects latest preprocessing) (⚠️ PRE-ALPHA)
-ml-agents eval run --dataset MilaWang/SpatialEval --approach ChainOfThought --samples 50
+ml-agents eval run MilaWang_SpatialEval_tqa ChainOfThought --samples 50
 
 # 3. Compare approaches on same preprocessed dataset (⚠️ PRE-ALPHA)
-ml-agents eval run --dataset MilaWang/SpatialEval --approach TreeOfThought --samples 50
-ml-agents eval run --dataset MilaWang/SpatialEval --approach Reflection --samples 50
+ml-agents eval run MilaWang_SpatialEval_tqa TreeOfThought --samples 50
+ml-agents eval run MilaWang_SpatialEval_tqa Reflection --samples 50
 
 # 4. View organized results
 ml-agents results list
@@ -408,7 +432,7 @@ ml-agents results list
 
 ```bash
 # Test with small sample size
-ml-agents eval run --approach ChainOfThought --samples 5 --verbose
+ml-agents eval run LOCAL_TEST ChainOfThought --samples 5 --verbose
 ```
 
 #### 6. Research Study (⚠️ PRE-ALPHA)
@@ -593,11 +617,11 @@ export ANTHROPIC_API_KEY="your_key_here"
 If you encounter rate limits:
 
 ```bash
-# Reduce parallel workers
-ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning" --max-workers 1
+# Reduce parallel workers for comparison experiments
+ml-agents eval compare --config examples/configs/comparison_study.yaml --max-workers 1
 
-# Add delays between requests
-ml-agents eval run --approach ChainOfThought --samples 50 --parallel false
+# Disable parallel processing for single experiments
+ml-agents eval run LOCAL_TEST ChainOfThought --samples 50 --parallel false
 ```
 
 #### Memory Issues
@@ -605,11 +629,11 @@ ml-agents eval run --approach ChainOfThought --samples 50 --parallel false
 For large experiments:
 
 ```bash
-# Reduce sample size
-ml-agents eval compare --approaches "ChainOfThought,TreeOfThought" --samples 50
+# Reduce sample size for comparison experiments
+ml-agents eval compare --config examples/configs/comparison_study.yaml --samples 50
 
-# Disable parallel processing
-ml-agents eval compare --approaches "..." --parallel false
+# Disable parallel processing for comparison experiments
+ml-agents eval compare --config examples/configs/comparison_study.yaml --parallel false
 ```
 
 #### NumPy Compatibility Warning
@@ -666,7 +690,7 @@ For configuration errors, check:
 2. **Verbose Output**: Add `--verbose` to see detailed execution logs
 
    ```bash
-   ml-agents eval run --approach ChainOfThought --samples 5 --verbose
+   ml-agents eval run LOCAL_TEST ChainOfThought --samples 5 --verbose
    ```
 
 3. **Check Status**: Validate your setup

@@ -88,8 +88,14 @@ ml-agents db stats
 ### Quick Test
 
 ```bash
+# First, discover available datasets (⚠️ Experimental)
+ml-agents eval list
+
+# Get info about test dataset (⚠️ Experimental)
+ml-agents eval info LOCAL_TEST
+
 # Run a small experiment (⚠️ Experimental)
-ml-agents eval run --approach ChainOfThought --samples 5 --verbose
+ml-agents eval run LOCAL_TEST ChainOfThought --samples 5 --verbose
 
 # This tests: API connection, reasoning pipeline, result storage
 ```
@@ -194,14 +200,14 @@ ml-agents preprocess upload --help
 ### 2. Single Reasoning Experiment
 
 ```bash
-# Basic experiment (⚠️ Experimental)
-ml-agents eval run --approach ChainOfThought --samples 50
+# Basic experiment with LOCAL_TEST (⚠️ Experimental)
+ml-agents eval run LOCAL_TEST ChainOfThought --samples 50
 
-# With specific model (⚠️ Experimental)
-ml-agents eval run --approach TreeOfThought --samples 100 --provider openrouter --model "openai/gpt-oss-120b"
+# With repository benchmark and specific model (⚠️ Experimental)
+ml-agents eval run BENCHMARK-01-GPQA.csv TreeOfThought --samples 100 --provider openrouter --model "openai/gpt-oss-120b"
 
 # Cost-controlled experiment (⚠️ Experimental)
-ml-agents eval run --approach ChainOfVerification --samples 50 --max-reasoning-calls 3
+ml-agents eval run LOCAL_TEST ChainOfVerification --samples 50 --max-reasoning-calls 3
 ```
 
 #### Evaluation with Preprocessing Integration
@@ -210,24 +216,28 @@ Use preprocessed datasets with your evaluation experiments:
 
 ```bash
 # Auto-detect latest preprocessing for a dataset (⚠️ Experimental)
-ml-agents eval run --dataset dataset-name --approach ChainOfThought
+ml-agents eval run preprocessed-dataset-name ChainOfThought
 
 # Use specific preprocessing run by ID (⚠️ Experimental)
-ml-agents eval run --preprocessing-id prep_20240824_143256 --approach ChainOfThought
+ml-agents eval run LOCAL_TEST ChainOfThought --preprocessing-id prep_20240824_143256
 
 # Use custom preprocessed data file (⚠️ Experimental)
-ml-agents eval run --preprocessing-path ./custom/processed.json --approach ChainOfThought
+ml-agents eval run LOCAL_TEST ChainOfThought --preprocessing-path ./custom/processed.json
 ```
+
+**Note**: Preprocessing integration options are still being refined. For now, use `LOCAL_TEST` or repository CSV files directly.
 
 ### 3. Compare Multiple Approaches
 
 ```bash
-# Basic comparison (⚠️ Experimental)
-ml-agents eval compare --approaches "None,ChainOfThought,TreeOfThought" --samples 100
+# Basic comparison with config file (⚠️ Experimental)
+ml-agents eval compare --config examples/configs/comparison_study.yaml --samples 100
 
 # Parallel execution for speed (⚠️ Experimental)
-ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning,Reflection" --samples 200 --parallel --max-workers 4
+ml-agents eval compare --config examples/configs/comparison_study.yaml --samples 200 --parallel --max-workers 4
 ```
+
+**Note**: Comparison experiments require YAML configuration files to specify which approaches to compare. See `examples/configs/` for templates.
 
 ### 4. Database Management
 
@@ -305,10 +315,10 @@ ml-agents preprocess generate-rules MilaWang/SpatialEval --config tqa
 ml-agents preprocess transform MilaWang/SpatialEval rules.json --config tqa
 
 # 4. Run evaluation with preprocessed data (auto-detects latest preprocessing)
-ml-agents eval run --dataset MilaWang/SpatialEval --approach ChainOfThought --samples 50
+ml-agents eval run MilaWang_SpatialEval_tqa ChainOfThought --samples 50
 
 # 5. Compare approaches on same preprocessed dataset
-ml-agents eval run --dataset MilaWang/SpatialEval --approach TreeOfThought --samples 50
+ml-agents eval run MilaWang_SpatialEval_tqa TreeOfThought --samples 50
 
 # 6. View organized results
 ml-agents results list
@@ -340,7 +350,7 @@ ml-agents preprocess fix-rules ./outputs/tasksource_spartqa-mchoice/preprocessin
 ml-agents preprocess transform tasksource/spartqa-mchoice ./outputs/tasksource_spartqa-mchoice/preprocessing/latest/rules.json
 
 # 6. Now use for evaluation
-ml-agents eval run --dataset tasksource/spartqa-mchoice --approach ChainOfThought --samples 10
+ml-agents eval run tasksource_spartqa-mchoice ChainOfThought --samples 10
 ```
 
 #### Example: Different Datasets with Various Answer Option Fields
@@ -379,8 +389,8 @@ ml-agents setup validate-env
 # 2. Initialize database
 ml-agents db init
 
-# 3. Quick test with default dataset
-ml-agents eval run --approach ChainOfThought --samples 5 --verbose
+# 3. Quick test with LOCAL_TEST
+ml-agents eval run LOCAL_TEST ChainOfThought --samples 5 --verbose
 
 # 4. View results
 ml-agents results list
@@ -403,15 +413,15 @@ export OPENROUTER_API_KEY="your-key-here"
 ```bash
 # Error: "Rate limit exceeded"
 # Solution: Reduce parallel workers or use free models
-ml-agents eval run --approach ChainOfThought --samples 50 --parallel false
+ml-agents eval run LOCAL_TEST ChainOfThought --samples 50 --parallel false
 ```
 
 ### Memory/Performance Issues
 
 ```bash
 # Error: High memory usage
-# Solution: Reduce samples or disable parallel processing
-ml-agents eval compare --approaches "ChainOfThought,TreeOfThought" --samples 50 --max-workers 1
+# Solution: Reduce samples or disable parallel processing for comparison experiments
+ml-agents eval compare --config examples/configs/comparison_study.yaml --samples 50 --max-workers 1
 ```
 
 ### Command Not Found
@@ -439,7 +449,7 @@ which ml-agents  # Should show installation path
 
 ```bash
 # Use OpenRouter's free models
-ml-agents eval run --approach ChainOfThought --provider openrouter --model "openai/gpt-3.5-turbo"
+ml-agents eval run LOCAL_TEST ChainOfThought --provider openrouter --model "openai/gpt-3.5-turbo"
 ```
 
 ### Cost Control Tips
