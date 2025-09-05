@@ -1,0 +1,34 @@
+[
+  {
+    "timestamp": "2025-09-05T10:34:55.517737",
+    "reasoning_type": "none",
+    "input_prompt": "Question: What is 2 + 2?\n\nProvide your complete response and the final answer value separately.",
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "temperature": 0.3,
+    "max_tokens": 500,
+    "extracted_answer": "4",
+    "full_reasoning_text": "To find the sum of two numbers, you simply add them together.",
+    "confidence": 1.0,
+    "extraction_method": "instructor",
+    "reasoning_type_field": "none",
+    "step_count": null,
+    "contains_numbered_steps": null,
+    "extraction_status": "success"
+  },
+  {
+    "timestamp": "2025-09-05T10:34:55.517737",
+    "reasoning_type": "chain_of_thought",
+    "input_prompt": "Think through this step by step. Count your reasoning steps and note if you use numbered steps.\nProvide your complete reasoning and the final answer value separately.\n\nQuestion: What is 2 + 2?\n",
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "temperature": 0.3,
+    "max_tokens": 500,
+    "extracted_answer": "4",
+    "full_reasoning_text": "To find the sum of two numbers, we start with the first number, which is 2. The next step is to add another number, also 2. This addition can be represented as 2 + 2.",
+    "confidence": 1.0,
+    "extraction_method": "instructor",
+    "reasoning_type_field": "chain_of_thought",
+    "step_count": 3,
+    "contains_numbered_steps": true,
+    "extraction_status": "success"
+  }
+]

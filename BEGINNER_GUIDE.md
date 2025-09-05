@@ -2,7 +2,7 @@
 
 **Quick Start Guide for AI Reasoning Research**
 
-ML Agents is a research platform that compares different reasoning approaches (like Chain-of-Thought, Tree-of-Thought) across AI models to understand when and how reasoning improves performance. This guide gets you running experiments in under 10 minutes.
+ML Agents is a research platform that compares different reasoning approaches (like Chain-of-Thought, Tree-of-Thought) across AI models to understand when and how reasoning improves performance. **Phase 15** includes structured answer extraction that cleanly separates reasoning text from final answers. This guide gets you running experiments in under 10 minutes.
 
 ## Prerequisites
 
@@ -226,7 +226,7 @@ ml-agents eval run --preprocessing-path ./custom/processed.json --approach Chain
 ml-agents eval compare --approaches "None,ChainOfThought,TreeOfThought" --samples 100
 
 # Parallel execution for speed (⚠️ Experimental)
-ml-agents eval compare --approaches "ChainOfThought,AsPlanning,Reflection" --samples 200 --parallel --max-workers 4
+ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning,Reflection" --samples 200 --parallel --max-workers 4
 ```
 
 ### 4. Database Management
@@ -462,13 +462,21 @@ ml-agents eval run --approach ChainOfThought --provider openrouter --model "open
 1. **None** - Baseline (direct prompting)
 2. **ChainOfThought** - Step-by-step reasoning
 3. **ProgramOfThought** - Code-based problem solving
-4. **AsPlanning** - Strategic planning approach
+4. **ReasoningAsPlanning** - Strategic planning approach
 5. **Reflection** - Self-evaluation and improvement
 6. **ChainOfVerification** - Systematic verification
 7. **SkeletonOfThought** - Outline-first reasoning
 8. **TreeOfThought** - Multiple reasoning paths
 
 Start with **ChainOfThought** (most common) and **None** (baseline) for your first comparison.
+
+### 🎯 Phase 15: Clean Answer Extraction
+
+All reasoning approaches now automatically extract clean answers:
+- **Before**: "The final answer is 42"
+- **After**: "42" (reasoning preserved separately)
+- **Provider-optimized**: Uses best extraction mode for each provider
+- **Reliable**: Built-in fallback ensures compatibility across all models
 
 ## Getting Help
 

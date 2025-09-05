@@ -11,6 +11,7 @@ from pathlib import Path
 from ml_agents.reasoning.base import BaseReasoning
 from ml_agents.utils.api_clients import StandardResponse
 from ml_agents.utils.logging_config import get_logger
+from ml_agents.utils.reasoning_extraction import create_reasoning_prompt_suffix
 
 logger = get_logger(__name__)
 
@@ -77,57 +78,135 @@ class TreeOfThoughtReasoning(BaseReasoning):
         """
         logger.debug(f"Executing Tree-of-Thought reasoning on: {prompt[:100]}...")
 
-        # Apply Tree-of-Thought prompt template
-        tot_enhanced_prompt = self.tot_prompt.format(question=prompt)
+        # Apply Tree-of-Thought prompt template with reasoning instructions
+        reasoning_suffix = create_reasoning_prompt_suffix("treeofthought")
+        tot_enhanced_prompt = self.tot_prompt.format(question=prompt) + reasoning_suffix
 
-        # Get response from API client (auto rate-limited)
-        response = self.client.generate(tot_enhanced_prompt)
+        try:
+            # Use the base class structured extraction method
+            response = self._execute_with_structured_extraction(
+                tot_enhanced_prompt, prompt
+            )
 
-        # Analyze the response for tree-like reasoning characteristics
-        branch_analysis = self._analyze_branches(response.text)
-        reasoning_quality = self._analyze_reasoning_quality(response.text)
+            # Add Tree-of-Thought specific analysis to metadata
+            if response.metadata:
+                branch_analysis = self._analyze_branches(response.text)
+                reasoning_quality = self._analyze_reasoning_quality(response.text)
 
-        # Prepare Tree-of-Thought specific metadata
-        reasoning_data = {
-            "reasoning_steps": branch_analysis["reasoning_branches"],
-            "approach_specific_metrics": {
-                "reasoning_branches": branch_analysis["reasoning_branches"],
-                "branch_depth": branch_analysis["branch_depth"],
-                "evaluation_instances": branch_analysis["evaluations"],
-                "reasoning_quality_score": reasoning_quality,
-                "contains_problem_decomposition": self._has_problem_decomposition(
-                    response.text
-                ),
-                "contains_reasoning_branches": self._has_reasoning_branches(
-                    response.text
-                ),
-                "contains_branch_exploration": self._has_branch_exploration(
-                    response.text
-                ),
-                "contains_path_evaluation": self._has_path_evaluation(response.text),
-                "contains_branch_selection": self._has_branch_selection(response.text),
-                "contains_synthesis": self._has_synthesis(response.text),
-                "template_used": "tree_of_thought",
-                "original_prompt": prompt,
-            },
-        }
+                response.metadata["approach_specific_metrics"] = {
+                    "reasoning_branches": branch_analysis["reasoning_branches"],
+                    "branch_depth": branch_analysis["branch_depth"],
+                    "evaluation_instances": branch_analysis["evaluations"],
+                    "reasoning_quality_score": reasoning_quality,
+                    "contains_problem_decomposition": self._has_problem_decomposition(
+                        response.text
+                    ),
+                    "contains_reasoning_branches": self._has_reasoning_branches(
+                        response.text
+                    ),
+                    "contains_branch_exploration": self._has_branch_exploration(
+                        response.text
+                    ),
+                    "contains_path_evaluation": self._has_path_evaluation(
+                        response.text
+                    ),
+                    "contains_branch_selection": self._has_branch_selection(
+                        response.text
+                    ),
+                    "contains_synthesis": self._has_synthesis(response.text),
+                    "template_used": "tree_of_thought",
+                }
 
-        # Enhance metadata and return
-        enhanced_response = self._enhance_metadata(response, reasoning_data)
+            logger.info(
+                f"Completed Tree-of-Thought reasoning with structured extraction - "
+                f"branches: {response.metadata.get('branches_explored', 0) if response.metadata else 0}, "
+                f"answer: '{response.extracted_answer}'"
+            )
+            return response
 
-        # Extract structured answer using output parser
-        enhanced_response = self._extract_answer(
-            enhanced_response,
-            answer_type="reasoning_chain",  # ToT involves exploring multiple reasoning paths
-        )
+        except Exception as e:
+            logger.error(
+                f"Structured extraction failed for Tree-of-Thought reasoning: {e}"
+            )
+            # Fallback to original method if Instructor fails
+            logger.info(
+                "Falling back to original Tree-of-Thought reasoning implementation"
+            )
 
-        logger.info(
-            f"Completed Tree-of-Thought reasoning - "
-            f"branches: {branch_analysis['reasoning_branches']}, "
-            f"depth: {branch_analysis['branch_depth']}, "
-            f"tokens: {response.total_tokens}"
-        )
-        return enhanced_response
+            # Get response from API client (auto rate-limited)
+            response = self.client.generate(tot_enhanced_prompt)
+
+            # Analyze the response for tree-like reasoning characteristics
+            branch_analysis = self._analyze_branches(response.text)
+            reasoning_quality = self._analyze_reasoning_quality(response.text)
+
+            # Prepare Tree-of-Thought specific metadata
+            reasoning_data = {
+                "reasoning_steps": branch_analysis["reasoning_branches"],
+                "approach_specific_metrics": {
+                    "reasoning_branches": branch_analysis["reasoning_branches"],
+                    "branch_depth": branch_analysis["branch_depth"],
+                    "evaluation_instances": branch_analysis["evaluations"],
+                    "reasoning_quality_score": reasoning_quality,
+                    "contains_problem_decomposition": self._has_problem_decomposition(
+                        response.text
+                    ),
+                    "contains_reasoning_branches": self._has_reasoning_branches(
+                        response.text
+                    ),
+                    "contains_branch_exploration": self._has_branch_exploration(
+                        response.text
+                    ),
+                    "contains_path_evaluation": self._has_path_evaluation(
+                        response.text
+                    ),
+                    "contains_branch_selection": self._has_branch_selection(
+                        response.text
+                    ),
+                    "contains_synthesis": self._has_synthesis(response.text),
+                    "template_used": "tree_of_thought",
+                    "original_prompt": prompt,
+                    "fallback_used": True,
+                    "fallback_reason": str(e),
+                },
+            }
+
+            # Enhance metadata and return
+            enhanced_response = self._enhance_metadata(response, reasoning_data)
+
+            # For fallback, try to extract answer using the old output parser method
+            try:
+                from ml_agents.utils.output_parser import OutputParser
+
+                fallback_parser = OutputParser(
+                    client=self.client,
+                    use_structured_parsing=False,  # Use regex fallback only
+                    fallback_to_regex=True,
+                )
+                parsing_result = fallback_parser.extract_answer(
+                    response.text, answer_type="reasoning_chain"
+                )
+                enhanced_response.extracted_answer = parsing_result[
+                    "extraction"
+                ].final_answer
+                enhanced_response.parsing_metadata = parsing_result["metadata"]
+            except Exception as parse_error:
+                logger.warning(f"Fallback answer extraction also failed: {parse_error}")
+                # Use last sentence as answer
+                lines = [
+                    line.strip() for line in response.text.split("\n") if line.strip()
+                ]
+                enhanced_response.extracted_answer = (
+                    lines[-1] if lines else response.text[:100]
+                )
+
+            logger.info(
+                f"Completed Tree-of-Thought reasoning with fallback - "
+                f"branches: {branch_analysis['reasoning_branches']}, "
+                f"depth: {branch_analysis['branch_depth']}, "
+                f"tokens: {response.total_tokens}"
+            )
+            return enhanced_response
 
     def _analyze_branches(self, text: str) -> dict:
         """Analyze the branching characteristics of the response.

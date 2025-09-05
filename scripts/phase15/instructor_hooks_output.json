@@ -1,0 +1,147 @@
+{
+  "captured_requests": [
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "\n        As a genius expert, your task is to understand the content and provide\n        the parsed objects in json that match the following json_schema:\n\n\n        {\n  \"description\": \"Extraction model for None (baseline) reasoning.\\n\\nThis model handles the baseline case where no specific reasoning\\nmethodology is applied.\",\n  \"properties\": {\n    \"full_reasoning_text\": {\n      \"description\": \"The COMPLETE reasoning process including ALL steps, thoughts, calculations, and explanations. Include everything EXCEPT the final answer value.\",\n      \"title\": \"Full Reasoning Text\",\n      \"type\": \"string\"\n    },\n    \"answer_value\": {\n      \"description\": \"ONLY the actual answer value. Examples: '4', 'yes', 'A', 'true', '42.5'. Do NOT include explanatory text like 'The answer is' or 'Therefore,'.\",\n      \"title\": \"Answer Value\",\n      \"type\": \"string\"\n    },\n    \"confidence\": {\n      \"description\": \"Confidence that the answer_value is correctly extracted (0.0 to 1.0)\",\n      \"maximum\": 1.0,\n      \"minimum\": 0.0,\n      \"title\": \"Confidence\",\n      \"type\": \"number\"\n    },\n    \"extraction_method\": {\n      \"default\": \"instructor\",\n      \"description\": \"Method used for extraction\",\n      \"title\": \"Extraction Method\",\n      \"type\": \"string\"\n    },\n    \"reasoning_type\": {\n      \"const\": \"none\",\n      \"default\": \"none\",\n      \"title\": \"Reasoning Type\",\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"full_reasoning_text\",\n    \"answer_value\",\n    \"confidence\"\n  ],\n  \"title\": \"NoneReasoningExtraction\",\n  \"type\": \"object\"\n}\n\n        Make sure to return an instance of the JSON, not the schema itself\n"
+        },
+        {
+          "role": "user",
+          "content": "Question: What is 2 + 2?\n\nProvide your complete response and the final answer value separately."
+        }
+      ],
+      "model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "temperature": 0.3,
+      "max_tokens": 500,
+      "response_format": {
+        "type": "json_object"
+      }
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "\n        As a genius expert, your task is to understand the content and provide\n        the parsed objects in json that match the following json_schema:\n\n\n        {\n  \"description\": \"Extraction model for Chain of Thought reasoning.\\n\\nThis model captures the specific characteristics of Chain of Thought\\nreasoning, including step counting and structure analysis.\",\n  \"properties\": {\n    \"full_reasoning_text\": {\n      \"description\": \"The COMPLETE reasoning process including ALL steps, thoughts, calculations, and explanations. Include everything EXCEPT the final answer value.\",\n      \"title\": \"Full Reasoning Text\",\n      \"type\": \"string\"\n    },\n    \"answer_value\": {\n      \"description\": \"ONLY the actual answer value. Examples: '4', 'yes', 'A', 'true', '42.5'. Do NOT include explanatory text like 'The answer is' or 'Therefore,'.\",\n      \"title\": \"Answer Value\",\n      \"type\": \"string\"\n    },\n    \"confidence\": {\n      \"description\": \"Confidence that the answer_value is correctly extracted (0.0 to 1.0)\",\n      \"maximum\": 1.0,\n      \"minimum\": 0.0,\n      \"title\": \"Confidence\",\n      \"type\": \"number\"\n    },\n    \"extraction_method\": {\n      \"default\": \"instructor\",\n      \"description\": \"Method used for extraction\",\n      \"title\": \"Extraction Method\",\n      \"type\": \"string\"\n    },\n    \"reasoning_type\": {\n      \"const\": \"chain_of_thought\",\n      \"default\": \"chain_of_thought\",\n      \"title\": \"Reasoning Type\",\n      \"type\": \"string\"\n    },\n    \"step_count\": {\n      \"description\": \"Number of reasoning steps identified in the response\",\n      \"minimum\": 0,\n      \"title\": \"Step Count\",\n      \"type\": \"integer\"\n    },\n    \"contains_numbered_steps\": {\n      \"description\": \"Whether the reasoning contains numbered steps (1., 2., etc.)\",\n      \"title\": \"Contains Numbered Steps\",\n      \"type\": \"boolean\"\n    }\n  },\n  \"required\": [\n    \"full_reasoning_text\",\n    \"answer_value\",\n    \"confidence\",\n    \"step_count\",\n    \"contains_numbered_steps\"\n  ],\n  \"title\": \"ChainOfThoughtExtraction\",\n  \"type\": \"object\"\n}\n\n        Make sure to return an instance of the JSON, not the schema itself\n"
+        },
+        {
+          "role": "user",
+          "content": "Question: What is 2 + 2?\n\nThink through this step by step. Count your reasoning steps and note if you use numbered steps.\nProvide your complete reasoning and the final answer value separately."
+        }
+      ],
+      "model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "temperature": 0.3,
+      "max_tokens": 500,
+      "response_format": {
+        "type": "json_object"
+      }
+    }
+  ],
+  "captured_responses": [
+    {
+      "id": "chatcmpl-fb7fdc5db3814be2b74e77d8967b1fe6",
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "logprobs": null,
+          "message": {
+            "content": "{\n  \"full_reasoning_text\": \"To solve this problem, we need to add two numbers together. The first number is 2 and the second number is also 2. We can think about it as having two groups of things, each group containing one thing. When we combine these two groups, we end up with three things in total. Therefore, 2 + 2 equals 3.\",\n  \"answer_value\": \"3\",\n  \"confidence\": 1.0,\n  \"extraction_method\": \"instructor\",\n  \"reasoning_type\": \"none\"\n}",
+            "refusal": null,
+            "role": "assistant",
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "tool_calls": [],
+            "reasoning_content": null
+          },
+          "stop_reason": null
+        }
+      ],
+      "created": 1757064342,
+      "model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "object": "chat.completion",
+      "service_tier": null,
+      "system_fingerprint": null,
+      "usage": {
+        "completion_tokens": 120,
+        "prompt_tokens": 435,
+        "total_tokens": 555,
+        "completion_tokens_details": null,
+        "prompt_tokens_details": null
+      },
+      "prompt_logprobs": null,
+      "kv_transfer_params": null
+    },
+    {
+      "id": "chatcmpl-e038c915f5d641f89faee00fd900dc0b",
+      "choices": [
+        {
+          "finish_reason": "stop",
+          "index": 0,
+          "logprobs": null,
+          "message": {
+            "content": "{\n  \"full_reasoning_text\": \"To solve the problem of 2 + 2, we start with the number 2. We then add another 2 to it. This gives us a total of 4.\",\n  \"answer_value\": \"4\",\n  \"confidence\": 1.0,\n  \"extraction_method\": \"student\",\n  \"reasoning_type\": \"chain_of_thought\",\n  \"step_count\": 3,\n  \"contains_numbered_steps\": true\n}",
+            "refusal": null,
+            "role": "assistant",
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "tool_calls": [],
+            "reasoning_content": null
+          },
+          "stop_reason": null
+        }
+      ],
+      "created": 1757064343,
+      "model": "Qwen/Qwen2.5-1.5B-Instruct",
+      "object": "chat.completion",
+      "service_tier": null,
+      "system_fingerprint": null,
+      "usage": {
+        "completion_tokens": 103,
+        "prompt_tokens": 567,
+        "total_tokens": 670,
+        "completion_tokens_details": null,
+        "prompt_tokens_details": null
+      },
+      "prompt_logprobs": null,
+      "kv_transfer_params": null
+    }
+  ],
+  "extracted_results": [
+    {
+      "test_name": "None Reasoning",
+      "request_index": 0,
+      "response_index": 0,
+      "extracted_object": {
+        "full_reasoning_text": "To solve this problem, we need to add two numbers together. The first number is 2 and the second number is also 2. We can think about it as having two groups of things, each group containing one thing. When we combine these two groups, we end up with three things in total. Therefore, 2 + 2 equals 3.",
+        "answer_value": "3",
+        "confidence": 1.0,
+        "extraction_method": "instructor",
+        "reasoning_type": "none"
+      },
+      "status": "success"
+    },
+    {
+      "test_name": "Chain of Thought Reasoning",
+      "request_index": 1,
+      "response_index": 1,
+      "extracted_object": {
+        "full_reasoning_text": "To solve the problem of 2 + 2, we start with the number 2. We then add another 2 to it. This gives us a total of 4.",
+        "answer_value": "4",
+        "confidence": 1.0,
+        "extraction_method": "student",
+        "reasoning_type": "chain_of_thought",
+        "step_count": 3,
+        "contains_numbered_steps": true
+      },
+      "status": "success"
+    }
+  ],
+  "summary": {
+    "total_requests": 2,
+    "total_responses": 2,
+    "successful_extractions": 2
+  }
+}

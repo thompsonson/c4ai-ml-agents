@@ -9,19 +9,19 @@ The `configs/` directory contains example YAML configuration files:
 ### `single_experiment.yaml`
 Basic single-approach experiment configuration:
 ```bash
-ml-agents run --config examples/configs/single_experiment.yaml
+ml-agents eval run --config examples/configs/single_experiment.yaml
 ```
 
 ### `comparison_study.yaml`
 Multi-approach comparison experiment:
 ```bash
-ml-agents compare --config examples/configs/comparison_study.yaml
+ml-agents eval compare --config examples/configs/comparison_study.yaml
 ```
 
 ### `advanced_reasoning.yaml`
 Advanced multi-step reasoning configuration:
 ```bash
-ml-agents compare --config examples/configs/advanced_reasoning.yaml
+ml-agents eval compare --config examples/configs/advanced_reasoning.yaml
 ```
 
 ## Scripts
@@ -37,28 +37,28 @@ Automated batch processing script that runs multiple experiments:
 ### 1. Simple Single Experiment
 ```bash
 # Run Chain-of-Thought on 50 samples
-ml-agents run --approach ChainOfThought --samples 50
+ml-agents eval run --approach ChainOfThought --samples 50
 ```
 
 ### 2. Compare Multiple Approaches
 ```bash
 # Compare 3 approaches with parallel execution
-ml-agents compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --samples 100 --parallel
+ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning,TreeOfThought" --samples 100 --parallel
 ```
 
 ### 3. Using Configuration Files
 ```bash
 # Run using a configuration file
-ml-agents run --config examples/configs/single_experiment.yaml
+ml-agents eval run --config examples/configs/single_experiment.yaml
 
 # Override specific parameters
-ml-agents run --config examples/configs/single_experiment.yaml --samples 200 --parallel
+ml-agents eval run --config examples/configs/single_experiment.yaml --samples 200 --parallel
 ```
 
 ### 4. Advanced Multi-step Reasoning
 ```bash
 # Enable multi-step verification
-ml-agents run --approach ChainOfVerification --multi-step-verification --max-reasoning-calls 5
+ml-agents eval run --approach ChainOfVerification --multi-step-verification --max-reasoning-calls 5
 ```
 
 ## Configuration Schema
@@ -84,7 +84,7 @@ model:
 reasoning:
   approaches:
     - ChainOfThought
-    - AsPlanning
+    - ReasoningAsPlanning
   multi_step_reflection: false
   multi_step_verification: true
   max_reasoning_calls: 3
@@ -105,7 +105,7 @@ output:
 - `None` - Baseline (no reasoning)
 - `ChainOfThought` - Step-by-step reasoning
 - `ProgramOfThought` - Code-based problem solving
-- `AsPlanning` - Strategic planning approach
+- `ReasoningAsPlanning` - Strategic planning approach
 - `Reflection` - Self-evaluation and correction
 - `ChainOfVerification` - Systematic verification
 - `SkeletonOfThought` - Outline-first reasoning

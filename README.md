@@ -16,7 +16,7 @@
 
 This project investigates how different reasoning approaches impact AI model performance across various tasks. It provides a comprehensive framework for comparing multiple reasoning techniques with various language models.
 
-**🎉 Phase 11 Complete**: The platform now includes a stable CLI interface with production-ready commands for environment setup, database management, and dataset preprocessing, plus experimental evaluation features!
+**🎉 Phase 15 Complete**: The platform now includes structured answer extraction with Instructor library, providing clean separation of reasoning text from final answers across all reasoning approaches with provider-aware optimization!
 
 ## Research Questions
 
@@ -29,7 +29,7 @@ This project investigates how different reasoning approaches impact AI model per
 
 ## Reasoning Approaches Available
 
-The platform currently supports **8 production-ready reasoning approaches**:
+The platform currently supports **8 production-ready reasoning approaches** with structured answer extraction:
 
 1. **None** - Baseline direct prompting without reasoning
 2. **Chain-of-Thought (CoT)** - Step-by-step reasoning process
@@ -41,6 +41,16 @@ The platform currently supports **8 production-ready reasoning approaches**:
 8. **Tree-of-Thought** - Multiple reasoning path exploration and synthesis
 
 **Additional approaches planned**: Graph-of-Thought, ReWOO, Buffer-of-Thoughts (Phase 6)
+
+### 🎯 Structured Answer Extraction (Phase 15)
+
+All reasoning approaches now include **clean answer extraction** that:
+
+- **Separates reasoning from answers**: Preserves full reasoning traces while extracting clean final answers
+- **Removes common prefixes**: Converts "The answer is 42" → "42" automatically
+- **Provider-optimized**: Uses ANTHROPIC_TOOLS, TOOLS, or JSON modes based on provider capabilities
+- **Reliable fallback**: TOOLS → JSON fallback ensures compatibility across all providers
+- **Type-safe extraction**: Pydantic models with validation and confidence scoring
 
 ## Quick Start
 
@@ -77,7 +87,7 @@ With [uv](https://github.com/astral-sh/uv) (fastest):
 uv tool install ml-agents-reasoning
 
 # Run without installing (recommended for trying out)
-uvx ml-agents-reasoning run --approach CoT --samples 10
+uvx ml-agents-reasoning eval run --approach ChainOfThought --samples 10
 
 # Add to project dependencies
 uv add ml-agents-reasoning
@@ -135,7 +145,7 @@ ml-agents setup list-approaches
 ml-agents eval run --approach ChainOfThought --samples 10
 
 # Compare multiple approaches (⚠️ PRE-ALPHA)
-ml-agents eval compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --samples 50 --parallel
+ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning,TreeOfThought" --samples 50 --parallel
 ```
 
 ### Jupyter Notebook (Original Interface)
@@ -221,7 +231,7 @@ Compare multiple approaches side-by-side:
 
 ```bash
 # Basic comparison
-ml-agents eval compare --approaches "ChainOfThought,AsPlanning,TreeOfThought" --samples 100
+ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning,TreeOfThought" --samples 100
 
 # Parallel execution for faster results
 ml-agents eval compare --approaches "None,ChainOfThought,Reflection" --samples 200 --parallel --max-workers 4
@@ -259,7 +269,7 @@ model:
 reasoning:
   approaches:
     - ChainOfThought
-    - AsPlanning
+    - ReasoningAsPlanning
     - TreeOfThought
   multi_step_verification: true
   max_reasoning_calls: 5
@@ -308,7 +318,7 @@ ml-agents eval run --approach ChainOfVerification --multi-step-verification --ma
 
 ```bash
 # Parallel execution with custom worker count
-ml-agents eval compare --approaches "ChainOfThought,AsPlanning,TreeOfThought,Reflection" --parallel --max-workers 2
+ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning,TreeOfThought,Reflection" --parallel --max-workers 2
 
 # Balance speed vs rate limits
 ml-agents eval compare --approaches "None,ChainOfThought" --samples 500 --parallel --max-workers 8
@@ -406,7 +416,7 @@ ml-agents eval run --approach ChainOfThought --samples 5 --verbose
 ```bash
 # Comprehensive comparison study
 ml-agents eval compare \
-  --approaches "None,ChainOfThought,AsPlanning,TreeOfThought,Reflection" \
+  --approaches "None,ChainOfThought,ReasoningAsPlanning,TreeOfThought,Reflection" \
   --samples 200 \
   --parallel \
   --max-workers 4 \
@@ -584,7 +594,7 @@ If you encounter rate limits:
 
 ```bash
 # Reduce parallel workers
-ml-agents eval compare --approaches "ChainOfThought,AsPlanning" --max-workers 1
+ml-agents eval compare --approaches "ChainOfThought,ReasoningAsPlanning" --max-workers 1
 
 # Add delays between requests
 ml-agents eval run --approach ChainOfThought --samples 50 --parallel false

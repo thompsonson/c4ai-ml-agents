@@ -10,8 +10,9 @@ from typing import Any, Dict, Optional
 
 from ml_agents.config import ExperimentConfig
 from ml_agents.utils.api_clients import StandardResponse, create_api_client
+from ml_agents.utils.instructor_clients import InstructorClientManager
 from ml_agents.utils.logging_config import get_logger
-from ml_agents.utils.output_parser import OutputParser
+from ml_agents.utils.reasoning_extraction import REASONING_EXTRACTION_MODELS
 
 logger = get_logger(__name__)
 
@@ -42,16 +43,12 @@ class BaseReasoning(ABC):
         self.client = create_api_client(config)
         self.approach_name = self.__class__.__name__.replace("Reasoning", "")
 
-        # Initialize output parser with configuration
-        self.output_parser = OutputParser(
-            client=self.client,
-            use_structured_parsing=config.parsing.use_structured_parsing,
-            fallback_to_regex=config.parsing.fallback_to_regex,
-            confidence_threshold=config.parsing.confidence_threshold,
-            max_retries=config.parsing.max_parsing_retries,
-        )
+        # Initialize Instructor client manager with provider-aware configuration
+        self.instructor_manager = InstructorClientManager(self.client)
 
-        logger.info(f"Initialized {self.approach_name} reasoning approach")
+        logger.info(
+            f"Initialized {self.approach_name} reasoning approach with provider: {self.client.provider}"
+        )
 
     @abstractmethod
     def execute(self, prompt: str) -> StandardResponse:
@@ -143,85 +140,120 @@ class BaseReasoning(ABC):
         # Return at least 1 if we found any indicators, otherwise 0
         return max(1, step_count) if step_count > 0 else 0
 
-    def _extract_answer(
-        self,
-        response: StandardResponse,
-        answer_type: Optional[str] = None,
-        extraction_prompt: Optional[str] = None,
+    def _execute_with_structured_extraction(
+        self, enhanced_prompt: str, original_prompt: str = ""
     ) -> StandardResponse:
-        """Extract structured answer from the response using output parser.
+        """Execute reasoning with structured extraction using Instructor.
+
+        This method provides a common implementation for structured answer extraction
+        that all reasoning approaches can use. It automatically selects the appropriate
+        extraction model based on the reasoning approach and handles provider-specific
+        Instructor configuration.
 
         Args:
-            response: The StandardResponse from the reasoning execution
-            answer_type: Type of answer expected (optional)
-            extraction_prompt: Custom extraction prompt (optional)
+            enhanced_prompt: The prompt enhanced with reasoning-specific instructions
+            original_prompt: The original input prompt (for metadata)
 
         Returns:
-            Enhanced StandardResponse with extracted answer and parsing metadata
+            StandardResponse with structured extraction results
+
+        Raises:
+            Exception: If structured extraction fails and no fallback is available
         """
+        # Get reasoning-specific extraction model
+        approach_key = self.approach_name.lower()
+        extraction_model = REASONING_EXTRACTION_MODELS.get(approach_key)
+
+        if not extraction_model:
+            logger.warning(
+                f"No extraction model found for {approach_key}, using default"
+            )
+            from ml_agents.utils.reasoning_extraction import NoneReasoningExtraction
+
+            extraction_model = NoneReasoningExtraction
+
         try:
-            # Extract answer using output parser
-            parsing_result = self.output_parser.extract_answer(
-                response_text=response.text,
-                answer_type=answer_type,
-                extraction_prompt=extraction_prompt,
+            # Use Instructor for structured response generation
+            extraction = self.instructor_manager.extract_structured_response(
+                messages=[{"role": "user", "content": enhanced_prompt}],
+                response_model=extraction_model,
+                temperature=self.client.temperature,
+                max_tokens=self.client.max_tokens,
             )
 
-            # Update response with parsing results
-            response.parsing_metadata = parsing_result["metadata"]
-            response.extracted_answer = parsing_result["extraction"].final_answer
-
-            # Add parsing information to response metadata
-            if response.metadata is None:
-                response.metadata = {}
-
-            response.metadata.update(
-                {
-                    "parsing_method": parsing_result["metadata"]["parsing_method"],
-                    "parsing_confidence": parsing_result["metadata"][
-                        "parsing_confidence"
-                    ],
-                    "parsing_attempts": parsing_result["metadata"]["parsing_attempts"],
-                    "extraction_time_ms": parsing_result["metadata"][
-                        "extraction_time_ms"
-                    ],
-                }
+            # Create StandardResponse with structured data
+            response = StandardResponse(
+                text=extraction.full_reasoning_text,
+                provider=self.client.provider,
+                model=self.client.model,
+                prompt_tokens=0,  # Will be updated if available from API response
+                completion_tokens=0,  # Will be updated if available
+                total_tokens=0,  # Will be updated if available
+                generation_time=0.0,  # Will be measured by caller
+                parameters={
+                    "temperature": self.client.temperature,
+                    "max_tokens": self.client.max_tokens,
+                    "structured_extraction": True,
+                },
+                extracted_answer=extraction.answer_value,
+                metadata={
+                    "reasoning_approach": self.approach_name,
+                    "reasoning_type": extraction.reasoning_type,
+                    "confidence": extraction.confidence,
+                    "extraction_method": extraction.extraction_method,
+                    "instructor_mode": self.instructor_manager.get_primary_mode(),
+                    "original_prompt": original_prompt,
+                    **self._get_reasoning_specific_metadata(extraction),
+                },
             )
 
-            logger.debug(
-                f"Answer extraction completed for {self.approach_name}: "
-                f"method={parsing_result['metadata']['parsing_method']}, "
-                f"confidence={parsing_result['metadata']['parsing_confidence']:.2f}, "
-                f"extracted_answer='{parsing_result['extraction'].final_answer[:50]}'"
+            logger.info(
+                f"Structured extraction completed for {self.approach_name}: "
+                f"answer='{extraction.answer_value}', confidence={extraction.confidence:.2f}"
             )
+            return response
 
         except Exception as e:
-            logger.warning(f"Answer extraction failed for {self.approach_name}: {e}")
+            logger.error(f"Structured extraction failed for {self.approach_name}: {e}")
 
-            # Fallback: use the original response text as extracted answer
-            response.extracted_answer = response.text.strip()
-            logger.info(
-                f"Using fallback answer extraction for {self.approach_name}: '{response.extracted_answer[:50]}...'."
-            )
-            response.parsing_metadata = {
-                "parsing_method": "fallback",
-                "parsing_confidence": 0.1,
-                "parsing_attempts": 0,
-                "extraction_time_ms": 0,
-                "errors": [str(e)],
-            }
+            # Fallback to original API client generation
+            logger.info(f"Falling back to original {self.approach_name} implementation")
+            raise e  # Re-raise to let specific reasoning classes handle fallback
 
-            if response.metadata is None:
-                response.metadata = {}
-            response.metadata.update(
-                {
-                    "parsing_method": "fallback",
-                    "parsing_confidence": 0.1,
-                    "parsing_error": str(e),
-                }
-            )
+    def _get_reasoning_specific_metadata(self, extraction) -> Dict[str, Any]:
+        """Extract reasoning-approach-specific metadata from extraction model.
 
-        return response
+        Args:
+            extraction: The reasoning extraction model instance
+
+        Returns:
+            Dictionary of approach-specific metadata
+        """
+        metadata = {}
+
+        # Extract common reasoning-specific fields
+        if hasattr(extraction, "step_count"):
+            metadata["reasoning_steps"] = extraction.step_count
+        if hasattr(extraction, "contains_numbered_steps"):
+            metadata["contains_numbered_steps"] = extraction.contains_numbered_steps
+        if hasattr(extraction, "branches_explored"):
+            metadata["branches_explored"] = extraction.branches_explored
+        if hasattr(extraction, "selected_branch"):
+            metadata["selected_branch"] = extraction.selected_branch
+        if hasattr(extraction, "contains_code"):
+            metadata["contains_code"] = extraction.contains_code
+        if hasattr(extraction, "code_blocks"):
+            metadata["code_blocks"] = extraction.code_blocks
+        if hasattr(extraction, "reflection_iterations"):
+            metadata["reflection_iterations"] = extraction.reflection_iterations
+        if hasattr(extraction, "self_corrections"):
+            metadata["self_corrections"] = extraction.self_corrections
+        if hasattr(extraction, "verification_steps"):
+            metadata["verification_steps"] = extraction.verification_steps
+        if hasattr(extraction, "verification_results"):
+            metadata["verification_results"] = extraction.verification_results
+
+        return metadata
 
     def cleanup(self) -> None:
         """Clean up any resources used by the reasoning approach.

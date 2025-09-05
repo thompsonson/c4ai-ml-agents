@@ -117,6 +117,9 @@ ml-agents preprocess list                       # List datasets to preprocess
 
 # CLI usage - Pre-Alpha Commands (⚠️ Experimental)
 ml-agents eval run --provider openrouter --model gpt-3.5-turbo --approach ChainOfThought --samples 50
+
+# Phase 15: All approaches now use structured extraction automatically
+ml-agents eval run --approach Reflection --samples 50    # Clean answer extraction with reasoning preserved
 ```
 
 ### Testing
@@ -161,6 +164,9 @@ ml-agents/
 │   └── utils/
 │       ├── __init__.py
 │       ├── api_clients.py
+│       ├── instructor_clients.py    # Phase 15: Provider-aware Instructor client management
+│       ├── reasoning_extraction.py  # Phase 15: Pydantic models for structured extraction
+│       ├── output_parser.py         # Legacy answer extraction (pre-Phase 15)
 │       ├── rate_limiter.py
 │       └── logging_config.py
 ├── tests/
@@ -245,7 +251,22 @@ ml-agents/
 
 ## Recent Enhancements
 
-### Multiple Choice Dataset Support (Latest)
+### Phase 15: Structured Answer Extraction with Instructor (Latest)
+- **Clean Answer Separation**: Uses Instructor library with Pydantic models to separate reasoning text from final answer values
+- **Provider-Aware Architecture**: InstructorClientManager supports all providers (Anthropic, OpenRouter, Cohere, Local-OpenAI) with optimal mode selection
+- **Automatic Fallback**: TOOLS → JSON fallback strategy for maximum compatibility
+- **Answer Cleaning**: Automatic removal of prefixes like "The answer is..." to extract clean values ("42" instead of "The answer is 42")
+- **Structured Extraction**: All 9 reasoning approaches now use structured extraction for consistent, reliable results
+- **Multiple Extraction Models**: Pydantic models for each reasoning type with validation and confidence scoring
+- **Full Integration**: Seamless integration with existing reasoning pipeline, maintains backward compatibility
+
+**Provider Mode Support:**
+- **Anthropic**: ANTHROPIC_TOOLS → ANTHROPIC_JSON fallback
+- **OpenRouter**: TOOLS → JSON fallback
+- **Cohere**: JSON mode (primary and fallback)
+- **Local-OpenAI**: TOOLS → JSON fallback
+
+### Multiple Choice Dataset Support
 - **New Pattern**: `story_question_choices` for datasets with story/question/candidate_answers structure
 - **Answer Resolution**: Automatic conversion from numeric indices to text answers with dynamic field detection
 - **Dynamic Field Detection**: Automatically detects answer option fields ("options", "candidate_answers", "choices", etc.)

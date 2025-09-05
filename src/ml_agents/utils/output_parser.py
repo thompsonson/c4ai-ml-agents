@@ -199,7 +199,7 @@ class OutputParser:
                     messages=[{"role": "user", "content": extraction_prompt}],
                     response_model=model_class,
                     max_tokens=self.client.max_tokens,
-                    temperature=0.1,  # Low temperature for consistent extraction
+                    mode=instructor.Mode.JSON,
                 )
 
                 # Handle multiple response extraction result

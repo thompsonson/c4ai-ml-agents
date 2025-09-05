@@ -13,6 +13,7 @@ from typing import Any, Dict, List
 from ml_agents.reasoning.base import BaseReasoning
 from ml_agents.utils.api_clients import StandardResponse
 from ml_agents.utils.logging_config import get_logger
+from ml_agents.utils.reasoning_extraction import create_reasoning_prompt_suffix
 
 logger = get_logger(__name__)
 
@@ -73,22 +74,86 @@ class ReflectionReasoning(BaseReasoning):
     def execute(self, prompt: str) -> StandardResponse:
         """Execute Reflection reasoning on the given prompt.
 
-        This method applies the Reflection methodology using either single-prompt
-        or multi-step approach based on configuration.
-
         Args:
             prompt: The input prompt to reason about
 
         Returns:
-            StandardResponse with reflection-enhanced reasoning and detailed metadata
+            StandardResponse with Reflection reasoning and structured answer extraction
         """
         logger.debug(f"Executing Reflection reasoning on: {prompt[:100]}...")
 
-        # Choose execution mode based on configuration
-        if getattr(self.config, "multi_step_reflection", False):
-            return self._multi_step_reflection(prompt)
-        else:
-            return self._single_prompt_reflection(prompt)
+        # Apply Reflection prompt template with reasoning instructions
+        reasoning_suffix = create_reasoning_prompt_suffix("reflection")
+        enhanced_prompt = (
+            self.reflection_prompt.format(question=prompt) + reasoning_suffix
+        )
+
+        try:
+            # Use the base class structured extraction method
+            response = self._execute_with_structured_extraction(enhanced_prompt, prompt)
+
+            # Add Reflection-specific analysis to metadata
+            if response.metadata:
+                response.metadata["approach_specific_metrics"] = {
+                    "template_used": "reflection",
+                }
+
+            logger.info(
+                f"Completed Reflection reasoning with structured extraction - "
+                f"answer: '{response.extracted_answer}'"
+            )
+            return response
+
+        except Exception as e:
+            logger.error(f"Structured extraction failed for Reflection reasoning: {e}")
+            # Fallback to original method if Instructor fails
+            logger.info("Falling back to original Reflection reasoning implementation")
+
+            # Get response from API client
+            response = self.client.generate(enhanced_prompt)
+
+            # Basic fallback metadata
+            reasoning_data = {
+                "reasoning_steps": 1,
+                "approach_specific_metrics": {
+                    "template_used": "reflection",
+                    "original_prompt": prompt,
+                    "fallback_used": True,
+                    "fallback_reason": str(e),
+                },
+            }
+
+            # Enhance metadata
+            enhanced_response = self._enhance_metadata(response, reasoning_data)
+
+            # For fallback, try to extract answer using simple regex
+            try:
+                from ml_agents.utils.output_parser import OutputParser
+
+                fallback_parser = OutputParser(
+                    client=self.client,
+                    use_structured_parsing=False,
+                    fallback_to_regex=True,
+                )
+                parsing_result = fallback_parser.extract_answer(response.text)
+                enhanced_response.extracted_answer = parsing_result[
+                    "extraction"
+                ].final_answer
+                enhanced_response.parsing_metadata = parsing_result["metadata"]
+            except Exception as parse_error:
+                logger.warning(f"Fallback answer extraction also failed: {parse_error}")
+                # Use last sentence as answer
+                lines = [
+                    line.strip() for line in response.text.split("\n") if line.strip()
+                ]
+                enhanced_response.extracted_answer = (
+                    lines[-1] if lines else response.text[:100]
+                )
+
+            logger.info(
+                f"Completed Reflection reasoning with fallback - tokens: {response.total_tokens}"
+            )
+            return enhanced_response
 
     def _single_prompt_reflection(self, prompt: str) -> StandardResponse:
         """Execute single-prompt reflection (default mode).

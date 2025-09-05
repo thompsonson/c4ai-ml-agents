@@ -6,6 +6,7 @@ from datasets import Dataset
 
 from ml_agents.config import ExperimentConfig
 from ml_agents.core.benchmark_registry import BenchmarkRegistry
+from ml_agents.core.local_test_dataset import LocalTestDataset
 from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -30,7 +31,7 @@ class BBEHDatasetLoader:
         )
 
     def load_dataset(self, benchmark_id: str, split: str = "train") -> Dataset:
-        """Load dataset from benchmark registry.
+        """Load dataset from benchmark registry or local test data.
 
         Args:
             benchmark_id: Benchmark identifier
@@ -45,8 +46,12 @@ class BBEHDatasetLoader:
         """
         logger.info(f"Loading benchmark: {benchmark_id}")
 
-        # Load dataset from benchmark registry
-        dataset = self.benchmark_registry.load_benchmark(benchmark_id)
+        # Check if this is a local test dataset
+        if LocalTestDataset.is_local_test_dataset(benchmark_id):
+            dataset = LocalTestDataset.load_dataset(benchmark_id, self.sample_count)
+        else:
+            # Load dataset from benchmark registry
+            dataset = self.benchmark_registry.load_benchmark(benchmark_id)
 
         # Validate format (should already be validated by registry)
         self.validate_format(dataset)
@@ -187,12 +192,17 @@ class BBEHDatasetLoader:
         return "OUTPUT"
 
     def list_available_benchmarks(self) -> list[str]:
-        """List all available benchmarks.
+        """List all available benchmarks including local test datasets.
 
         Returns:
             List of available benchmark IDs
         """
-        return self.benchmark_registry.list_available_benchmarks()
+        benchmarks = self.benchmark_registry.list_available_benchmarks()
+        # Add local test datasets
+        benchmarks.extend(
+            [LocalTestDataset.DATASET_ID, LocalTestDataset.DATASET_ID_LARGE]
+        )
+        return sorted(benchmarks)
 
     def get_benchmark_info(self, benchmark_id: str) -> Dict[str, Any]:
         """Get information about a specific benchmark.
@@ -203,4 +213,6 @@ class BBEHDatasetLoader:
         Returns:
             Dictionary containing benchmark metadata
         """
+        if LocalTestDataset.is_local_test_dataset(benchmark_id):
+            return LocalTestDataset.get_dataset_info(benchmark_id)
         return self.benchmark_registry.get_benchmark_info(benchmark_id)

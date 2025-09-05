@@ -191,7 +191,9 @@ class TestDatasetLoaderBenchmarks:
         loader = BBEHDatasetLoader(self.config)
         result = loader.list_available_benchmarks()
 
-        assert result == ["GPQA", "MMLU", "ARC"]
+        assert result == sorted(
+            ["GPQA", "MMLU", "ARC", "LOCAL_TEST", "LOCAL_TEST_LARGE"]
+        )
         mock_registry.list_available_benchmarks.assert_called_once()
 
     @patch("ml_agents.core.dataset_loader.BenchmarkRegistry")

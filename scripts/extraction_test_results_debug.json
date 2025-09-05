@@ -1,0 +1,64 @@
+[
+  {
+    "timestamp": "2025-09-05T10:40:35.467709",
+    "reasoning_type": "none",
+    "input_prompt": "Question: What is 2 + 2?\n\nProvide your complete response and the final answer value separately.",
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "temperature": 0.3,
+    "max_tokens": 500,
+    "debug_request_messages": [
+      {
+        "role": "user",
+        "content": "\nQuestion: What is 2 + 2?\n\nProvide your complete response and the final answer value separately.\n"
+      }
+    ],
+    "debug_response_model": "NoneReasoningExtraction",
+    "debug_extracted_object": {
+      "full_reasoning_text": "To solve this problem, we need to add two numbers together.",
+      "answer_value": "4",
+      "confidence": 1.0,
+      "extraction_method": "instructor",
+      "reasoning_type": "none"
+    },
+    "extracted_answer": "4",
+    "full_reasoning_text": "To solve this problem, we need to add two numbers together.",
+    "confidence": 1.0,
+    "extraction_method": "instructor",
+    "reasoning_type_field": "none",
+    "step_count": null,
+    "contains_numbered_steps": null,
+    "extraction_status": "success"
+  },
+  {
+    "timestamp": "2025-09-05T10:40:35.467709",
+    "reasoning_type": "chain_of_thought",
+    "input_prompt": "Question: What is 2 + 2?\n\nThink through this step by step. Count your reasoning steps and note if you use numbered steps.\nProvide your complete reasoning and the final answer value separately.",
+    "model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "temperature": 0.3,
+    "max_tokens": 500,
+    "debug_request_messages": [
+      {
+        "role": "user",
+        "content": "\nQuestion: What is 2 + 2?\n\nThink through this step by step. Count your reasoning steps and note if you use numbered steps.\nProvide your complete reasoning and the final answer value separately.\n"
+      }
+    ],
+    "debug_response_model": "ChainOfThoughtExtraction",
+    "debug_extracted_object": {
+      "full_reasoning_text": "To solve the problem of adding two numbers, I will follow these steps:\n\n1. Identify the two numbers being added: 2 and 2.\n2. Understand that addition involves combining quantities together.\n3. Perform the addition operation on the given numbers.",
+      "answer_value": "4",
+      "confidence": 1.0,
+      "extraction_method": "instructor",
+      "reasoning_type": "chain_of_thought",
+      "step_count": 3,
+      "contains_numbered_steps": false
+    },
+    "extracted_answer": "4",
+    "full_reasoning_text": "To solve the problem of adding two numbers, I will follow these steps:\n\n1. Identify the two numbers being added: 2 and 2.\n2. Understand that addition involves combining quantities together.\n3. Perform the addition operation on the given numbers.",
+    "confidence": 1.0,
+    "extraction_method": "instructor",
+    "reasoning_type_field": "chain_of_thought",
+    "step_count": 3,
+    "contains_numbered_steps": false,
+    "extraction_status": "success"
+  }
+]
