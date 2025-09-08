@@ -112,10 +112,72 @@ get_status() {
     esac
 }
 
+# Function to get sample progress from log file
+get_sample_progress() {
+    local benchmark="$1"
+    local log_file="$LOG_DIR/${benchmark%.csv}_${APPROACH}.log"
+
+    # Only parse for running benchmarks
+    local status=$(get_status "$benchmark")
+    if [[ "$status" != "🔄" ]]; then
+        echo ""
+        return
+    fi
+
+    # Check if log file exists
+    if [[ ! -f "$log_file" ]]; then
+        echo ""
+        return
+    fi
+
+    # Extract total samples from log
+    local total_samples=$(grep "Loaded .* samples" "$log_file" 2>/dev/null | sed -n 's/.*Loaded \([0-9]*\) samples.*/\1/p')
+
+    # If no total samples found, return empty
+    if [[ -z "$total_samples" ]]; then
+        echo ""
+        return
+    fi
+
+    # Get start time of this benchmark
+    local start_time=$(grep "^$benchmark:RUNNING:" "$LOG_DIR/status.txt" 2>/dev/null | tail -1 | cut -d: -f4)
+    if [[ -z "$start_time" ]]; then
+        echo ""
+        return
+    fi
+
+    # Calculate elapsed time (rough estimation)
+    local start_timestamp=$(date -j -f "%Y%m%d_%H%M%S" "$start_time" "+%s" 2>/dev/null)
+    local current_timestamp=$(date "+%s")
+
+    if [[ -n "$start_timestamp" ]]; then
+        local elapsed=$((current_timestamp - start_timestamp))
+
+        # Estimate progress based on time (very rough - assume 30s per sample average)
+        local estimated_samples=$((elapsed / 30))
+        if [[ $estimated_samples -gt $total_samples ]]; then
+            estimated_samples=$total_samples
+        fi
+
+        echo "~$estimated_samples/$total_samples"
+    else
+        echo "0/$total_samples"
+    fi
+}
+
 # Function to show live dashboard
 show_dashboard() {
+    # Initialize terminal for smooth updates
+    tput civis  # Hide cursor
+    tput clear  # Initial clear
+
+    # Cleanup on exit
+    trap 'tput cnorm; exit' INT TERM
+
     while true; do
-        clear
+        # Position cursor at top instead of clearing (prevents flicker)
+        tput cup 0 0
+
         echo "🚀 Benchmark Status Dashboard - $(date '+%H:%M:%S')"
         local samples_text=""
         if [[ -n "$SAMPLES" ]]; then
@@ -131,7 +193,14 @@ show_dashboard() {
         for benchmark in "${BENCHMARKS[@]}"; do
             local status_icon=$(get_status "$benchmark")
             local benchmark_short=$(echo "$benchmark" | sed 's/BENCHMARK-//' | sed 's/.csv$//')
-            printf "%-40s %s\n" "$benchmark_short" "$status_icon"
+            local progress=$(get_sample_progress "$benchmark")
+
+            # Format with progress if available
+            if [[ -n "$progress" ]]; then
+                printf "%-30s (%s) %s                    \n" "$benchmark_short" "$progress" "$status_icon"
+            else
+                printf "%-30s %s                              \n" "$benchmark_short" "$status_icon"
+            fi
 
             case "$status_icon" in
                 "✅") ((success++)) ;;
@@ -142,17 +211,20 @@ show_dashboard() {
         done
 
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "📈 Summary: ✅ $success Success | ❌ $failed Failed | 🔄 $running Running | ⏳ $queued Queued"
-        echo "📄 Logs: $LOG_DIR | 🔍 Press Ctrl+C to stop dashboard"
+        # Fixed width formatting for summary to prevent jumping
+        printf "📈 Summary: ✅ %2d Success | ❌ %2d Failed | 🔄 %2d Running | ⏳ %2d Queued        \n" "$success" "$failed" "$running" "$queued"
+        printf "📄 Logs: %s                                    \n" "$LOG_DIR"
+        printf "🔍 Press Ctrl+C to stop dashboard                                             \n"
 
         # Exit if all benchmarks are done
         if [[ $((success + failed)) -eq ${#BENCHMARKS[@]} ]]; then
-            echo ""
-            echo "🏁 All benchmarks completed!"
+            printf "\n🏁 All benchmarks completed!                                                   \n"
+            # Restore cursor and exit cleanly
+            tput cnorm
             break
         fi
 
-        sleep 45
+        sleep 1
     done
 }
 
@@ -170,7 +242,7 @@ run_benchmark() {
     mkdir -p "$LOG_DIR"
 
     # Build command with optional samples parameter
-    local cmd="uv run ml-agents eval run \"$benchmark\" \"$APPROACH\" --provider \"$PROVIDER\" --model \"$MODEL\" --api-base \"$API_BASE\" --skip-warnings --max-tokens \"$MAX_TOKENS\""
+    local cmd="uv run ml-agents eval run \"$benchmark\" \"$APPROACH\" --provider \"$PROVIDER\" --model \"$MODEL\" --api-base \"$API_BASE\" --skip-warnings --max-tokens \"$MAX_TOKENS\" --verbose"
     if [[ -n "$SAMPLES" ]]; then
         cmd="$cmd --samples $SAMPLES"
     fi
@@ -185,7 +257,7 @@ run_benchmark() {
 }
 
 # Export functions for parallel execution
-export -f run_benchmark update_status
+export -f run_benchmark update_status get_status get_sample_progress
 export PROVIDER MODEL API_BASE MAX_TOKENS APPROACH SAMPLES LOG_DIR
 
 # Initialize status file
