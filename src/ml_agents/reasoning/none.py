@@ -117,7 +117,6 @@ class NoneReasoning(BaseReasoning):
                 fallback_parser = OutputParser(
                     client=self.client,
                     use_structured_parsing=False,  # Use regex fallback only
-                    fallback_to_regex=True,
                 )
                 parsing_result = fallback_parser.extract_answer(response.text)
                 enhanced_response.extracted_answer = parsing_result[

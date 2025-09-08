@@ -44,30 +44,6 @@ class BaseAnswerExtraction(BaseModel):
         return v
 
 
-class MultipleChoiceExtraction(BaseAnswerExtraction):
-    """Model for extracting multiple choice answers."""
-
-    selected_option: str = Field(
-        description="The selected option (e.g., 'A', 'B', 'C', 'D')"
-    )
-    option_reasoning: str = Field(
-        description="Reasoning for why this option was selected"
-    )
-
-    @field_validator("selected_option")
-    @classmethod
-    def validate_option_format(cls, v):
-        """Validate that the selected option is in correct format."""
-        if not v or not v.strip():
-            raise ValueError("Selected option cannot be empty")
-        # Convert to uppercase and check if it's a single letter
-        option = v.strip().upper()
-        if len(option) == 1 and option.isalpha():
-            return option
-        # Also accept longer options like "Option A" or "A)"
-        return v.strip()
-
-
 class NumericalExtraction(BaseAnswerExtraction):
     """Model for extracting numerical answers."""
 
@@ -92,59 +68,6 @@ class NumericalExtraction(BaseAnswerExtraction):
             raise ValueError("Numerical value must be a valid number")
 
 
-class TextualExtraction(BaseAnswerExtraction):
-    """Model for extracting textual answers."""
-
-    answer_type: str = Field(
-        description="Type of answer (yes/no, explanation, summary, etc.)"
-    )
-    key_points: List[str] = Field(
-        default_factory=list, description="Key points or main ideas from the answer"
-    )
-
-    @field_validator("answer_type")
-    @classmethod
-    def validate_answer_type(cls, v):
-        """Validate answer type is not empty."""
-        if not v or not v.strip():
-            raise ValueError("Answer type cannot be empty")
-        return v.strip().lower()
-
-
-class YesNoExtraction(BaseAnswerExtraction):
-    """Model for extracting yes/no answers."""
-
-    yes_no_answer: bool = Field(
-        description="Boolean representation of the yes/no answer"
-    )
-    reasoning: str = Field(description="Reasoning behind the yes/no answer")
-
-
-class ListExtraction(BaseAnswerExtraction):
-    """Model for extracting list-based answers."""
-
-    items: List[str] = Field(description="List of items extracted from the answer")
-    item_count: Optional[int] = Field(
-        default=None, description="Number of items in the list"
-    )
-
-    @field_validator("items")
-    @classmethod
-    def validate_items_not_empty(cls, v):
-        """Validate that items list is not empty."""
-        if not v:
-            raise ValueError("Items list cannot be empty")
-        # Remove empty strings
-        return [item.strip() for item in v if item.strip()]
-
-    @model_validator(mode="after")
-    def set_item_count(self):
-        """Set item count based on items list."""
-        if self.items:
-            self.item_count = len(self.items)
-        return self
-
-
 class ReasoningChainExtraction(BaseAnswerExtraction):
     """Model for extracting answers with reasoning chains."""
 
@@ -166,9 +89,7 @@ class ReasoningChainExtraction(BaseAnswerExtraction):
 
 
 # Factory function to get appropriate extraction model
-def get_extraction_model(
-    answer_type: str, multiple_responses: bool = False
-) -> type[BaseAnswerExtraction]:
+def get_extraction_model(answer_type: str, multiple_responses: bool = False) -> type:
     """Get the appropriate extraction model based on answer type.
 
     Args:
@@ -182,17 +103,14 @@ def get_extraction_model(
         ValueError: If answer_type is not supported
     """
     model_map = {
-        "multiple_choice": MultipleChoiceExtraction,
         "numerical": NumericalExtraction,
-        "textual": TextualExtraction,
-        "yes_no": YesNoExtraction,
-        "list": ListExtraction,
         "reasoning_chain": ReasoningChainExtraction,
         "base": BaseAnswerExtraction,
     }
 
     if answer_type.lower() not in model_map:
-        raise ValueError(f"Unsupported answer type: {answer_type}")
+        # Default to base extraction for unsupported types
+        return BaseAnswerExtraction
 
     # Return multiple response wrapper if requested
     if multiple_responses:
@@ -202,30 +120,15 @@ def get_extraction_model(
 
 
 def detect_multiple_tool_calls(response_text: str) -> bool:
-    """Detect if response contains multiple tool calls or function calls.
+    """Detect if response contains multiple reasoning steps.
 
     Args:
         response_text: The LLM response text to analyze
 
     Returns:
-        True if multiple tool calls detected, False otherwise
+        True if multiple reasoning steps detected, False otherwise
     """
-    # Common patterns that indicate multiple tool calls
-    tool_call_patterns = [
-        r"function_call.*?function_call",  # Multiple function_call entries
-        r"tool_call.*?tool_call",  # Multiple tool_call entries
-        r'\{[^}]*"function"[^}]*\}.*?\{[^}]*"function"[^}]*\}',  # JSON function calls
-        r"<tool_call>.*?</tool_call>.*?<tool_call>.*?</tool_call>",  # XML tool calls
-        r"```[^`]*```.*?```[^`]*```",  # Multiple code blocks
-    ]
-
-    import re
-
-    for pattern in tool_call_patterns:
-        if re.search(pattern, response_text, re.DOTALL | re.IGNORECASE):
-            return True
-
-    # Check for multiple step indicators
+    # Simple step indicators
     step_indicators = [
         "step 1:",
         "step 2:",
@@ -242,8 +145,9 @@ def detect_multiple_tool_calls(response_text: str) -> bool:
     ]
 
     step_count = 0
+    response_lower = response_text.lower()
     for indicator in step_indicators:
-        if indicator.lower() in response_text.lower():
+        if indicator in response_lower:
             step_count += 1
             if step_count >= 2:
                 return True
@@ -296,33 +200,6 @@ class MultipleAnswerExtraction(BaseModel):
             else:
                 self.combined_confidence = self.extractions[0].confidence
         return self
-
-
-class CombinedExtractionResult(BaseModel):
-    """Model for combining multiple extraction results into a single response."""
-
-    final_answer: str = Field(description="Final combined answer from all extractions")
-    confidence: float = Field(
-        ge=0.0, le=1.0, description="Overall confidence in the combined result"
-    )
-    extraction_method: str = Field(
-        default="instructor_multiple", description="Method used for extraction"
-    )
-    source_extractions: List[BaseAnswerExtraction] = Field(
-        description="Source extractions that were combined"
-    )
-    reasoning_chain: List[str] = Field(
-        default_factory=list,
-        description="Combined reasoning steps from all extractions",
-    )
-
-    @field_validator("final_answer")
-    @classmethod
-    def final_answer_not_empty(cls, v):
-        """Validate that final_answer is not empty."""
-        if not v or not v.strip():
-            raise ValueError("Final answer cannot be empty")
-        return v.strip()
 
 
 # Default extraction model for when type is unknown

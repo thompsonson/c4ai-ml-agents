@@ -180,8 +180,7 @@ class TreeOfThoughtReasoning(BaseReasoning):
 
                 fallback_parser = OutputParser(
                     client=self.client,
-                    use_structured_parsing=False,  # Use regex fallback only
-                    fallback_to_regex=True,
+                    use_structured_parsing=False,
                 )
                 parsing_result = fallback_parser.extract_answer(
                     response.text, answer_type="reasoning_chain"
