@@ -4,7 +4,6 @@ from typing import Optional
 
 from datasets import Dataset
 
-from ml_agents.core.phase14_test_data import create_local_test_dataset
 from ml_agents.utils.logging_config import get_logger
 
 logger = get_logger(__name__)
