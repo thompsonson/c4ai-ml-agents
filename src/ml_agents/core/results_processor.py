@@ -884,6 +884,122 @@ class ResultsProcessor:
 
             return experiments
 
+    def get_experiments_list_enhanced(
+        self,
+        status: Optional[str] = None,
+        dataset_filter: Optional[str] = None,
+        model_filter: Optional[str] = None,
+        approach_filter: Optional[str] = None,
+        accuracy_min: Optional[float] = None,
+        sort_by: str = "date",
+    ) -> List[Dict[str, Any]]:
+        """Get enhanced list of experiments with metrics and filtering.
+
+        Args:
+            status: Optional status filter ('running', 'completed', 'failed')
+            dataset_filter: Optional dataset name filter (partial match)
+            model_filter: Optional model name filter (partial match)
+            approach_filter: Optional approach filter
+            accuracy_min: Optional minimum accuracy threshold
+            sort_by: Sort field ('date', 'accuracy', 'samples', 'cost')
+
+        Returns:
+            List of enhanced experiment metadata with metrics
+        """
+        with self.db_manager.get_connection() as conn:
+            # Build complex query with metrics
+            query = """
+                SELECT
+                    e.id,
+                    e.name,
+                    e.description,
+                    e.created_at,
+                    e.status,
+                    e.dataset_name,
+                    e.config_json,
+                    COUNT(DISTINCT r.id) as total_samples,
+                    AVG(CASE WHEN r.is_correct THEN 1.0 ELSE 0.0 END) as accuracy,
+                    AVG(r.execution_time_ms / 1000.0) as avg_time,
+                    SUM(r.cost_estimate) as total_cost,
+                    GROUP_CONCAT(DISTINCT r.approach_name) as approaches,
+                    GROUP_CONCAT(DISTINCT r.model) as models
+                FROM experiments e
+                LEFT JOIN runs r ON e.id = r.experiment_id
+                WHERE 1=1
+            """
+            params = []
+
+            # Apply filters
+            if status:
+                query += " AND e.status = ?"
+                params.append(status)
+
+            if dataset_filter:
+                query += " AND (e.dataset_name LIKE ? OR e.name LIKE ? OR e.config_json LIKE ?)"
+                params.extend(
+                    [
+                        f"%{dataset_filter}%",
+                        f"%{dataset_filter}%",
+                        f"%{dataset_filter}%",
+                    ]
+                )
+
+            if model_filter:
+                query += " AND e.config_json LIKE ?"
+                params.append(f"%{model_filter}%")
+
+            if approach_filter:
+                query += " AND e.config_json LIKE ?"
+                params.append(f"%{approach_filter}%")
+
+            # Group by experiment
+            query += " GROUP BY e.id"
+
+            # Apply accuracy filter after aggregation using HAVING
+            if accuracy_min is not None:
+                query += " HAVING accuracy >= ?"
+                params.append(accuracy_min)
+
+            # Sort by specified field
+            sort_mappings = {
+                "date": "e.created_at DESC",
+                "accuracy": "accuracy DESC NULLS LAST",
+                "samples": "total_samples DESC",
+                "cost": "total_cost DESC NULLS LAST",
+            }
+            query += f" ORDER BY {sort_mappings.get(sort_by, 'e.created_at DESC')}"
+
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+
+            experiments = []
+            for row in cursor.fetchall():
+                exp = dict(row)
+
+                # Parse config
+                exp["config"] = (
+                    json.loads(exp["config_json"]) if exp["config_json"] else {}
+                )
+                del exp["config_json"]
+
+                # Extract approach from approaches list or runs
+                if exp["approaches"]:
+                    exp["approach"] = exp["approaches"].split(",")[0]
+                elif exp["config"].get("reasoning_approaches"):
+                    exp["approach"] = exp["config"]["reasoning_approaches"][0]
+                else:
+                    exp["approach"] = "Unknown"
+
+                # Extract dataset/benchmark info from config
+                if not exp["dataset_name"] and exp["config"]:
+                    exp["dataset_name"] = exp["config"].get(
+                        "benchmark_id", exp["config"].get("dataset_name", "")
+                    )
+
+                experiments.append(exp)
+
+            return experiments
+
     def get_run_details(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Get detailed information for a specific run.
 

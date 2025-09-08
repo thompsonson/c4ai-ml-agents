@@ -34,7 +34,17 @@ SUPPORTED_MODELS = {
         "google/gemini-2.5-flash-lite",
     ],
     "local-openai": [
-        "Qwen/Qwen2.5-1.5B-Instruct",  # Local model on pop-os
+        "Qwen/Qwen2.5-1.5B-Instruct",
+        "Qwen/Qwen2.5-0.5B-Instruct",
+        "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+        "HuggingFaceTB/SmolLM2-360M",
+        "smolLm2:360m",
+        "smolLm2:1.7b",
+        "qwen2.5:1.5b",
+        "gemma2:2b",
+        "phi3:mini",
+        "microsoft/Phi-3.5-mini-instruct",
+        "RedHatAI/Qwen2-1.5B-Instruct-quantized.w4a16",
         # Add other local models as needed
     ],
 }

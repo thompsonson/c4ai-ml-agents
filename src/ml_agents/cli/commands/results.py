@@ -314,6 +314,27 @@ def list_experiments(
     skip_warnings: bool = typer.Option(
         False, "--skip-warnings", help="Skip pre-alpha warnings"
     ),
+    full_ids: bool = typer.Option(
+        False, "--full-ids", help="Show full experiment IDs instead of truncated"
+    ),
+    show_accuracy: bool = typer.Option(
+        True, "--show-accuracy/--no-accuracy", help="Show accuracy column"
+    ),
+    dataset_filter: Optional[str] = typer.Option(
+        None, "--dataset", help="Filter by dataset name (partial match)"
+    ),
+    model_filter: Optional[str] = typer.Option(
+        None, "--model", help="Filter by model name (partial match)"
+    ),
+    approach_filter: Optional[str] = typer.Option(
+        None, "--approach", help="Filter by reasoning approach"
+    ),
+    accuracy_min: Optional[float] = typer.Option(
+        None, "--accuracy-min", help="Minimum accuracy threshold (0.0-1.0)"
+    ),
+    sort_by: str = typer.Option(
+        "date", "--sort-by", help="Sort by: date, accuracy, samples, cost"
+    ),
 ) -> None:
     """⚠️ PRE-ALPHA: List experiments stored in the database.
 
@@ -335,34 +356,138 @@ def list_experiments(
         config = DatabaseConfig(db_path=db_path)
         processor = ResultsProcessor(config)
 
-        experiments = processor.get_experiments_list(status=status)
+        # Get enhanced experiment data with accuracy
+        experiments = processor.get_experiments_list_enhanced(
+            status=status,
+            dataset_filter=dataset_filter,
+            model_filter=model_filter,
+            approach_filter=approach_filter,
+            accuracy_min=accuracy_min,
+            sort_by=sort_by,
+        )
 
         if not experiments:
             display_info("No experiments found")
             return
 
-        # Create experiments table
-        table = Table(title="Experiments")
-        table.add_column("ID", style="cyan")
-        table.add_column("Name", style="white")
-        table.add_column("Status", style="yellow")
-        table.add_column("Created", style="dim")
-        table.add_column("Approaches", style="green")
+        # Create experiments table with dynamic columns
+        table = Table(title=f"ML Agents Experiments (Total: {len(experiments)})")
 
+        # ID column - full or truncated based on flag
+        if full_ids:
+            table.add_column("Experiment ID", style="cyan", min_width=40)
+        else:
+            table.add_column("ID", style="cyan", min_width=15)
+
+        # Core columns
+        table.add_column("Dataset", style="white", min_width=20)
+        table.add_column("Approach", style="green", min_width=15)
+        table.add_column("Status", style="yellow", min_width=10)
+
+        # Metrics columns
+        if show_accuracy:
+            table.add_column("Accuracy", style="magenta", justify="right", min_width=10)
+        table.add_column("Samples", justify="right", min_width=8)
+        table.add_column("Time (s)", justify="right", min_width=8)
+        table.add_column("Cost ($)", justify="right", min_width=10)
+        table.add_column("Created", style="dim", min_width=16)
+
+        # Add rows with proper formatting
         for exp in experiments[:limit]:
-            table.add_row(
-                exp["id"][:12] + "...",
-                exp["name"][:30] + "..." if len(exp["name"]) > 30 else exp["name"],
-                exp["status"],
-                exp["created_at"][:10],  # Just the date
-                ", ".join(exp["config"].get("reasoning_approaches", []))[:30] + "...",
+            # Extract dataset name from experiment data
+            dataset = exp.get("dataset_name", "")
+            if not dataset and exp.get("name"):
+                # Try to extract from experiment name
+                name = exp["name"]
+                if "BENCHMARK-" in name:
+                    # Extract benchmark dataset name from anywhere in the string
+                    import re
+
+                    match = re.search(r"BENCHMARK-\d+-[^_\]]+", name)
+                    if match:
+                        dataset = match.group(0).replace(".csv", "")
+                    else:
+                        # Fallback: look for parts
+                        parts = name.split("_")
+                        for part in parts:
+                            if "BENCHMARK-" in part:
+                                dataset = (
+                                    part.replace(".csv", "")
+                                    .replace("]", "")
+                                    .replace("[", "")
+                                )
+                                break
+                elif "LOCAL_TEST" in name:
+                    dataset = "LOCAL_TEST"
+                else:
+                    # Extract from name pattern: provider_model_approach_dataset
+                    parts = name.split("_")
+                    if len(parts) >= 3:
+                        # Check if third part looks like approach list
+                        if parts[2].startswith("[") and parts[2].endswith("]"):
+                            dataset = parts[3] if len(parts) > 3 else "Unknown"
+                        else:
+                            dataset = parts[2]
+                    else:
+                        dataset = "Unknown"
+
+            # Format ID
+            exp_id = exp["id"] if full_ids else exp["id"][:12] + "..."
+
+            # Format accuracy with color coding
+            accuracy_str = ""
+            if show_accuracy and exp.get("accuracy") is not None:
+                accuracy = exp["accuracy"]
+                if accuracy >= 0.8:
+                    accuracy_str = f"[green]{accuracy:.1%}[/green]"
+                elif accuracy >= 0.5:
+                    accuracy_str = f"[yellow]{accuracy:.1%}[/yellow]"
+                else:
+                    accuracy_str = f"[red]{accuracy:.1%}[/red]"
+
+            # Format approach - extract from config or metadata
+            approach = "Unknown"
+            if exp.get("config") and exp["config"].get("reasoning_approaches"):
+                approach = exp["config"]["reasoning_approaches"][0]
+            elif exp.get("approach"):
+                approach = exp["approach"]
+
+            # Format time and cost
+            avg_time = f"{exp.get('avg_time', 0):.1f}" if exp.get("avg_time") else "0.0"
+            total_cost = (
+                f"{exp.get('total_cost', 0):.4f}" if exp.get("total_cost") else "0.0000"
             )
+
+            # Build row
+            row = [
+                exp_id,
+                dataset[:30] + "..." if len(dataset) > 30 else dataset,
+                approach[:20] + "..." if len(approach) > 20 else approach,
+                exp["status"],
+            ]
+
+            if show_accuracy:
+                row.append(accuracy_str if accuracy_str else "N/A")
+
+            row.extend(
+                [
+                    str(exp.get("total_samples", 0)),
+                    avg_time,
+                    total_cost,
+                    exp["created_at"][:16] if exp.get("created_at") else "Unknown",
+                ]
+            )
+
+            table.add_row(*row)
 
         console.print(table)
 
         if len(experiments) > limit:
             console.print(
                 f"\n[dim]Showing {limit} of {len(experiments)} experiments. Use --limit to see more.[/dim]"
+            )
+            console.print(
+                "[dim]Tip: Use --full-ids to see complete experiment IDs for copying.[/dim]"
             )
 
     except Exception as e:
