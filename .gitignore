@@ -72,3 +72,6 @@ ml_agents_results.backup_*
 
 # MCP configuration (project-specific)
 .mcp.json
+
+# logs
+parallel_logs/
