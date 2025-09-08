@@ -622,7 +622,7 @@ class ExperimentRunner:
                 token_counts = [
                     r["result"]["response"]["total_tokens"] for r in approach_results
                 ]
-                costs = [r["result"]["cost_estimate"] for r in approach_results]
+                costs = [0 for r in approach_results]
 
                 # Calculate basic accuracy by comparing outputs
                 correct_responses = 0
@@ -819,7 +819,7 @@ class ExperimentRunner:
                     "response_text": response_text,
                     "execution_time": result["result"]["execution_time"],
                     "total_tokens": result["result"]["response"]["total_tokens"],
-                    "cost_estimate": result["result"]["cost_estimate"],
+                    "cost_estimate": 0,
                     "reasoning_steps": result["result"]["metadata"].get(
                         "reasoning_steps", 0
                     ),
@@ -861,7 +861,7 @@ class ExperimentRunner:
                     "provider": self.config.provider,
                     "model": self.config.model,
                     "latency": result.execution_time,
-                    "cost": result.cost_estimate,
+                    "cost": 0,
                 }
             )
 
@@ -1036,7 +1036,7 @@ class ExperimentRunner:
             "total_tokens": result.response.total_tokens,
             "prompt_tokens": result.response.prompt_tokens,
             "completion_tokens": result.response.completion_tokens,
-            "cost_estimate": result.cost_estimate,
+            "cost_estimate": 0,
             "response_length": len(result.response.text),
             "reasoning_depth": existing_metadata.get("reasoning_steps", 1),
         }

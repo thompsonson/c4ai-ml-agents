@@ -12,7 +12,6 @@ import openai
 
 from ml_agents.config import ExperimentConfig, get_api_key
 from ml_agents.utils.logging_config import get_logger
-from ml_agents.utils.rate_limiter import rate_limiter_manager
 
 logger = get_logger(__name__)
 
@@ -66,19 +65,13 @@ class StandardResponse:
 class APIClientError(Exception):
     """Base exception for API client errors."""
 
-    pass
-
 
 class RateLimitError(APIClientError):
     """Exception raised when rate limits are exceeded."""
 
-    pass
-
 
 class AuthenticationError(APIClientError):
     """Exception raised when authentication fails."""
-
-    pass
 
 
 class ModelNotFoundError(APIClientError):
@@ -104,13 +97,10 @@ class APIClient(ABC):
         self.top_p = config.top_p
         self.timeout = config.request_timeout
 
-        # Initialize rate limiter for this provider
-        self.rate_limiter = rate_limiter_manager.get_limiter(self.provider)
-
-        logger.info(f"Initialized {self.__class__.__name__} for model: {self.model}")
+        logger.info("Initialized %s for model: %s", self.__class__.__name__, self.model)
 
     @abstractmethod
-    def generate(self, prompt: str, **kwargs) -> StandardResponse:
+    def generate(self, prompt: str, **kwargs: Any) -> StandardResponse:
         """Generate response from model.
 
         Args:
@@ -135,7 +125,7 @@ class APIClient(ABC):
         """
         pass
 
-    def get_generation_params(self, **overrides) -> Dict[str, Any]:
+    def get_generation_params(self, **overrides: Any) -> Dict[str, Any]:
         """Get generation parameters with optional overrides.
 
         Args:
@@ -186,7 +176,7 @@ class AnthropicClient(APIClient):
 
         self.client = anthropic.Anthropic(api_key=api_key)
 
-    def generate(self, prompt: str, **kwargs) -> StandardResponse:
+    def generate(self, prompt: str, **kwargs: Any) -> StandardResponse:
         """Generate response using Anthropic Claude.
 
         Args:
@@ -196,9 +186,6 @@ class AnthropicClient(APIClient):
         Returns:
             Dictionary with generated text and metadata
         """
-        # Apply rate limiting
-        self.rate_limiter.acquire()
-
         start_time = time.time()
 
         try:
@@ -228,6 +215,8 @@ class AnthropicClient(APIClient):
 
         except Exception as e:
             self.handle_api_error(e)
+            # This line should never be reached due to handle_api_error raising
+            raise
 
     def validate_connection(self) -> bool:
         """Validate Anthropic API connection."""
@@ -240,7 +229,7 @@ class AnthropicClient(APIClient):
             )
             return response is not None
         except Exception as e:
-            logger.error(f"Anthropic validation failed: {e}")
+            logger.error("Anthropic validation failed: %s", e)
             raise
 
 
@@ -257,7 +246,7 @@ class CohereClient(APIClient):
 
         self.client = cohere.Client(api_key)
 
-    def generate(self, prompt: str, **kwargs) -> StandardResponse:
+    def generate(self, prompt: str, **kwargs: Any) -> StandardResponse:
         """Generate response using Cohere.
 
         Args:
@@ -267,9 +256,6 @@ class CohereClient(APIClient):
         Returns:
             Dictionary with generated text and metadata
         """
-        # Apply rate limiting
-        self.rate_limiter.acquire()
-
         start_time = time.time()
 
         try:
@@ -302,6 +288,8 @@ class CohereClient(APIClient):
 
         except Exception as e:
             self.handle_api_error(e)
+            # This line should never be reached due to handle_api_error raising
+            raise
 
     def validate_connection(self) -> bool:
         """Validate Cohere API connection."""
@@ -310,7 +298,7 @@ class CohereClient(APIClient):
             response = self.client.generate(model=self.model, prompt="Hi", max_tokens=1)
             return response is not None
         except Exception as e:
-            logger.error(f"Cohere validation failed: {e}")
+            logger.error("Cohere validation failed: %s", e)
             raise
 
 
@@ -329,7 +317,7 @@ class OpenRouterClient(APIClient):
             base_url="https://openrouter.ai/api/v1", api_key=api_key
         )
 
-    def generate(self, prompt: str, **kwargs) -> StandardResponse:
+    def generate(self, prompt: str, **kwargs: Any) -> StandardResponse:
         """Generate response using OpenRouter.
 
         Args:
@@ -339,9 +327,6 @@ class OpenRouterClient(APIClient):
         Returns:
             Dictionary with generated text and metadata
         """
-        # Apply rate limiting
-        self.rate_limiter.acquire()
-
         start_time = time.time()
 
         try:
@@ -367,7 +352,8 @@ class OpenRouterClient(APIClient):
             if not response_text and response.choices[0].finish_reason == "length":
                 response_text = "[RESPONSE_TRUNCATED_DUE_TO_TOKEN_LIMIT]"
                 logger.warning(
-                    f"Response truncated due to token limit (max_tokens={self.max_tokens})"
+                    "Response truncated due to token limit (max_tokens=%s)",
+                    self.max_tokens,
                 )
             elif not response_text:
                 response_text = "[EMPTY_RESPONSE]"
@@ -387,6 +373,8 @@ class OpenRouterClient(APIClient):
 
         except Exception as e:
             self.handle_api_error(e)
+            # This line should never be reached due to handle_api_error raising
+            raise
 
     def validate_connection(self) -> bool:
         """Validate OpenRouter API connection."""
@@ -399,7 +387,7 @@ class OpenRouterClient(APIClient):
             )
             return response is not None
         except Exception as e:
-            logger.error(f"OpenRouter validation failed: {e}")
+            logger.error("OpenRouter validation failed: %s", e)
             raise
 
 
@@ -411,16 +399,16 @@ class LocalOpenAIClient(APIClient):
         super().__init__(config)
 
         # Get base URL from config or environment, default to pop-os
-        base_url = getattr(config, "api_base_url", None) or "http://pop-os:8000/v1"
+        base_url: str = getattr(config, "api_base_url", None) or "http://pop-os:8000/v1"
 
         # No API key required for local server
         self.client = openai.OpenAI(
             base_url=base_url, api_key="not-needed"  # Local server doesn't require auth
         )
 
-        logger.info(f"Initialized LocalOpenAI client for base_url: {base_url}")
+        logger.info("Initialized LocalOpenAI client for base_url: %s", base_url)
 
-    def generate(self, prompt: str, **kwargs) -> StandardResponse:
+    def generate(self, prompt: str, **kwargs: Any) -> StandardResponse:
         """Generate response using local OpenAI-compatible API.
 
         Args:
@@ -430,9 +418,6 @@ class LocalOpenAIClient(APIClient):
         Returns:
             StandardResponse with generated text and metadata
         """
-        # Apply rate limiting
-        self.rate_limiter.acquire()
-
         start_time = time.time()
 
         try:
@@ -458,7 +443,8 @@ class LocalOpenAIClient(APIClient):
             if not response_text and response.choices[0].finish_reason == "length":
                 response_text = "[RESPONSE_TRUNCATED_DUE_TO_TOKEN_LIMIT]"
                 logger.warning(
-                    f"Response truncated due to token limit (max_tokens={self.max_tokens})"
+                    "Response truncated due to token limit (max_tokens=%s)",
+                    self.max_tokens,
                 )
             elif not response_text:
                 response_text = "[EMPTY_RESPONSE]"
@@ -468,9 +454,9 @@ class LocalOpenAIClient(APIClient):
                 text=response_text,
                 provider=self.provider,
                 model=self.model,
-                prompt_tokens=response.usage.prompt_tokens,
-                completion_tokens=response.usage.completion_tokens,
-                total_tokens=response.usage.total_tokens,
+                prompt_tokens=response.usage.prompt_tokens,  # type: ignore
+                completion_tokens=response.usage.completion_tokens,  # type: ignore
+                total_tokens=response.usage.total_tokens,  # type: ignore
                 generation_time=end_time - start_time,
                 parameters=gen_params,
                 response_id=response.id,
@@ -478,6 +464,8 @@ class LocalOpenAIClient(APIClient):
 
         except Exception as e:
             self.handle_api_error(e)
+            # This line should never be reached due to handle_api_error raising
+            raise
 
     def validate_connection(self) -> bool:
         """Validate local OpenAI API connection."""
@@ -490,7 +478,7 @@ class LocalOpenAIClient(APIClient):
             )
             return response is not None
         except Exception as e:
-            logger.error(f"Local OpenAI validation failed: {e}")
+            logger.error("Local OpenAI validation failed: %s", e)
             raise
 
 

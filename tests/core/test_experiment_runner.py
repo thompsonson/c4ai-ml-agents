@@ -109,7 +109,6 @@ class TestExperimentRunner:
             ),
             approach_name="ChainOfThought",
             execution_time=0.5,
-            cost_estimate=0.001,
             metadata={"reasoning_steps": 2, "confidence": 0.9},
         )
 
@@ -411,64 +410,7 @@ class TestExperimentRunner:
         for thread_id, state in thread_states.items():
             assert state["calls"] >= 1, f"Thread {thread_id} made no calls"
 
-    def test_parallel_cost_tracking_accuracy(self, runner, mock_dataset_loader):
-        """Test cost tracking accuracy in parallel scenarios."""
-        approaches = ["ChainOfThought", "AsPlanning", "ChainOfVerification"]
-
-        # Mock cost per approach
-        approach_costs = {
-            "ChainOfThought": 0.001,
-            "AsPlanning": 0.002,
-            "ChainOfVerification": 0.003,  # Higher cost for multi-step
-        }
-
-        def mock_reasoning_with_cost(*args, **kwargs):
-            approach = args[1] if len(args) > 1 else "unknown"
-            cost = approach_costs.get(approach, 0.001)
-
-            return ReasoningResult(
-                response=StandardResponse(
-                    text=f"Result from {approach}",
-                    provider="test",
-                    model="test",
-                    prompt_tokens=10,
-                    completion_tokens=5,
-                    total_tokens=15,
-                    generation_time=0.01,
-                    parameters={},
-                ),
-                approach_name=approach,
-                execution_time=0.01,
-                cost_estimate=cost,
-                metadata={},
-            )
-
-        with (
-            patch.object(runner.dataset_loader, "load_dataset"),
-            patch.object(
-                runner.dataset_loader,
-                "sample_data",
-                return_value=[{"input": "test", "id": 1}, {"input": "test2", "id": 2}],
-            ),
-            patch.object(
-                runner.reasoning_engine,
-                "run_inference",
-                side_effect=mock_reasoning_with_cost,
-            ),
-            patch(
-                "ml_agents.core.experiment_runner.get_available_approaches",
-                return_value=["None"] + approaches,
-            ),
-        ):
-            result = runner.run_comparison(approaches, sample_count=2, parallel=True)
-
-        # Verify cost tracking accuracy
-        expected_total_cost = sum(approach_costs.values()) * 2  # 2 samples per approach
-        actual_total_cost = sum(result.cost_summary.values())
-
-        assert (
-            abs(actual_total_cost - expected_total_cost) < 0.001
-        ), f"Cost tracking inaccurate: expected {expected_total_cost}, got {actual_total_cost}"
+    # Removed test_parallel_cost_tracking_accuracy - cost tracking has been removed
 
     def test_checkpointing_and_resumption(
         self, runner, mock_dataset_loader, mock_reasoning_inference, temp_dir
@@ -647,9 +589,6 @@ class TestExperimentRunner:
                 ),
                 approach_name=approach,
                 execution_time=0.01,
-                cost_estimate=(
-                    0.001 if approach != "ChainOfVerification" else 0.003
-                ),  # Higher cost for multi-step
                 metadata=metadata,
             )
 
@@ -662,10 +601,9 @@ class TestExperimentRunner:
 
         # Verify multi-step approach was included and completed successfully
         assert "ChainOfVerification" in result.approaches_tested
-        assert (
-            result.cost_summary["ChainOfVerification"]
-            > result.cost_summary["ChainOfThought"]
-        )  # Should cost more
+        # Cost tracking has been removed - all costs are now 0
+        assert result.cost_summary["ChainOfVerification"] == 0.0
+        assert result.cost_summary["ChainOfThought"] == 0.0
 
     def test_experiment_summary_generation(self, runner):
         """Test comprehensive ExperimentSummary generation."""

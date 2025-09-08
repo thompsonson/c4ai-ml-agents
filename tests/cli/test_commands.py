@@ -30,6 +30,7 @@ class TestRunCommand:
         assert "--samples" in result.stdout
         assert "--config" in result.stdout
 
+    @patch("ml_agents.cli.commands.eval.BBEHDatasetLoader")
     @patch("ml_agents.cli.commands.eval.BenchmarkRegistry")
     @patch("ml_agents.cli.commands.eval.ExperimentRunner")
     @patch("ml_agents.cli.commands.eval.check_environment_ready")
@@ -44,6 +45,7 @@ class TestRunCommand:
         mock_check_env,
         mock_experiment_runner,
         mock_benchmark_registry,
+        mock_dataset_loader,
     ):
         """Test run command with basic arguments."""
         # Mock configuration loading
@@ -68,6 +70,19 @@ class TestRunCommand:
             "has_input_output": True,
         }
         mock_benchmark_registry.return_value = mock_registry
+
+        # Mock BBEHDatasetLoader to prevent real dataset loading
+        mock_loader_instance = Mock()
+        mock_loader_instance.load_dataset.return_value = [
+            {"INPUT": "test input 1", "OUTPUT": "test output 1"},
+            {"INPUT": "test input 2", "OUTPUT": "test output 2"},
+        ]
+        mock_loader_instance.get_benchmark_info.return_value = {
+            "benchmark_id": "TEST_BENCHMARK",
+            "num_samples": 100,
+            "has_input_output": True,
+        }
+        mock_dataset_loader.return_value = mock_loader_instance
 
         # Mock the runner and its methods
         mock_runner_instance = Mock()
@@ -142,6 +157,7 @@ class TestRunCommand:
         # Verify environment was checked
         mock_check_env.assert_called_once()
 
+    @patch("ml_agents.cli.commands.eval.BBEHDatasetLoader")
     @patch("ml_agents.cli.commands.eval.BenchmarkRegistry")
     @patch("ml_agents.cli.commands.eval.ExperimentRunner")
     @patch("ml_agents.cli.commands.eval.check_environment_ready")
@@ -156,6 +172,7 @@ class TestRunCommand:
         mock_check_env,
         mock_experiment_runner,
         mock_benchmark_registry,
+        mock_dataset_loader,
     ):
         """Test run command with configuration file."""
         # Mock configuration loading
@@ -181,6 +198,19 @@ class TestRunCommand:
             "has_input_output": True,
         }
         mock_benchmark_registry.return_value = mock_registry
+
+        # Mock BBEHDatasetLoader to prevent real dataset loading
+        mock_loader_instance = Mock()
+        mock_loader_instance.load_dataset.return_value = [
+            {"INPUT": "test input 1", "OUTPUT": "test output 1"},
+            {"INPUT": "test input 2", "OUTPUT": "test output 2"},
+        ]
+        mock_loader_instance.get_benchmark_info.return_value = {
+            "benchmark_id": "BENCHMARK",
+            "num_samples": 100,
+            "has_input_output": True,
+        }
+        mock_dataset_loader.return_value = mock_loader_instance
 
         # Create a temporary config file
         config_data = {
@@ -332,10 +362,11 @@ class TestRunCommand:
 
         assert result.exit_code == 1
 
+    @patch("ml_agents.cli.commands.eval.BBEHDatasetLoader")
     @patch("ml_agents.cli.commands.eval.BenchmarkRegistry")
     @patch("ml_agents.cli.commands.eval.load_and_validate_config")
     def test_run_command_keyboard_interrupt(
-        self, mock_load_config, mock_benchmark_registry
+        self, mock_load_config, mock_benchmark_registry, mock_dataset_loader
     ):
         """Test run command handling of keyboard interrupt."""
         # Mock configuration loading
@@ -360,6 +391,19 @@ class TestRunCommand:
             "has_input_output": True,
         }
         mock_benchmark_registry.return_value = mock_registry
+
+        # Mock BBEHDatasetLoader to prevent real dataset loading
+        mock_loader_instance = Mock()
+        mock_loader_instance.load_dataset.return_value = [
+            {"INPUT": "test input 1", "OUTPUT": "test output 1"},
+            {"INPUT": "test input 2", "OUTPUT": "test output 2"},
+        ]
+        mock_loader_instance.get_benchmark_info.return_value = {
+            "benchmark_id": "BENCHMARK",
+            "num_samples": 100,
+            "has_input_output": True,
+        }
+        mock_dataset_loader.return_value = mock_loader_instance
 
         with patch("ml_agents.cli.commands.eval.ExperimentRunner") as mock_runner:
             mock_runner_instance = Mock()
@@ -840,6 +884,7 @@ class TestConfigurationPrecedence:
         self.runner = CliRunner()
 
     @patch("pathlib.Path.glob")
+    @patch("ml_agents.cli.commands.eval.BBEHDatasetLoader")
     @patch("ml_agents.cli.commands.eval.BenchmarkRegistry")
     @patch("ml_agents.cli.commands.eval.ExperimentRunner")
     @patch("ml_agents.cli.commands.eval.check_environment_ready")
@@ -850,6 +895,7 @@ class TestConfigurationPrecedence:
         mock_check_env,
         mock_experiment_runner,
         mock_benchmark_registry,
+        mock_dataset_loader,
         mock_glob,
     ):
         """Test that CLI arguments override config file values."""
@@ -876,6 +922,19 @@ class TestConfigurationPrecedence:
             "has_input_output": True,
         }
         mock_benchmark_registry.return_value = mock_registry
+
+        # Mock BBEHDatasetLoader to prevent real dataset loading
+        mock_loader_instance = Mock()
+        mock_loader_instance.load_dataset.return_value = [
+            {"INPUT": "test input 1", "OUTPUT": "test output 1"},
+            {"INPUT": "test input 2", "OUTPUT": "test output 2"},
+        ]
+        mock_loader_instance.get_benchmark_info.return_value = {
+            "benchmark_id": "BENCHMARK",
+            "num_samples": 100,
+            "has_input_output": True,
+        }
+        mock_dataset_loader.return_value = mock_loader_instance
 
         config_data = {
             "sample_count": 100,

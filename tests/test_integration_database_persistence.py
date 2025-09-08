@@ -138,7 +138,6 @@ class TestDatabasePersistenceIntegration:
                     response=response,
                     approach_name=approach,
                     execution_time=1.5 + (int(sample_id) * 0.1),
-                    cost_estimate=0.001 * (int(sample_id) + 1),
                     metadata={"reasoning_steps": int(sample_id) + 1},
                 )
 
@@ -311,7 +310,6 @@ class TestDatabasePersistenceIntegration:
                     response=response,
                     approach_name=approach,
                     execution_time=1.5,
-                    cost_estimate=0.001,
                     metadata={"reasoning_steps": 1},
                 )
 
@@ -463,7 +461,6 @@ class TestDatabasePersistenceIntegration:
                     response=response,
                     approach_name=approach,
                     execution_time=1.0 if approach == "None" else 2.0,
-                    cost_estimate=0.001 if approach == "None" else 0.002,
                     metadata={"reasoning_steps": 1},
                 )
 
@@ -498,7 +495,6 @@ class TestDatabasePersistenceIntegration:
 
         # Verify different performance metrics
         assert none_comp.avg_execution_time_ms != cot_comp.avg_execution_time_ms
-        assert none_comp.total_cost != cot_comp.total_cost
 
         # Test accuracy report
         accuracy_report = processor.generate_accuracy_report(runner.experiment_id)
@@ -556,7 +552,6 @@ class TestDatabasePersistenceIntegration:
                     response=response,
                     approach_name=approach,
                     execution_time=1.5,
-                    cost_estimate=0.001,
                     metadata={"reasoning_steps": 1},
                 )
 

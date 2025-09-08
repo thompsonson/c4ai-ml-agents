@@ -10,6 +10,7 @@ from pathlib import Path
 from ml_agents.reasoning.base import BaseReasoning
 from ml_agents.utils.api_clients import StandardResponse
 from ml_agents.utils.logging_config import get_logger
+from ml_agents.utils.output_parser import OutputParser
 from ml_agents.utils.reasoning_extraction import create_reasoning_prompt_suffix
 
 logger = get_logger(__name__)
@@ -113,8 +114,6 @@ class NoneReasoning(BaseReasoning):
 
             # For fallback, try to extract answer using the old output parser method
             try:
-                from ml_agents.utils.output_parser import OutputParser
-
                 fallback_parser = OutputParser(
                     client=self.client,
                     use_structured_parsing=False,  # Use regex fallback only

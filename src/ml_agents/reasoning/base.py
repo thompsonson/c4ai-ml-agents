@@ -96,50 +96,6 @@ class BaseReasoning(ABC):
         logger.debug(f"Enhanced metadata for {self.approach_name}: {reasoning_data}")
         return response
 
-    def _count_reasoning_steps(self, text: str) -> int:
-        """Count the number of reasoning steps in the response text.
-
-        This is a helper method that can be overridden by specific approaches
-        to provide more accurate step counting based on their output format.
-
-        Args:
-            text: The response text to analyze
-
-        Returns:
-            Number of reasoning steps identified
-        """
-        # Default implementation looks for common step indicators
-        step_indicators = [
-            "Step ",
-            "step ",
-            "First,",
-            "Second,",
-            "Third,",
-            "Fourth,",
-            "Fifth,",
-            "1.",
-            "2.",
-            "3.",
-            "4.",
-            "5.",
-            "6.",
-            "7.",
-            "8.",
-            "9.",
-            "10.",
-            "Therefore,",
-            "Thus,",
-            "Hence,",
-            "Finally,",
-        ]
-
-        step_count = 0
-        for indicator in step_indicators:
-            step_count += text.count(indicator)
-
-        # Return at least 1 if we found any indicators, otherwise 0
-        return max(1, step_count) if step_count > 0 else 0
-
     def _execute_with_structured_extraction(
         self, enhanced_prompt: str, original_prompt: str = ""
     ) -> StandardResponse:
@@ -203,7 +159,6 @@ class BaseReasoning(ABC):
                     "extraction_method": extraction.extraction_method,
                     "instructor_mode": self.instructor_manager.get_primary_mode(),
                     "original_prompt": original_prompt,
-                    **self._get_reasoning_specific_metadata(extraction),
                 },
             )
 
@@ -219,48 +174,3 @@ class BaseReasoning(ABC):
             # Fallback to original API client generation
             logger.info(f"Falling back to original {self.approach_name} implementation")
             raise e  # Re-raise to let specific reasoning classes handle fallback
-
-    def _get_reasoning_specific_metadata(self, extraction) -> Dict[str, Any]:
-        """Extract reasoning-approach-specific metadata from extraction model.
-
-        Args:
-            extraction: The reasoning extraction model instance
-
-        Returns:
-            Dictionary of approach-specific metadata
-        """
-        metadata = {}
-
-        # Extract common reasoning-specific fields
-        if hasattr(extraction, "step_count"):
-            metadata["reasoning_steps"] = extraction.step_count
-        if hasattr(extraction, "contains_numbered_steps"):
-            metadata["contains_numbered_steps"] = extraction.contains_numbered_steps
-        if hasattr(extraction, "branches_explored"):
-            metadata["branches_explored"] = extraction.branches_explored
-        if hasattr(extraction, "selected_branch"):
-            metadata["selected_branch"] = extraction.selected_branch
-        if hasattr(extraction, "contains_code"):
-            metadata["contains_code"] = extraction.contains_code
-        if hasattr(extraction, "code_blocks"):
-            metadata["code_blocks"] = extraction.code_blocks
-        if hasattr(extraction, "reflection_iterations"):
-            metadata["reflection_iterations"] = extraction.reflection_iterations
-        if hasattr(extraction, "self_corrections"):
-            metadata["self_corrections"] = extraction.self_corrections
-        if hasattr(extraction, "verification_steps"):
-            metadata["verification_steps"] = extraction.verification_steps
-        if hasattr(extraction, "verification_results"):
-            metadata["verification_results"] = extraction.verification_results
-
-        return metadata
-
-    def cleanup(self) -> None:
-        """Clean up any resources used by the reasoning approach.
-
-        This method should be called when the reasoning approach is no longer
-        needed to free up any resources (especially for GPU-based models).
-        """
-        if hasattr(self.client, "cleanup"):
-            self.client.cleanup()
-            logger.info(f"Cleaned up resources for {self.approach_name}")

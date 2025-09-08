@@ -30,14 +30,12 @@ class ReasoningResult:
         response: The standardized response from the reasoning approach
         approach_name: Name of the reasoning approach used
         execution_time: Time taken for the reasoning operation (seconds)
-        cost_estimate: Estimated cost for the API calls
         metadata: Additional metadata from the reasoning process
     """
 
     response: StandardResponse
     approach_name: str
     execution_time: float
-    cost_estimate: float
     metadata: Dict[str, Any]
 
 
@@ -54,7 +52,7 @@ class ReasoningInference:
     - Batch processing and comparison operations
 
     The engine integrates with the existing API client infrastructure and
-    leverages Phase 2 components for rate limiting and response standardization.
+    response standardization.
     """
 
     def __init__(self, config: ExperimentConfig) -> None:
@@ -104,9 +102,6 @@ class ReasoningInference:
 
         logger.info(f"Running inference with {approach_name} approach")
 
-        # Check cost control limits before execution
-        self._check_cost_limits()
-
         # Get or create reasoning approach instance
         reasoning_approach = self._get_or_create_approach(approach_name)
 
@@ -119,15 +114,11 @@ class ReasoningInference:
 
             execution_time = time.time() - start_time
 
-            # Calculate cost estimate
-            cost_estimate = self._estimate_cost(response)
-
             # Create reasoning result
             result = ReasoningResult(
                 response=response,
                 approach_name=approach_name,
                 execution_time=execution_time,
-                cost_estimate=cost_estimate,
                 metadata={
                     "prompt_length": len(prompt),
                     "response_length": len(response.text),
@@ -140,12 +131,8 @@ class ReasoningInference:
             # Update tracking
             self._update_tracking(result)
 
-            # Update cost control tracking
-            self._update_cost_tracking(response)
-
             logger.info(
-                f"Completed {approach_name} inference - "
-                f"time: {execution_time:.2f}s, cost: ${cost_estimate:.4f}"
+                f"Completed {approach_name} inference - " f"time: {execution_time:.2f}s"
             )
 
             return result
@@ -172,7 +159,6 @@ class ReasoningInference:
                 response=error_response,
                 approach_name=approach_name,
                 execution_time=execution_time,
-                cost_estimate=0.0,
                 metadata={
                     "error": str(e),
                     "timestamp": datetime.now().isoformat(),
@@ -281,8 +267,6 @@ class ReasoningInference:
             if approach not in approach_costs:
                 approach_costs[approach] = 0.0
                 approach_counts[approach] = 0
-
-            approach_costs[approach] += result.cost_estimate
             approach_counts[approach] += 1
 
         return {
@@ -331,22 +315,6 @@ class ReasoningInference:
 
         return performance_stats
 
-    def cleanup(self) -> None:
-        """Clean up resources used by reasoning approaches.
-
-        This method should be called when the inference engine is no longer
-        needed to free up any resources (especially for GPU-based models).
-        """
-        logger.info("Cleaning up ReasoningInference resources")
-
-        for approach in self.approach_cache.values():
-            try:
-                approach.cleanup()
-            except Exception as e:
-                logger.error(f"Error cleaning up approach: {e}")
-
-        self.approach_cache.clear()
-
     def _get_or_create_approach(self, approach_name: str) -> BaseReasoning:
         """Get or create a reasoning approach instance.
 
@@ -363,31 +331,6 @@ class ReasoningInference:
 
         return self.approach_cache[approach_name]
 
-    def _estimate_cost(self, response: StandardResponse) -> float:
-        """Estimate the cost of an API call based on token usage.
-
-        This is a simplified cost estimation. Real implementation would
-        need actual pricing data for each provider and model.
-
-        Args:
-            response: The standard response from API call
-
-        Returns:
-            Estimated cost in USD
-        """
-        # Simplified cost estimation (placeholder values)
-        cost_per_1k_tokens = {
-            "anthropic": 0.008,  # Example rate
-            "cohere": 0.002,  # Example rate
-            "openrouter": 0.0002,  # Example rate for free models
-        }
-
-        provider = response.provider.lower()
-        rate = cost_per_1k_tokens.get(provider, 0.001)  # Default rate
-
-        cost = (response.total_tokens / 1000) * rate
-        return round(cost, 6)
-
     def _update_tracking(self, result: ReasoningResult) -> None:
         """Update internal tracking metrics.
 
@@ -395,80 +338,4 @@ class ReasoningInference:
             result: The reasoning result to track
         """
         self.execution_history.append(result)
-        self.total_cost += result.cost_estimate
         self.total_requests += 1
-
-    def _check_cost_limits(self) -> None:
-        """Check if cost limits are approaching and issue warnings."""
-        # Check reasoning calls limit
-        if self.reasoning_calls_count >= self.config.max_reasoning_calls:
-            logger.warning(
-                f"Maximum reasoning calls limit ({self.config.max_reasoning_calls}) reached. "
-                f"Consider increasing max_reasoning_calls in configuration."
-            )
-
-        # Issue cost warnings at certain thresholds
-        if not self.cost_warnings_issued and self.total_cost > 1.0:  # $1 threshold
-            logger.warning(
-                f"Cost threshold reached: ${self.total_cost:.2f}. "
-                f"Monitor usage to control costs."
-            )
-            self.cost_warnings_issued = True
-
-        # Additional warning at higher threshold
-        if self.total_cost > 5.0:  # $5 threshold
-            logger.warning(
-                f"High cost usage detected: ${self.total_cost:.2f}. "
-                f"Consider reviewing configuration or usage patterns."
-            )
-
-    def _update_cost_tracking(self, response: StandardResponse) -> None:
-        """Update cost tracking metrics.
-
-        Args:
-            response: The standard response from reasoning execution
-        """
-        # Count reasoning calls (multi-step approaches count as multiple calls)
-        multi_step_calls = 1
-
-        # Check if this was a multi-step approach
-        if (
-            hasattr(response, "metadata")
-            and response.metadata
-            and response.metadata.get("approach_specific_metrics", {}).get(
-                "multi_step_mode"
-            )
-        ):
-            multi_step_calls = response.metadata["approach_specific_metrics"].get(
-                "total_api_calls", 1
-            )
-
-        self.reasoning_calls_count += multi_step_calls
-
-        logger.debug(
-            f"Cost tracking update - calls: +{multi_step_calls}, "
-            f"total_calls: {self.reasoning_calls_count}, "
-            f"total_cost: ${self.total_cost:.4f}"
-        )
-
-    def get_cost_control_status(self) -> Dict[str, Any]:
-        """Get current cost control status and limits.
-
-        Returns:
-            Dictionary with cost control status information
-        """
-        return {
-            "reasoning_calls_used": self.reasoning_calls_count,
-            "max_reasoning_calls": self.config.max_reasoning_calls,
-            "calls_remaining": max(
-                0, self.config.max_reasoning_calls - self.reasoning_calls_count
-            ),
-            "total_cost": self.total_cost,
-            "cost_warnings_issued": self.cost_warnings_issued,
-            "multi_step_settings": {
-                "multi_step_reflection_enabled": self.config.multi_step_reflection,
-                "multi_step_verification_enabled": self.config.multi_step_verification,
-                "max_reflection_iterations": self.config.max_reflection_iterations,
-                "reflection_threshold": self.config.reflection_threshold,
-            },
-        }

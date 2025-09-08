@@ -56,7 +56,7 @@ class TestReasoningInference:
         engine = ReasoningInference(config)
 
         assert engine.config == config
-        assert engine.total_cost == 0.0
+        # total_cost removed from ReasoningInference
         assert engine.total_requests == 0
         assert engine.approach_cache == {}
         assert engine.execution_history == []
@@ -79,7 +79,7 @@ class TestReasoningInference:
         assert result.approach_name == "Mock"
         assert result.response.text == "Mock response"
         assert result.execution_time > 0
-        assert result.cost_estimate >= 0
+        # cost_estimate removed from ReasoningResult
 
         # Verify metadata
         assert result.metadata["prompt_length"] == len(test_prompt)
@@ -141,7 +141,7 @@ class TestReasoningInference:
             "Error occurred during FailingApproach reasoning"
             in error_result.response.text
         )
-        assert error_result.cost_estimate == 0.0
+        # cost_estimate removed from ReasoningResult
 
     @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_run_comparison(self, mock_create_approach, inference_engine):
@@ -225,25 +225,6 @@ class TestReasoningInference:
         assert progress_calls[2] == (3, 3, "Mock")
 
     @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
-    def test_cost_tracking(self, mock_create_approach, inference_engine):
-        """Test cost tracking functionality."""
-        mock_approach = MockReasoningApproach(inference_engine.config)
-        mock_create_approach.return_value = mock_approach
-
-        # Run multiple inferences
-        for i in range(3):
-            inference_engine.run_inference(f"Prompt {i}", "Mock")
-
-        # Check cost summary
-        cost_summary = inference_engine.get_cost_summary()
-
-        assert cost_summary["total_requests"] == 3
-        assert cost_summary["total_cost"] > 0
-        assert "Mock" in cost_summary["approach_costs"]
-        assert cost_summary["approach_counts"]["Mock"] == 3
-        assert cost_summary["execution_count"] == 3
-
-    @patch("ml_agents.core.reasoning_inference.create_reasoning_approach")
     def test_performance_tracking(self, mock_create_approach, inference_engine):
         """Test performance tracking functionality."""
         mock_approach = MockReasoningApproach(inference_engine.config)
@@ -269,73 +250,13 @@ class TestReasoningInference:
         assert "message" in perf_summary
         assert "No execution history available" in perf_summary["message"]
 
-    def test_estimate_cost(self, inference_engine):
-        """Test cost estimation logic."""
-        response = StandardResponse(
-            text="Test",
-            provider="anthropic",
-            model="test",
-            prompt_tokens=1000,
-            completion_tokens=500,
-            total_tokens=1500,
-            generation_time=1.0,
-            parameters={},
-            response_id="test",
-            metadata={},
-        )
+    # Removed test_estimate_cost - cost estimation has been removed
 
-        cost = inference_engine._estimate_cost(response)
+    # Removed test_estimate_cost_free_provider - cost estimation has been removed
 
-        # Should be > 0 for anthropic (based on token count)
-        assert cost > 0
-        assert isinstance(cost, float)
+    # Removed test_cleanup - cleanup method has been removed
 
-    def test_estimate_cost_free_provider(self, inference_engine):
-        """Test cost estimation for free providers."""
-        response = StandardResponse(
-            text="Test",
-            provider="openrouter",
-            model="test",
-            prompt_tokens=1000,
-            completion_tokens=500,
-            total_tokens=1500,
-            generation_time=1.0,
-            parameters={},
-            response_id="test",
-            metadata={},
-        )
-
-        cost = inference_engine._estimate_cost(response)
-        assert cost > 0  # OpenRouter should have cost
-
-    def test_cleanup(self, inference_engine):
-        """Test cleanup functionality."""
-        # Add some mock approaches to cache
-        mock_approach1 = Mock()
-        mock_approach2 = Mock()
-        inference_engine.approach_cache["Approach1"] = mock_approach1
-        inference_engine.approach_cache["Approach2"] = mock_approach2
-
-        inference_engine.cleanup()
-
-        # Verify cleanup was called on all approaches
-        mock_approach1.cleanup.assert_called_once()
-        mock_approach2.cleanup.assert_called_once()
-
-        # Verify cache was cleared
-        assert len(inference_engine.approach_cache) == 0
-
-    def test_cleanup_with_error(self, inference_engine):
-        """Test cleanup handling errors gracefully."""
-        mock_approach = Mock()
-        mock_approach.cleanup.side_effect = RuntimeError("Cleanup failed")
-        inference_engine.approach_cache["FailingApproach"] = mock_approach
-
-        # Should not raise error
-        inference_engine.cleanup()
-
-        # Cache should still be cleared
-        assert len(inference_engine.approach_cache) == 0
+    # Removed test_cleanup_with_error - cleanup method has been removed
 
     def test_reasoning_result_dataclass(self):
         """Test ReasoningResult dataclass."""
@@ -345,12 +266,11 @@ class TestReasoningInference:
             response=response,
             approach_name="Test",
             execution_time=2.5,
-            cost_estimate=0.05,
             metadata={"key": "value"},
         )
 
         assert result.response == response
         assert result.approach_name == "Test"
         assert result.execution_time == 2.5
-        assert result.cost_estimate == 0.05
+        # cost_estimate removed from ReasoningResult
         assert result.metadata["key"] == "value"
