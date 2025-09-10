@@ -96,6 +96,44 @@ get_status() {
     esac
 }
 
+# Function to get start time for a benchmark
+get_benchmark_start_time() {
+    local benchmark="$1"
+    grep "^$benchmark:RUNNING:" "$LOG_DIR/status.txt" 2>/dev/null | tail -1 | cut -d: -f4
+}
+
+# Function to calculate and format elapsed time
+get_elapsed_time() {
+    local start_timestamp="$1"
+    if [[ -z "$start_timestamp" ]]; then
+        echo ""
+        return
+    fi
+
+    local current_timestamp=$(date "+%s")
+    local start_seconds=$(date -j -f "%Y%m%d_%H%M%S" "$start_timestamp" "+%s" 2>/dev/null)
+
+    if [[ -n "$start_seconds" ]]; then
+        local elapsed=$((current_timestamp - start_seconds))
+        local hours=$((elapsed / 3600))
+        local minutes=$(((elapsed % 3600) / 60))
+        local seconds=$((elapsed % 60))
+
+        if [[ $hours -gt 0 ]]; then
+            printf "%dh%02dm" "$hours" "$minutes"
+        elif [[ $minutes -gt 0 ]]; then
+            printf "%dm%02ds" "$minutes" "$seconds"
+        else
+            printf "%ds" "$seconds"
+        fi
+    fi
+}
+
+# Function to get overall run start time
+get_run_start_time() {
+    grep ":QUEUED:" "$LOG_DIR/status.txt" 2>/dev/null | head -1 | cut -d: -f4
+}
+
 # Function to get sample progress from log file
 get_sample_progress() {
     local benchmark="$1"
@@ -162,30 +200,18 @@ show_dashboard() {
         # Position cursor at top instead of clearing (prevents flicker)
         tput cup 0 0
 
-        echo "🚀 Benchmark Status Dashboard - $(date '+%H:%M:%S')"
-        local samples_text=""
-        if [[ -n "$SAMPLES" ]]; then
-            samples_text=" | 🎯 Samples: $SAMPLES"
-        else
-            samples_text=" | 🎯 Samples: ${SAMPLES:-Default}"
+        # Compact header - single line with all info
+        local run_start=$(get_run_start_time)
+        local runtime_info=""
+        if [[ -n "$run_start" ]]; then
+            local total_runtime=$(get_elapsed_time "$run_start")
+            runtime_info=" | ⏱️ ${total_runtime}"
         fi
-        echo "📊 Model: $MODEL | 🔧 Provider: $PROVIDER | ⚙️ Approach: $APPROACH$samples_text"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+        # Calculate summary for header
         local success=0 failed=0 running=0 queued=0
-
         for benchmark in "${BENCHMARKS[@]}"; do
             local status_icon=$(get_status "$benchmark")
-            local benchmark_short=$(echo "$benchmark" | sed 's/BENCHMARK-//' | sed 's/.csv$//')
-            local progress=$(get_sample_progress "$benchmark")
-
-            # Format with progress if available
-            if [[ -n "$progress" ]]; then
-                printf "%-30s (%s) %s                    \n" "$benchmark_short" "$progress" "$status_icon"
-            else
-                printf "%-30s %s                              \n" "$benchmark_short" "$status_icon"
-            fi
-
             case "$status_icon" in
                 "✅") ((success++)) ;;
                 "❌") ((failed++)) ;;
@@ -194,11 +220,71 @@ show_dashboard() {
             esac
         done
 
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        # Fixed width formatting for summary to prevent jumping
-        printf "📈 Summary: ✅ %2d Success | ❌ %2d Failed | 🔄 %2d Running | ⏳ %2d Queued        \n" "$success" "$failed" "$running" "$queued"
-        printf "📄 Logs: %s                                    \n" "$LOG_DIR"
-        printf "🔍 Press Ctrl+C to stop monitor                                               \n"
+        # Calculate average running time for header
+        local avg_runtime=""
+        if [[ $running -gt 0 ]]; then
+            local total_seconds=0
+            local count=0
+            for benchmark in "${BENCHMARKS[@]}"; do
+                if [[ "$(get_status "$benchmark")" == "🔄" ]]; then
+                    local start_time=$(get_benchmark_start_time "$benchmark")
+                    if [[ -n "$start_time" ]]; then
+                        local start_seconds=$(date -j -f "%Y%m%d_%H%M%S" "$start_time" "+%s" 2>/dev/null)
+                        if [[ -n "$start_seconds" ]]; then
+                            local elapsed=$(($(date "+%s") - start_seconds))
+                            total_seconds=$((total_seconds + elapsed))
+                            count=$((count + 1))
+                        fi
+                    fi
+                fi
+            done
+            if [[ $count -gt 0 ]]; then
+                local avg_seconds=$((total_seconds / count))
+                local avg_hours=$((avg_seconds / 3600))
+                local avg_minutes=$(((avg_seconds % 3600) / 60))
+                local avg_secs=$((avg_seconds % 60))
+
+                if [[ $avg_hours -gt 0 ]]; then
+                    avg_runtime=" [avg: ${avg_hours}h${avg_minutes}m]"
+                elif [[ $avg_minutes -gt 59 ]]; then
+                    avg_runtime=" [avg: ${avg_hours}h${avg_minutes}m]"
+                elif [[ $avg_minutes -gt 0 ]]; then
+                    avg_runtime=" [avg: ${avg_minutes}m${avg_secs}s]"
+                else
+                    avg_runtime=" [avg: ${avg_secs}s]"
+                fi
+            fi
+        fi
+
+        echo "🚀 $(date '+%H:%M:%S') | $MODEL | $APPROACH | 🎯 ${SAMPLES:-Def}$runtime_info | ⏳ $queued ✅ $success ❌ $failed 🔄 $running$avg_runtime"
+        echo "────────────────────────────────────────────────────────────────"
+
+        for benchmark in "${BENCHMARKS[@]}"; do
+            local status_icon=$(get_status "$benchmark")
+            local benchmark_short=$(echo "$benchmark" | sed 's/BENCHMARK-//' | sed 's/.csv$//')
+            local progress=$(get_sample_progress "$benchmark")
+
+            # Add timing for running benchmarks
+            if [[ "$status_icon" == "🔄" ]]; then
+                local start_time=$(get_benchmark_start_time "$benchmark")
+                local runtime=$(get_elapsed_time "$start_time")
+
+                if [[ -n "$progress" ]]; then
+                    printf "%-25s (%s) [%s] %s                \n" "$benchmark_short" "$progress" "$runtime" "$status_icon"
+                else
+                    printf "%-25s [%s] %s                        \n" "$benchmark_short" "$runtime" "$status_icon"
+                fi
+            else
+                # Format completed/failed/queued benchmarks without timing
+                if [[ -n "$progress" ]]; then
+                    printf "%-25s (%s) %s                        \n" "$benchmark_short" "$progress" "$status_icon"
+                else
+                    printf "%-25s %s                                \n" "$benchmark_short" "$status_icon"
+                fi
+            fi
+        done
+
+        printf "🔍 Ctrl+C to exit | 📄 %s                                               \n" "$(basename "$LOG_DIR")"
 
         # Exit if all benchmarks are done
         if [[ $((success + failed)) -eq ${#BENCHMARKS[@]} ]]; then
