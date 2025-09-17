@@ -4,6 +4,7 @@ This module provides the ExperimentRunner class that orchestrates complete
 experiments across different reasoning approaches, datasets, and models.
 """
 
+import asyncio
 import csv
 import json
 import sqlite3
@@ -462,6 +463,172 @@ class ExperimentRunner:
         except Exception as e:
             logger.error(f"Comparison experiment failed: {e}")
             raise RuntimeError(f"Comparison execution failed: {e}")
+
+    async def run_reasoning_concurrent(
+        self,
+        prompts: List[str],
+        reasoning_approach: str,
+        concurrency_limit: int = 10,
+        expected_answers: Optional[List[str]] = None,
+        progress_callback: Optional[Callable[[str], None]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Process prompts with concurrent structured extraction.
+
+        This method provides concurrent processing of prompts using the async
+        capabilities of reasoning approaches and InstructorClientManager.
+
+        Args:
+            prompts: List of input prompts to process
+            reasoning_approach: Name of the reasoning approach to use
+            concurrency_limit: Maximum number of concurrent operations
+            progress_callback: Optional callback function for progress updates
+
+        Returns:
+            List of result dictionaries with reasoning results
+
+        Raises:
+            ValueError: If reasoning approach is not available
+            RuntimeError: If concurrent processing fails
+        """
+        if reasoning_approach not in get_available_approaches():
+            raise ValueError(f"Unknown reasoning approach: {reasoning_approach}")
+
+        logger.info(
+            f"Starting concurrent {reasoning_approach} processing of {len(prompts)} prompts "
+            f"with concurrency limit {concurrency_limit}"
+        )
+
+        logger.info(
+            f"🚀 Starting concurrent processing: {len(prompts)} prompts, approach={reasoning_approach}, concurrency_limit={concurrency_limit}"
+        )
+
+        if progress_callback:
+            progress_callback(
+                f"Initializing {reasoning_approach} for concurrent processing (limit: {concurrency_limit})..."
+            )
+
+        try:
+            # Initialize reasoning approach
+            reasoning_engine = self.reasoning_engine._get_or_create_approach(
+                reasoning_approach
+            )
+
+            # Log detailed information about the reasoning engine and configuration
+            logger.info(
+                f"📄 Concurrent processing details: approach={reasoning_approach}, engine_provider={reasoning_engine.config.provider}, engine_model={reasoning_engine.config.model}"
+            )
+
+            if progress_callback:
+                progress_callback(
+                    f"Processing {len(prompts)} prompts concurrently (provider: {reasoning_engine.config.provider})..."
+                )
+
+            start_time = time.time()
+
+            # Execute concurrent reasoning with explicit concurrency_limit parameter
+            logger.info(
+                f"🚀 About to call execute_concurrent with {len(prompts)} prompts and concurrency_limit={concurrency_limit}"
+            )
+            responses = await reasoning_engine.execute_concurrent(
+                prompts, concurrency_limit=concurrency_limit
+            )
+
+            end_time = time.time()
+            total_time = end_time - start_time
+
+            logger.info(
+                f"📈 Concurrent processing completed in {total_time:.2f}s, got {len(responses)} responses"
+            )
+
+            # Convert responses to result format
+            results = []
+            successful_count = 0
+            correct_count = 0
+
+            for i, response in enumerate(responses):
+                extracted_answer = ""
+                expected_answer = (
+                    expected_answers[i]
+                    if expected_answers and i < len(expected_answers)
+                    else ""
+                )
+                is_correct = False
+
+                if (
+                    response is not None
+                    and hasattr(response, "extracted_answer")
+                    and response.extracted_answer is not None
+                ):
+                    successful_count += 1
+                    extracted_answer = str(response.extracted_answer).strip()
+
+                    # Calculate correctness if we have expected answer
+                    if expected_answer:
+                        is_correct = self._calculate_correctness(
+                            extracted_answer, expected_answer
+                        )
+                        if is_correct:
+                            correct_count += 1
+
+                        # Debug logging to show comparisons
+                        logger.info(
+                            f"Sample {i}: Expected='{expected_answer}', Extracted='{extracted_answer}', Correct={is_correct}"
+                        )
+
+                result_data = {
+                    "sample_id": i,
+                    "input": prompts[i],
+                    "expected_answer": expected_answer,
+                    "extracted_answer": extracted_answer,
+                    "is_correct": is_correct,
+                    "approach": reasoning_approach,
+                    "response": response.to_dict() if response else {},
+                    "timestamp": datetime.now().isoformat(),
+                    "concurrent_execution": True,
+                }
+                results.append(result_data)
+
+            # Update the completion message to include correctness
+            accuracy = correct_count / len(prompts) if prompts else 0.0
+            logger.info(
+                f"Concurrent {reasoning_approach} processing completed: "
+                f"{successful_count}/{len(prompts)} successful, "
+                f"{correct_count}/{len(prompts)} correct (accuracy: {accuracy:.2%}), "
+                f"total time: {total_time:.2f}s, "
+                f"avg time per prompt: {total_time / len(prompts):.2f}s"
+            )
+
+            if progress_callback:
+                progress_callback(
+                    f"Completed: {successful_count}/{len(prompts)} successful in {total_time:.2f}s"
+                )
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Concurrent {reasoning_approach} processing failed: {e}")
+            raise RuntimeError(f"Concurrent processing execution failed: {e}")
+
+    def _calculate_correctness(
+        self, extracted_answer: str, expected_answer: str
+    ) -> bool:
+        """Calculate if the extracted answer is correct.
+
+        Args:
+            extracted_answer: The answer extracted from model output
+            expected_answer: The expected/ground truth answer
+
+        Returns:
+            True if answers match (case-insensitive, stripped)
+        """
+        if not extracted_answer or not expected_answer:
+            return False
+
+        # Normalize both answers for comparison
+        extracted = str(extracted_answer).strip().lower()
+        expected = str(expected_answer).strip().lower()
+
+        return extracted == expected
 
     def _run_parallel_comparison(
         self,

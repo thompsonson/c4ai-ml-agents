@@ -13,7 +13,6 @@ from typing import Any, Dict, List, Optional, Union
 from ml_agents.config import ExperimentConfig
 from ml_agents.reasoning import create_reasoning_approach, get_available_approaches
 from ml_agents.reasoning.base import BaseReasoning
-from ml_agents.utils.api_clients import StandardResponse
 from ml_agents.utils.logging_config import get_logger, log_experiment_start
 
 logger = get_logger(__name__)
@@ -33,7 +32,7 @@ class ReasoningResult:
         metadata: Additional metadata from the reasoning process
     """
 
-    response: StandardResponse
+    response: Any
     approach_name: str
     execution_time: float
     metadata: Dict[str, Any]

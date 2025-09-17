@@ -150,24 +150,34 @@ class TreeOfThoughtReasoning(BaseReasoning):
             try:
                 from ml_agents.utils.output_parser import OutputParser
 
-                pass
-            except Exception as e:
-                logger.error(f"ToT reasoning failed: {e}")
-                raise e
+                fallback_parser = OutputParser(
+                    client=self.client,
+                    use_structured_parsing=False,
+                )
+                parsing_result = fallback_parser.extract_answer(
+                    response.text, answer_type="reasoning_chain"
+                )
+                enhanced_getattr(extraction, 'answer_value', 'N/A') = parsing_result[
+                    "extraction"
+                ].final_answer
+                enhanced_response.parsing_metadata = parsing_result["metadata"]
+            except Exception as parse_error:
+                logger.warning(f"Fallback answer extraction also failed: {parse_error}")
+                # Use last sentence as answer
+                lines = [
+                    line.strip() for line in response.text.split("\n") if line.strip()
+                ]
+                enhanced_getattr(extraction, 'answer_value', 'N/A') = (
+                    lines[-1] if lines else response.text[:100]
+                )
 
-    def _prepare_enhanced_prompt(self, prompt: str, **kwargs: Any) -> str:
-        """Prepare enhanced prompt for Tree-of-Thought reasoning approach.
-
-        Args:
-            prompt: The original input prompt
-            **kwargs: Additional arguments (ignored for ToT approach)
-
-        Returns:
-            Enhanced prompt with Tree-of-Thought-specific instructions
-        """
-        # Apply ToT prompt template with reasoning instructions
-        reasoning_suffix = create_reasoning_prompt_suffix("treeofthought")
-        return self.tot_prompt.format(question=prompt) + reasoning_suffix
+            logger.info(
+                f"Completed Tree-of-Thought reasoning with fallback - "
+                f"branches: {branch_analysis['reasoning_branches']}, "
+                f"depth: {branch_analysis['branch_depth']}, "
+                f"tokens: {response.total_tokens}"
+            )
+            return enhanced_response
 
     def _analyze_branches(self, text: str) -> dict:
         """Analyze the branching characteristics of the response.

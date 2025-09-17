@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 
 from ..core.database_manager import DatabaseConfig, DatabaseManager
-from ..reasoning.base import StandardResponse
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +114,7 @@ class ResultsProcessor:
 
         return extracted == expected
 
-    def save_run_result(self, result: StandardResponse) -> None:
+    def save_run_result(self, result: Any) -> None:
         """Save a single run result to database.
 
         Args:

@@ -39,6 +39,18 @@ class ReasoningExtraction(BaseModel):
         default="instructor", description="Method used for extraction"
     )
 
+    @property
+    def extracted_answer(self) -> str:
+        """Compatibility property mapping to answer_value for legacy code."""
+        return self.answer_value
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary with compatibility fields."""
+        data = self.model_dump()
+        # Add compatibility field for legacy code
+        data["extracted_answer"] = self.answer_value
+        return data
+
     @field_validator("answer_value")
     @classmethod
     def clean_answer_value(cls, v: str) -> str:

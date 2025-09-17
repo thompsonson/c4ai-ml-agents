@@ -81,9 +81,7 @@ class ReasoningAsPlanningReasoning(BaseReasoning):
 
         try:
             # Use the base class structured extraction method
-            extraction = self._execute_with_structured_extraction(
-                enhanced_prompt, prompt
-            )
+            extraction = self._execute_with_structured_extraction(enhanced_prompt, prompt)
 
             # Add Reasoning-as-Planning-specific analysis to metadata
 
@@ -128,9 +126,24 @@ class ReasoningAsPlanningReasoning(BaseReasoning):
                     use_structured_parsing=False,
                 )
                 parsing_result = fallback_parser.extract_answer(response.text)
-            except Exception as e:
-                logger.error(f"RAP reasoning failed: {e}")
-                raise e
+                enhanced_getattr(extraction, 'answer_value', 'N/A') = parsing_result[
+                    "extraction"
+                ].final_answer
+                enhanced_response.parsing_metadata = parsing_result["metadata"]
+            except Exception as parse_error:
+                logger.warning(f"Fallback answer extraction also failed: {parse_error}")
+                # Use last sentence as answer
+                lines = [
+                    line.strip() for line in response.text.split("\n") if line.strip()
+                ]
+                enhanced_getattr(extraction, 'answer_value', 'N/A') = (
+                    lines[-1] if lines else response.text[:100]
+                )
+
+            logger.info(
+                f"Completed Reasoning-as-Planning reasoning with fallback - tokens: {response.total_tokens}"
+            )
+            return enhanced_response
 
     def _count_planning_stages(self, text: str) -> int:
         """Count planning stages in the response.

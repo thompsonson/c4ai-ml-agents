@@ -1,5 +1,6 @@
 """Evaluation and experiment execution commands."""
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Optional
@@ -54,6 +55,111 @@ def display_pre_alpha_warning() -> None:
     console.print("[dim]Use --skip-warnings to suppress this message.[/dim]\n")
 
 
+async def _run_concurrent_experiment(
+    runner: ExperimentRunner,
+    approach: str,
+    benchmark_id: str,
+    concurrency_limit: int,
+    progress_callback=None,
+):
+    """Run experiment using Phase 16 concurrent processing.
+
+    This async helper function loads the benchmark dataset and uses
+    the run_reasoning_concurrent method to process prompts concurrently.
+    """
+    try:
+        # Load the benchmark dataset
+        loader = BBEHDatasetLoader(runner.config)
+
+        if progress_callback:
+            progress_callback("Loading benchmark dataset...")
+
+        # Load the dataset using the standard loader method
+        dataset = loader.load_dataset(benchmark_id)
+
+        # Apply sampling like the regular experiment runner does
+        sample_count = runner.config.sample_count
+        if sample_count and sample_count < len(dataset):
+            dataset = loader.sample_data(dataset, sample_size=sample_count)
+            if progress_callback:
+                progress_callback(f"Sampled {len(dataset)} examples from dataset")
+
+        # Extract prompts and expected answers from dataset
+        prompts = []
+        expected_answers = []
+        for sample in dataset:
+            # Dataset should have INPUT/OUTPUT format after validation
+            prompt = sample.get(loader.get_input_column_name(), str(sample))
+            expected_answer = sample.get(loader.get_output_column_name(), "")
+            prompts.append(prompt)
+            expected_answers.append(expected_answer)
+
+        if progress_callback:
+            progress_callback(
+                f"Processing {len(prompts)} prompts with {approach} (concurrent, limit: {concurrency_limit})"
+            )
+
+        # Log detailed configuration before making the call
+        from ml_agents.utils.logging_config import get_logger
+
+        logger = get_logger(__name__)
+        logger.info(
+            f"📄 Concurrent experiment configuration: {len(prompts)} prompts, approach={approach}, concurrency_limit={concurrency_limit}"
+        )
+
+        # Use concurrent processing
+        concurrent_results = await runner.run_reasoning_concurrent(
+            prompts=prompts,
+            reasoning_approach=approach,
+            concurrency_limit=concurrency_limit,
+            expected_answers=expected_answers,
+            progress_callback=progress_callback,
+        )
+
+        # Convert concurrent results to match the expected format
+        # This is a simplified adaptation - in production this would need
+        # to match the exact ExperimentSummary format expected by the CLI
+        class ConcurrentExperimentResult:
+            def __init__(self, results, approach_name):
+                self.results = results
+                self.approach_name = approach_name
+                self.experiment_id = (
+                    f"concurrent_{approach_name.lower()}_{len(results)}"
+                )
+                self.total_samples = len(results)
+                self.duration = sum(0.1 for _ in results)  # Placeholder
+
+                # Calculate basic metrics using real correctness data
+                correct_answers = len(
+                    [r for r in results if r.get("is_correct", False)]
+                )
+                successful = len(
+                    [r for r in results if r.get("extracted_answer", "") != ""]
+                )
+                accuracy = correct_answers / len(results) if results else 0
+
+                self.results_summary = {
+                    approach_name: {
+                        "accuracy": accuracy,
+                        "avg_execution_time": 0.1,  # Placeholder
+                        "total_cost": 0.0,  # Placeholder
+                    }
+                }
+
+                # Add cost_summary for compatibility
+                self.cost_summary = {approach_name: 0.0}
+
+        if progress_callback:
+            progress_callback("Concurrent processing completed!")
+
+        return ConcurrentExperimentResult(concurrent_results, approach)
+
+    except Exception as e:
+        if progress_callback:
+            progress_callback(f"Concurrent experiment failed: {e}")
+        raise e
+
+
 def run_single_experiment(
     benchmark_id: str = typer.Argument(..., help="Benchmark ID (e.g., GPQA, MMLU)"),
     approach: str = typer.Argument(..., help="Reasoning approach name"),
@@ -105,6 +211,17 @@ def run_single_experiment(
     ),
     save_checkpoints: bool = typer.Option(
         True, "--checkpoints/--no-checkpoints", help="Save experiment checkpoints"
+    ),
+    # Concurrency settings (Phase 16)
+    concurrent: bool = typer.Option(
+        False,
+        "--concurrent",
+        help="Enable concurrent processing for improved throughput",
+    ),
+    concurrency_limit: int = typer.Option(
+        10,
+        "--concurrency-limit",
+        help="Maximum number of concurrent operations (default: 10)",
     ),
     # Advanced reasoning settings
     multi_step_reflection: bool = typer.Option(
@@ -216,15 +333,32 @@ def run_single_experiment(
         # Create and run experiment
         runner = ExperimentRunner(experiment_config)
 
-        console.print("🚀 [blue]Starting single experiment...[/blue]")
-
-        result = runner.run_single_experiment(
-            approach=approach,
-            benchmark_id=benchmark_id,
-            progress_callback=lambda msg: (
-                console.print(f"   {msg}") if verbose else None
-            ),
-        )
+        if concurrent:
+            # Use Phase 16 concurrent processing
+            console.print(
+                f"🚀 [blue]Starting concurrent experiment (limit: {concurrency_limit})...[/blue]"
+            )
+            result = asyncio.run(
+                _run_concurrent_experiment(
+                    runner=runner,
+                    approach=approach,
+                    benchmark_id=benchmark_id,
+                    concurrency_limit=concurrency_limit,
+                    progress_callback=lambda msg: (
+                        console.print(f"   {msg}") if verbose else None
+                    ),
+                )
+            )
+        else:
+            # Use traditional synchronous processing
+            console.print("🚀 [blue]Starting single experiment...[/blue]")
+            result = runner.run_single_experiment(
+                approach=approach,
+                benchmark_id=benchmark_id,
+                progress_callback=lambda msg: (
+                    console.print(f"   {msg}") if verbose else None
+                ),
+            )
 
         # Display results
         if result:
