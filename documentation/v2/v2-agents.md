@@ -134,7 +134,7 @@ class ReasoningAgentServiceFactory:
 **Reasoning Parameters** (Agent-specific):
 
 - **None Agent**: No specific parameters required
-- **Chain of Thought**: Optional `step_guidance` for custom prompting
+- **Chain of Thought**: No specific parameters required
 
 **Example Configurations**:
 
@@ -143,14 +143,14 @@ none_config = AgentConfig(
     agent_type="none",
     model_name="anthropic/claude-3-sonnet",
     model_parameters={"temperature": 0.7, "max_tokens": 200},
-    reasoning_parameters={}
+    agent_parameters={}
 )
 
 cot_config = AgentConfig(
     agent_type="chain_of_thought",
     model_name="anthropic/claude-3-sonnet",
     model_parameters={"temperature": 0.8, "max_tokens": 1000},
-    reasoning_parameters={"step_guidance": "Think step by step."}
+    agent_parameters={}
 )
 ```
 

@@ -27,7 +27,7 @@ The platform supports systematic evaluation of reasoning approaches (None, Chain
 
 ### For New Team Members (Start Here)
 1. **[Domain Model](v2-domain-model.md)** - Core business entities, aggregates, and relationships
-2. **[Ubiquitous Language](v2-ubiquitious-language.md)** - Shared vocabulary between researchers and developers
+2. **[Ubiquitous Language](v2-ubiquitous-language.md)** - Shared vocabulary between researchers and developers
 3. **[Core Behaviors](v2-core-behaviour-definition.md)** - Key user workflows and evaluation execution patterns
 
 ### For Developers
@@ -46,7 +46,7 @@ The platform supports systematic evaluation of reasoning approaches (None, Chain
 | Document | Purpose | Prerequisites | Target Audience |
 |----------|---------|---------------|-----------------|
 | **v2-domain-model.md** | Define core business entities, value objects, and domain relationships | None | All team members |
-| **v2-ubiquitious-language.md** | Establish shared vocabulary for evaluation concepts | Domain Model | All team members |
+| **v2-ubiquitous-language.md** | Establish shared vocabulary for evaluation concepts | Domain Model | All team members |
 | **v2-core-behaviour-definition.md** | Specify evaluation workflows and user interaction patterns | Domain Model, Ubiquitous Language | Product owners, developers |
 | **v2-agents.md** | Define reasoning agent implementations and behavioral specifications | Domain Model, Core Behaviors | Researchers, developers |
 | **v2-application-services-architecture.md** | Design service coordination and transaction management | Domain Model, Core Behaviors | Architects, senior developers |
@@ -68,6 +68,21 @@ When making architectural changes, consider reviewing these related documents:
 | **Evaluation workflows** | Application Services, Data Model | Workflow changes impact service coordination and data storage |
 | **Reasoning approaches** | Agents, Domain Model, Core Behaviors | New approaches require agent implementation, domain updates, and workflow integration |
 | **Database schema** | Infrastructure Requirements, Project Structure | Schema changes may require migration tools and environment updates |
+
+## Document Versions
+
+| Document | Version | Last Updated | Status |
+|----------|---------|--------------|--------|
+| **v2-domain-model.md** | 1.1 | 2025-09-17 | Complete |
+| **v2-ubiquitous-language.md** | 1.0 | 2025-09-17 | Complete |
+| **v2-core-behaviour-definition.md** | 1.2 | 2025-09-17 | Complete |
+| **v2-agents.md** | 1.1 | 2025-09-17 | Complete |
+| **v2-application-services-architecture.md** | 1.0 | 2025-09-17 | Complete |
+| **v2-cli-design.md** | 1.0 | 2025-09-17 | Complete |
+| **v2-data-model.md** | 1.0 | 2025-09-17 | Complete |
+| **v2-infrastructure-requirements.md** | 1.0 | 2025-09-17 | Complete |
+| **v2-project-structure.md** | 1.0 | 2025-09-17 | Complete |
+| **v2-testing-strategy.md** | 1.1 | 2025-09-17 | Complete |
 
 ## Implementation Status
 

@@ -13,7 +13,7 @@ Evaluation {
     evaluation_id: UUID                    # Primary key
     agent_config: AgentConfig              # Embedded value object
     preprocessed_benchmark_id: UUID        # Foreign key reference
-    status: EvaluationStatus               # Enum: pending, running, completed, failed
+    status: EvaluationStatus               # Enum: pending, running, completed, failed, interrupted
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
@@ -59,7 +59,7 @@ AgentConfig {
     model_provider: str                    # openrouter
     model_name: str                        # claude-3-sonnet, gpt-4, etc.
     model_parameters: Dict[str, Any]       # temperature, max_tokens, etc.
-    reasoning_parameters: Dict[str, Any]   # agent-specific config
+    agent_parameters: Dict[str, Any]   # agent-specific config
 }
 ```
 
@@ -182,7 +182,7 @@ TokenUsage {
 2. **AgentConfig Validation:**
 
    - `model_parameters` must be valid JSON object
-   - `reasoning_parameters` must be valid JSON object
+   - `agent_parameters` must be valid JSON object
    - `agent_type` must be in supported types list
 
 3. **Benchmark Integrity:**

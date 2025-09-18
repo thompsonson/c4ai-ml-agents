@@ -220,6 +220,29 @@ class ApplicationConfig(BaseSettings):
     # Development Settings
     debug_mode: bool = Field(default=False, env="DEBUG_MODE")
 
+    # Agent Default Parameters
+    none_agent_defaults: Dict[str, Any] = Field(
+        default={"temperature": 0.7, "max_tokens": 200},
+        env="NONE_AGENT_DEFAULTS"
+    )
+    cot_agent_defaults: Dict[str, Any] = Field(
+        default={"temperature": 0.8, "max_tokens": 1000},
+        env="COT_AGENT_DEFAULTS"
+    )
+    tot_agent_defaults: Dict[str, Any] = Field(
+        default={
+            "temperature": 0.9,
+            "max_tokens": 1500,
+            "tree_depth": 3,
+            "branches_per_step": 4,
+            "evaluation_method": "vote",
+            "pruning_threshold": 0.3,
+            "backtrack_on_failure": True,
+            "max_evaluations": 20
+        },
+        env="TOT_AGENT_DEFAULTS"
+    )
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -252,6 +275,11 @@ DEBUG_MODE=false
 # Performance Tuning
 MAX_CONCURRENT_EVALUATIONS=1
 QUESTION_TIMEOUT=30
+
+# Agent Default Parameters (JSON format)
+NONE_AGENT_DEFAULTS={"temperature": 0.1, "max_tokens": 800}
+COT_AGENT_DEFAULTS={"temperature": 0.8, "max_tokens": 1000}
+TOT_AGENT_DEFAULTS={"temperature": 0.9, "max_tokens": 1500}
 ```
 
 **.env.development**
@@ -562,6 +590,38 @@ CMD ["python", "-m", "cli.main"]
 - Use different keys for development/staging/production
 - Implement key rotation procedures
 - Monitor for key exposure in logs
+
+### Benchmark Registry
+
+The benchmark naming system uses a hardcoded registry for mapping user-friendly names to dataset files.
+
+```python
+# infrastructure/database/repositories/benchmark_repository_impl.py
+BENCHMARK_REGISTRY = {
+    "GPQA": "BENCHMARK-01-GPQA.csv",
+    "FOLIO": "BENCHMARK-05-FOLIO.csv",
+    "BBEH": "BENCHMARK-06-BBEH.csv",
+    "MATH3": "BENCHMARK-07-MATH3.csv",
+    "LeetCode_Python_Easy": "BENCHMARK-08-LeetCode_Python_Easy.csv"
+}
+
+class BenchmarkRepositoryImpl:
+    def get_by_name(self, name: str) -> PreprocessedBenchmark:
+        """Map short name to filename, fallback to name if not found"""
+        filename = BENCHMARK_REGISTRY.get(name, name)
+        # Load from filesystem/database using filename
+        return self._load_benchmark(filename)
+
+    def list_available_names(self) -> List[str]:
+        """Return list of user-friendly benchmark names"""
+        return list(BENCHMARK_REGISTRY.keys())
+```
+
+**Design Rationale:**
+- **Simple for v2**: No database complexity for mapping table
+- **Easy to extend**: Add new benchmarks by updating the constant
+- **Clear error handling**: Fallback to name if not in registry
+- **User-friendly**: CLI accepts short names like "GPQA" instead of full filenames
 
 ### Data Privacy
 

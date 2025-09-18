@@ -35,7 +35,7 @@ This document defines the domain model for the ML Agents v2 reasoning research p
 - `evaluation_id`: Unique identifier
 - `agent_config`: Configuration for reasoning approach (Value Object)
 - `preprocessed_benchmark_id`: Reference to benchmark data
-- `status`: Evaluation lifecycle state (pending, running, completed, failed)
+- `status`: Evaluation lifecycle state (pending, running, completed, failed, interrupted)
 - `created_at`: When evaluation was initiated
 - `started_at`: When execution began
 - `completed_at`: When execution finished
@@ -53,8 +53,8 @@ This document defines the domain model for the ML Agents v2 reasoning research p
 
 ```
 pending → running → completed
-              ↓
-            failed
+              ↓         ↓
+            failed  interrupted
 ```
 
 **Methods**:
@@ -139,7 +139,7 @@ This is a value object because configurations are reusable and shareable across 
 - `model_provider`: LLM provider (Anthropic, OpenRouter, Cohere, etc.)
 - `model_name`: Specific model identifier
 - `model_parameters`: Model-specific parameters (temperature, max_tokens, etc.)
-- `reasoning_parameters`: Agent-specific parameters
+- `agent_parameters`: Agent-specific parameters
 
 **Business Rules**:
 
@@ -243,7 +243,7 @@ Understanding why evaluations fail is crucial for researchers to improve their a
 
 **Attributes**:
 
-- `category`: Type of failure (parsing_error, token_limit_exceeded, content_guardrail, model_refusal, network_timeout, unknown)
+- `category`: Type of failure (parsing_error, token_limit_exceeded, content_guardrail, model_refusal, network_timeout, rate_limit_exceeded, credit_limit_exceeded, authentication_error, unknown)
 - `description`: Human-readable failure description
 - `technical_details`: Raw error information for debugging
 - `occurred_at`: When the failure occurred
@@ -256,6 +256,9 @@ Understanding why evaluations fail is crucial for researchers to improve their a
 - `ContentGuardrailTriggered`: Model safety systems prevented response
 - `ModelRefusal`: Model explicitly declined to answer
 - `NetworkTimeout`: Communication failure with model provider
+- `RateLimitExceeded`: API rate limit reached, retry after delay
+- `CreditLimitExceeded`: Insufficient API credits or budget
+- `AuthenticationError`: Invalid API key or authentication failure
 - `UnknownFailure`: Unexpected error not fitting other categories
 
 **Immutable**: Yes
@@ -433,7 +436,7 @@ Domain model classes should be organized by aggregate:
 
 - **[Data Model](v2-data-model.md)** - Database schema implementation of these domain entities
 - **[Application Services Architecture](v2-application-services-architecture.md)** - Service coordination patterns using these domain concepts
-- **[Ubiquitous Language](v2-ubiquitious-language.md)** - Shared vocabulary definitions for domain terms
+- **[Ubiquitous Language](v2-ubiquitous-language.md)** - Shared vocabulary definitions for domain terms
 - **[Core Behaviors](v2-core-behaviour-definition.md)** - User workflows that manipulate these domain entities
 
 ---
