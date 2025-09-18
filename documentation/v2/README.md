@@ -2,7 +2,22 @@
 
 ## Overview
 
-ML Agents v2 represents a complete architectural redesign of the reasoning research platform, transitioning from a Jupyter notebook prototype to a production-ready CLI application. The redesign focuses on Domain-Driven Design principles, clean architecture separation, and robust evaluation workflows for comparing reasoning approaches across diverse benchmarks.
+**ML Agents v2 is a complete architectural redesign and clean break from v1.** This represents a fundamental reimagining of the reasoning research platform, transitioning from the v1 Jupyter notebook prototype to a production-ready CLI application built from the ground up.
+
+### Clean Break from v1
+
+**v2 is NOT an evolution of v1 - it is a complete rewrite with:**
+- **New Architecture**: Domain-Driven Design with clean architecture layers vs. monolithic notebook
+- **New Interface**: CLI application vs. Jupyter notebook interface
+- **New Data Model**: Structured entities and value objects vs. ad-hoc data handling
+- **New Infrastructure**: OpenRouter integration, SQLite persistence, dependency injection vs. direct API calls
+- **New Codebase**: Fresh implementation following architectural principles vs. research prototype code
+
+**Migration Strategy**: v2 will be developed as a separate project. v1 remains available for reference but will not be maintained once v2 is production-ready.
+
+### v2 Design Principles
+
+The v2 redesign focuses on Domain-Driven Design principles, clean architecture separation, and robust evaluation workflows for comparing reasoning approaches across diverse benchmarks.
 
 Key architectural decisions include using SQLite for development with PostgreSQL extensibility, OpenRouter for unified LLM provider access, and a synchronous CLI execution model that prioritizes simplicity and real-time progress feedback over complex concurrency management.
 
@@ -17,8 +32,9 @@ The platform supports systematic evaluation of reasoning approaches (None, Chain
 
 ### For Developers
 1. **[Project Structure](v2-project-structure.md)** - Codebase organization following DDD layers
-2. **[Infrastructure Requirements](v2-infrastructure-requirements.md)** - Dependencies, OpenRouter integration, and deployment setup
-3. **[CLI Design](v2-cli-design.md)** - Command interface implementation and user interaction patterns
+2. **[Agents](v2-agents.md)** - Reasoning agent implementations and behavioral specifications
+3. **[Infrastructure Requirements](v2-infrastructure-requirements.md)** - Dependencies, OpenRouter integration, and deployment setup
+4. **[CLI Design](v2-cli-design.md)** - Command interface implementation and user interaction patterns
 
 ### For Architects
 1. **[Application Services Architecture](v2-application-services-architecture.md)** - Service coordination and transaction boundaries
@@ -32,6 +48,7 @@ The platform supports systematic evaluation of reasoning approaches (None, Chain
 | **v2-domain-model.md** | Define core business entities, value objects, and domain relationships | None | All team members |
 | **v2-ubiquitious-language.md** | Establish shared vocabulary for evaluation concepts | Domain Model | All team members |
 | **v2-core-behaviour-definition.md** | Specify evaluation workflows and user interaction patterns | Domain Model, Ubiquitous Language | Product owners, developers |
+| **v2-agents.md** | Define reasoning agent implementations and behavioral specifications | Domain Model, Core Behaviors | Researchers, developers |
 | **v2-application-services-architecture.md** | Design service coordination and transaction management | Domain Model, Core Behaviors | Architects, senior developers |
 | **v2-cli-design.md** | Define command structure and user interface patterns | Core Behaviors | Developers, UX consideration |
 | **v2-data-model.md** | Specify database schema and persistence strategy | Domain Model | Database developers, architects |
@@ -49,7 +66,7 @@ When making architectural changes, consider reviewing these related documents:
 | **CLI commands** | Core Behaviors, CLI Design | Command changes impact user workflows |
 | **Infrastructure dependencies** | Project Structure, Testing Strategy | Infrastructure changes affect build and test configuration |
 | **Evaluation workflows** | Application Services, Data Model | Workflow changes impact service coordination and data storage |
-| **Reasoning approaches** | Domain Model, Core Behaviors | New approaches require domain updates and workflow integration |
+| **Reasoning approaches** | Agents, Domain Model, Core Behaviors | New approaches require agent implementation, domain updates, and workflow integration |
 | **Database schema** | Infrastructure Requirements, Project Structure | Schema changes may require migration tools and environment updates |
 
 ## Implementation Status
